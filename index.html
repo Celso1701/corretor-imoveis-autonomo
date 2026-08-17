@@ -237,7 +237,7 @@ svg{display:block}
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.3.2';
+const APP_VERSION = '1.4.3';
 const val = id => document.getElementById(id)?.value.trim() || '';
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2,10)+Date.now().toString(36));
 function toast(msg){
@@ -703,11 +703,40 @@ function renderInicio(){
       <div class="ac-title">Comprar</div>
       <div class="ac-sub">Busca de imóveis para clientes compradores</div>
     </button>
+    <div class="stitle">Contatos das próximas visitas</div>
+    ${listaContatosVisitasHTML()}
     <div class="stitle">Resumo</div>
     <div class="card">
       <div class="review-item"><span class="k">Proprietários cadastrados</span><span class="v">${nProp}</span></div>
       <div class="review-item"><span class="k">Imóveis cadastrados</span><span class="v">${nImo}</span></div>
     </div>`;
+}
+function listaContatosVisitasHTML(){
+  const lista = (DB.agendamentos||[]).slice().sort((a,b)=>
+    (a.data||'').localeCompare(b.data||'') || (a.hora||'').localeCompare(b.hora||''));
+  if(!lista.length){
+    return `<div class="card" style="text-align:center;color:var(--muted);font-size:12.5px;padding:18px">Nenhuma visita agendada ainda.<br>Cadastre em <b>Agenda › ＋ Visita</b>.</div>`;
+  }
+  return lista.map(a=>{
+    const im = DB.imoveis.find(x=>x.id===a.imovelId);
+    const cod = (im?.codigo||'—').toUpperCase();
+    const t1 = a.compradorTel1||''; const t2 = a.compradorTel2||'';
+    const d1 = t1.replace(/\D/g,''); const d2 = t2.replace(/\D/g,'');
+    return `<div class="card" style="display:flex;align-items:flex-start;gap:11px" onclick="goTab('agenda')">
+      <div class="ptile-icon" style="width:40px;height:40px;flex-shrink:0;text-align:center;line-height:1">
+        <div style="font-size:9px;font-weight:800;color:var(--primary)">${fmtDataBR(a.data).slice(0,5)}</div>
+        <div style="font-size:8px;color:var(--muted)" class="mono">${a.hora||''}</div></div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:800;font-size:14px">${esc(a.compradorNome||'Sem nome')}</div>
+        <div style="font-size:11.5px;color:var(--muted);margin-top:2px"><span class="mono" style="color:var(--primary);font-weight:700">${cod}</span> · visita em ${fmtDataBR(a.data)}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
+          ${t1?`<a href="tel:${d1}" onclick="event.stopPropagation()" style="font-size:11.5px;color:#128A56;background:var(--pgreen);padding:3px 9px;border-radius:100px;font-weight:700;text-decoration:none">📞 ${esc(t1)}</a>`:''}
+          ${t2?`<a href="tel:${d2}" onclick="event.stopPropagation()" style="font-size:11.5px;color:#128A56;background:var(--pgreen);padding:3px 9px;border-radius:100px;font-weight:700;text-decoration:none">📞 ${esc(t2)}</a>`:''}
+          ${!t1&&!t2?`<span style="font-size:11px;color:var(--muted)">Sem telefone informado</span>`:''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 // ── Tipos de imóvel ──
@@ -1072,15 +1101,8 @@ function stepPaneHTML(i){
     ${W.vendaExclusiva!=='Sim'?`<div class="hint" style="margin-top:-8px;margin-bottom:12px">As datas só podem ser preenchidas se a venda exclusiva estiver marcada como <b>Sim</b>.</div>`:''}
     <div class="row2">
       <div class="field"><label>Taxa de condomínio (R$)</label><input type="number" value="${esc(W.condominio)}" oninput="W.condominio=this.value"></div>
-      <div class="field"><label>Comissão (%)</label><input inputmode="decimal" value="${esc(W.comissao)}" placeholder="0.0" oninput="W.comissao=sanitizarComissao(this);atualizaComissaoCalc()"><div class="hint">Até 99,9%</div></div>
-    </div>
-    <div class="section-title" style="margin-top:6px">Valores do imóvel</div>
-    <div class="field"><label>Valor solicitado (R$)</label><input inputmode="numeric" placeholder="9.999.999,99" value="${esc(W.valorSolicitado)}" oninput="W.valorSolicitado=maskMoedaG(this)"></div>
-    <div class="row2">
-      <div class="field"><label>Valor mínimo (R$)</label><input inputmode="numeric" placeholder="9.999.999,99" value="${esc(W.valorMinimo)}" oninput="W.valorMinimo=maskMoedaG(this)"></div>
-      <div class="field"><label>Valor negociado (R$)</label><input inputmode="numeric" placeholder="9.999.999,99" value="${esc(W.valorNegociado)}" oninput="W.valorNegociado=maskMoedaG(this);atualizaComissaoCalc()"></div>
-    </div>
-    <div id="comissaoCalc">${comissaoCalcHTML()}</div>`;
+      <div class="field"><label>Comissão (%)</label><input inputmode="decimal" value="${esc(W.comissao)}" placeholder="0.0" oninput="W.comissao=sanitizarComissao(this)"><div class="hint">Até 99,9%. O valor da comissão aparece na última etapa.</div></div>
+    </div>`;
 
   if(i===3) return `
     <div class="section-title">Garagem e portão</div>
@@ -1141,6 +1163,16 @@ function stepPaneHTML(i){
     <div class="section-title">Revisar antes de salvar</div>
     <div class="review-block"><div class="review-block-title">Registro</div>
       <div class="review-item"><span class="k">Código do imóvel</span><span class="v mono" style="color:var(--primary)">${(W.codigo||'').toUpperCase()}</span></div></div>
+
+    <div class="section-title">Valores do imóvel</div>
+    <div class="field"><label>Valor solicitado (R$)</label><input inputmode="numeric" placeholder="9.999.999,99" value="${esc(W.valorSolicitado)}" oninput="W.valorSolicitado=maskMoedaG(this)"></div>
+    <div class="row2">
+      <div class="field"><label>Valor mínimo (R$)</label><input inputmode="numeric" placeholder="9.999.999,99" value="${esc(W.valorMinimo)}" oninput="W.valorMinimo=maskMoedaG(this)"></div>
+      <div class="field"><label>Valor negociado (R$)</label><input inputmode="numeric" placeholder="9.999.999,99" value="${esc(W.valorNegociado)}" oninput="W.valorNegociado=maskMoedaG(this);atualizaComissaoCalc()"></div>
+    </div>
+    <div class="field"><label>Comissão (%)</label><input inputmode="decimal" placeholder="0.0" value="${esc(W.comissao)}" oninput="W.comissao=sanitizarComissao(this);atualizaComissaoCalc()"><div class="hint">Até 99,9%</div></div>
+    <div id="comissaoCalc">${comissaoCalcHTML()}</div>
+
     <div class="review-block"><div class="review-block-title">Localização</div>
       <div class="review-item"><span class="k">Endereço</span><span class="v">${esc([W.endereco,W.numero].filter(Boolean).join(', ')||'—')}</span></div>
       <div class="review-item"><span class="k">Cidade / UF</span><span class="v">${esc([W.cidade,W.estado].filter(Boolean).join(' / ')||'—')}</span></div>
@@ -1623,14 +1655,14 @@ function agCardHTML(a){
     <div class="acts">
       <div class="act wa" onclick="window.open('https://wa.me/55${tel}','_blank')">💬 WhatsApp</div>
       <div class="act gps" onclick="abrirRota('${esc(enderecoFull).replace(/'/g,"\\'")}')">🧭 Rota</div>
-      <div class="act" style="flex:none;width:44px" onclick="editarAgendamento('${a.id}')">✏️</div>
-      <div class="act" style="flex:none;width:44px" onclick="excluirAgendamento('${a.id}')">🗑</div>
+      <div class="act" onclick="editarAgendamento('${a.id}')">✏️ Editar</div>
+      <div class="act" onclick="excluirAgendamento('${a.id}')">🗑 Cancelar</div>
     </div>
   </div>`;
 }
 function excluirAgendamento(id){
-  confirmar({icon:'🗑️', title:'Excluir compromisso?', msg:'A visita será removida da agenda. As despesas já lançadas no financeiro serão mantidas.',
-    noLabel:'Cancelar', yesLabel:'Excluir', yes:`doExcluirAgendamento('${id}')`});
+  confirmar({icon:'🗑️', title:'Cancelar esta visita?', msg:'A visita será removida da agenda. As despesas já lançadas no financeiro serão mantidas.',
+    noLabel:'Voltar', yesLabel:'Cancelar visita', yes:`doExcluirAgendamento('${id}')`});
 }
 function doExcluirAgendamento(id){
   DB.agendamentos = DB.agendamentos.filter(a=>a.id!==id);
@@ -1837,6 +1869,20 @@ function renderFinanceiro(){
 
 // ── Relatório de fluxo diário (Receitas / Despesas / Saldo acumulado) ──
 let fluxoIni = '', fluxoFim = '';
+function fluxoPeriodo(qual){
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  if(qual==='semana'){
+    fluxoIni = isoDate(hoje);
+    const fim = new Date(hoje); fim.setDate(fim.getDate()+7);   // hoje até +7 dias
+    fluxoFim = isoDate(fim);
+  } else if(qual==='mes'){
+    fluxoIni = isoDate(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
+    fluxoFim = isoDate(new Date(hoje.getFullYear(), hoje.getMonth()+1, 0));
+  } else if(qual==='hoje'){
+    fluxoIni = isoDate(hoje); fluxoFim = isoDate(hoje);
+  }
+  renderFinanceiro();
+}
 function fluxoDiarioHTML(){
   const todas = [...DB.financeiro.receitas, ...DB.financeiro.despesas].map(e=>e.data).filter(Boolean).sort();
   const hojeIso = isoDate(new Date());
@@ -1847,6 +1893,11 @@ function fluxoDiarioHTML(){
                  - DB.financeiro.despesas.filter(e=>(e.data||'')<fluxoIni).reduce((s,e)=>s+(e.valor||0),0);
 
   let h = `<div class="card" style="margin-bottom:10px">
+    <div style="display:flex;gap:8px;margin-bottom:10px;overflow-x:auto;padding-bottom:2px">
+      ${fchip(false,'📅 Semana',"fluxoPeriodo('semana')")}
+      ${fchip(false,'🗓️ Este mês',"fluxoPeriodo('mes')")}
+      ${fchip(false,'📆 Hoje',"fluxoPeriodo('hoje')")}
+    </div>
     <div class="row2">
       <div class="field" style="margin:0"><label>Data inicial</label><input type="date" value="${fluxoIni}" max="${fluxoFim}" onchange="fluxoIni=this.value;renderFinanceiro()"></div>
       <div class="field" style="margin:0"><label>Data final</label><input type="date" value="${fluxoFim}" min="${fluxoIni}" onchange="fluxoFim=this.value;renderFinanceiro()"></div>
