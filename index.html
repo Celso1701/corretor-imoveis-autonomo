@@ -15,7 +15,7 @@
 :root{
   --primary:#5D5FEF; --dark:#4B3FD6; --accent:#20B472;
   --bg:#F4F4FB; --surface:#FFFFFF; --text:#191A2C; --muted:#8B8DA3;
-  --border:#EDEDF4; --success:#20B472; --warning:#F5A623; --danger:#E0453B;
+  --border:#EDEDF4; --line:#EDEDF4; --success:#20B472; --warning:#F5A623; --danger:#E0453B;
   --pblue:#ECEBFE; --pgreen:#E6F8EF; --pred:#FCEBEA;
   --shadow:0 2px 10px rgba(25,26,44,.06);
 }
@@ -237,7 +237,7 @@ svg{display:block}
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.4.3';
+const APP_VERSION = '1.5.0';
 const val = id => document.getElementById(id)?.value.trim() || '';
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2,10)+Date.now().toString(36));
 function toast(msg){
@@ -649,12 +649,13 @@ function goTab(tab){
   else if(tab==='config') renderHeader(false), renderConfig();
 }
 function renderHeader(withSearch){
+  const primeiroNome = (DB.corretor?.nome||'').trim().split(' ')[0] || 'corretor(a)';
   document.getElementById('appHeader').innerHTML = `
     <div class="greet">
-      <div><div class="eyebrow">Painel do corretor</div><h2>Olá, corretor(a)</h2></div>
-      <div class="bell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 10a6 6 0 1 1 12 0c0 4 1.5 5.5 1.5 5.5H4.5S6 14 6 10Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M10 19a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+      <div><div class="eyebrow">Painel do corretor</div><h2>Olá, ${esc(primeiroNome)}</h2></div>
+      <div class="bell" onclick="goTab('config')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 10a6 6 0 1 1 12 0c0 4 1.5 5.5 1.5 5.5H4.5S6 14 6 10Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M10 19a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>
     </div>
-    ${withSearch?`<div class="searchbar"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>Buscar imóvel cadastrado</span></div>`:''}`;
+    ${withSearch?`<div class="searchbar" onclick="imoBuscaModo='nome';goTab('imoveis')" style="cursor:pointer"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>Buscar imóvel cadastrado</span></div>`:''}`;
 }
 
 // ── Início ──
@@ -747,9 +748,9 @@ function abrirTipos(){
     <div class="eyebrow">Vender</div><h2>Tipo de imóvel</h2>
     <div class="cat-row" style="margin-top:14px">
       <div class="cat-item" onclick="iniciarCadastro()"><div class="cat-circle"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 11.5L12 4l8 7.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 10.5V19a1 1 0 0 0 1 1h3.5v-5h3v5H17a1 1 0 0 0 1-1v-8.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="cat-label">Casa</div></div>
-      <div class="cat-item disabled"><div class="cat-circle"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="6" y="3" width="12" height="18" rx="1.5" stroke="currentColor" stroke-width="1.8"/></svg></div><div class="cat-label">Apto</div></div>
-      <div class="cat-item disabled"><div class="cat-circle"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 20l4-9 4 5 3-6 5 10H4Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></div><div class="cat-label">Chácara</div></div>
-      <div class="cat-item disabled"><div class="cat-circle"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 19h16M6 19V10M18 19V10M4 10l8-6 8 6" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></div><div class="cat-label">Terreno</div></div>
+      <div class="cat-item disabled" onclick="toast('Apartamento chega em breve — por enquanto use Casa.')"><div class="cat-circle"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="6" y="3" width="12" height="18" rx="1.5" stroke="currentColor" stroke-width="1.8"/></svg></div><div class="cat-label">Apto</div></div>
+      <div class="cat-item disabled" onclick="toast('Chácara/Sítio chega em breve — por enquanto use Casa.')"><div class="cat-circle"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 20l4-9 4 5 3-6 5 10H4Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></div><div class="cat-label">Chácara</div></div>
+      <div class="cat-item disabled" onclick="toast('Terreno chega em breve — por enquanto use Casa.')"><div class="cat-circle"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 19h16M6 19V10M18 19V10M4 10l8-6 8 6" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></div><div class="cat-label">Terreno</div></div>
     </div>`;
   document.getElementById('mainContent').innerHTML = `
     <div class="stitle">Detalhes</div>
@@ -757,9 +758,9 @@ function abrirTipos(){
       <div class="ptile-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 11.5L12 4l8 7.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
       <div><div class="ptile-title">Casa</div><div class="ptile-sub">Cadastro completo — 8 etapas</div></div>
     </button>
-    <div class="ptile disabled"><div class="ptile-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="6" y="3" width="12" height="18" rx="1.5" stroke="currentColor" stroke-width="1.8"/></svg></div><div><div class="ptile-title">Apartamento <span class="tag">em breve</span></div></div></div>
-    <div class="ptile disabled"><div class="ptile-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 20l4-9 4 5 3-6 5 10H4Z" stroke="currentColor" stroke-width="1.5"/></svg></div><div><div class="ptile-title">Chácara / Sítio <span class="tag">em breve</span></div></div></div>
-    <div class="ptile disabled"><div class="ptile-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 19h16M6 19V10M18 19V10M4 10l8-6 8 6" stroke="currentColor" stroke-width="1.6"/></svg></div><div><div class="ptile-title">Terreno <span class="tag">em breve</span></div></div></div>`;
+    <div class="ptile disabled" onclick="toast('Apartamento chega em breve — por enquanto use Casa.')"><div class="ptile-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="6" y="3" width="12" height="18" rx="1.5" stroke="currentColor" stroke-width="1.8"/></svg></div><div><div class="ptile-title">Apartamento <span class="tag">em breve</span></div></div></div>
+    <div class="ptile disabled" onclick="toast('Chácara/Sítio chega em breve — por enquanto use Casa.')"><div class="ptile-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 20l4-9 4 5 3-6 5 10H4Z" stroke="currentColor" stroke-width="1.5"/></svg></div><div><div class="ptile-title">Chácara / Sítio <span class="tag">em breve</span></div></div></div>
+    <div class="ptile disabled" onclick="toast('Terreno chega em breve — por enquanto use Casa.')"><div class="ptile-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 19h16M6 19V10M18 19V10M4 10l8-6 8 6" stroke="currentColor" stroke-width="1.6"/></svg></div><div><div class="ptile-title">Terreno <span class="tag">em breve</span></div></div></div>`;
 }
 
 // ══════════════ MÓDULO PROPRIETÁRIOS ══════════════
@@ -942,11 +943,11 @@ async function editarImovel(id){
   if(!W.codigo) W.codigo = (im.codigo||proximoCodigo('casa')); // compat p/ registros antigos
   W.tipo = im.tipo || 'casa';
   W.dataInclusao = im.dataInclusao || isoDate(new Date(im.createdAt||Date.now()));
-  // reconstrói os campos de valor (planos) a partir de im.valores
-  const centavos = n => n ? maskMoedaFromNumber(n) : '';
-  W.valorSolicitado = centavos(im.valores?.solicitado);
-  W.valorMinimo     = centavos(im.valores?.minimo);
-  W.valorNegociado  = centavos(im.valores?.negociado);
+  // reconstrói os campos de valor (planos) a partir de im.valores — zero vira "0,00"
+  const centavos = n => maskMoedaFromNumber(n||0);
+  W.valorSolicitado = im.valores ? centavos(im.valores.solicitado) : '';
+  W.valorMinimo     = im.valores ? centavos(im.valores.minimo) : '';
+  W.valorNegociado  = im.valores ? centavos(im.valores.negociado) : '';
   wStep = 0; wCache = {};
   document.getElementById('mainNav').classList.add('hidden');
   renderWizard();
@@ -982,7 +983,15 @@ function renderWizard(){
   if(wStep===5) hydratarFotos();
   if(wStep===7) {} // revisão já é montada estática a partir de W
 }
-function irStep(i){ wStep = Math.max(0, Math.min(i,7)); renderWizard(); window.scrollTo(0,0); }
+function validarStep(s){
+  if(s===0 && !(W.endereco||'').trim()){ toast('Informe o endereço do imóvel.'); return false; }
+  if(s===1 && !(W.nome||'').trim()){ toast('Informe o nome do proprietário.'); return false; }
+  return true;
+}
+function irStep(i){
+  if(i > wStep && !validarStep(wStep)) return;  // só valida ao avançar
+  wStep = Math.max(0, Math.min(i,7)); renderWizard(); window.scrollTo(0,0);
+}
 
 function chip(group,valv,label){ return `<div class="chip ${W[group]===valv?'selected':''}" onclick="setChip('${group}','${valv.replace(/'/g,"\\'")}')">${esc(label)}</div>`; }
 function setChip(group,v){
@@ -1100,7 +1109,7 @@ function stepPaneHTML(i){
     </div>
     ${W.vendaExclusiva!=='Sim'?`<div class="hint" style="margin-top:-8px;margin-bottom:12px">As datas só podem ser preenchidas se a venda exclusiva estiver marcada como <b>Sim</b>.</div>`:''}
     <div class="row2">
-      <div class="field"><label>Taxa de condomínio (R$)</label><input type="number" value="${esc(W.condominio)}" oninput="W.condominio=this.value"></div>
+      <div class="field"><label>Taxa de condomínio (R$)</label><input inputmode="numeric" placeholder="0,00" value="${W.condominio&&parseFloat(W.condominio)>0?maskMoedaFromNumber(parseFloat(W.condominio)):''}" oninput="W.condominio=String(parseMoeda(maskMoeda(this)))"></div>
       <div class="field"><label>Comissão (%)</label><input inputmode="decimal" value="${esc(W.comissao)}" placeholder="0.0" oninput="W.comissao=sanitizarComissao(this)"><div class="hint">Até 99,9%. O valor da comissão aparece na última etapa.</div></div>
     </div>`;
 
@@ -1187,11 +1196,6 @@ function stepPaneHTML(i){
       <div class="review-item"><span class="k">Morador</span><span class="v">${esc(W.morador)}</span></div>
       <div class="review-item"><span class="k">Tipo da casa</span><span class="v">${esc(W.tipoCasa==='Outro'&&W.outroTipo?W.outroTipo:W.tipoCasa)}</span></div>
       <div class="review-item"><span class="k">Venda exclusiva</span><span class="v">${W.vendaExclusiva==='Sim'?('Sim'+((W.dataInicial||W.dataFinal)?` (${fmtDataBR(W.dataInicial)} → ${fmtDataBR(W.dataFinal)})`:'')):'Não'}</span></div>
-      <div class="review-item"><span class="k">Comissão</span><span class="v">${W.comissao?W.comissao.replace('.',',')+'%':'—'}</span></div>
-      <div class="review-item"><span class="k">Valor solicitado</span><span class="v">${parseMoeda(W.valorSolicitado)>0?fmtBRL(parseMoeda(W.valorSolicitado)):'—'}</span></div>
-      <div class="review-item"><span class="k">Valor mínimo</span><span class="v">${parseMoeda(W.valorMinimo)>0?fmtBRL(parseMoeda(W.valorMinimo)):'—'}</span></div>
-      <div class="review-item"><span class="k">Valor negociado</span><span class="v">${parseMoeda(W.valorNegociado)>0?fmtBRL(parseMoeda(W.valorNegociado)):'—'}</span></div>
-      ${parseMoeda(W.valorNegociado)>0?`<div class="review-item"><span class="k">Comissão estimada</span><span class="v" style="color:#128A56;font-weight:700">${fmtBRL(parseMoeda(W.valorNegociado)*((parseFloat((W.comissao||'').replace(',','.'))||0)/100))}</span></div>`:''}
       <div class="review-item"><span class="k">Condomínio</span><span class="v">${condoVal>0?fmtBRL(condoVal):'Sem condomínio'}</span></div></div>
     <div class="review-block"><div class="review-block-title">Garagem</div>
       <div class="review-item"><span class="k">Vagas</span><span class="v">${W.vagas||0} · ${W.coberta?'Coberta':'Descoberta'}</span></div>
@@ -1469,10 +1473,10 @@ function abrirDetalhe(id){
       <div class="review-item"><span class="k">Tipo</span><span class="v">${esc(im.caracteristicas.tipoCasa)}</span></div>
       <div class="review-item"><span class="k">Venda exclusiva</span><span class="v">${im.exclusividade?.exclusiva?('Sim'+((im.exclusividade.dataInicial||im.exclusividade.dataFinal)?` (${fmtDataBR(im.exclusividade.dataInicial)} → ${fmtDataBR(im.exclusividade.dataFinal)})`:'')):'Não'}</span></div>
       <div class="review-item"><span class="k">Comissão</span><span class="v">${im.comissao?im.comissao.replace('.',',')+'%':'—'}</span></div>
-      ${im.valores?.solicitado>0?`<div class="review-item"><span class="k">Valor solicitado</span><span class="v">${fmtBRL(im.valores.solicitado)}</span></div>`:''}
-      ${im.valores?.minimo>0?`<div class="review-item"><span class="k">Valor mínimo</span><span class="v">${fmtBRL(im.valores.minimo)}</span></div>`:''}
-      ${im.valores?.negociado>0?`<div class="review-item"><span class="k">Valor negociado</span><span class="v" style="font-weight:700">${fmtBRL(im.valores.negociado)}</span></div>
-      <div class="review-item"><span class="k">Comissão estimada</span><span class="v" style="color:#128A56;font-weight:700">${fmtBRL(im.valores.negociado*((parseFloat((im.comissao||'').replace(',','.'))||0)/100))}</span></div>`:''}
+      <div class="review-item"><span class="k">Valor solicitado</span><span class="v">${fmtBRL(im.valores?.solicitado||0)}</span></div>
+      <div class="review-item"><span class="k">Valor mínimo</span><span class="v">${fmtBRL(im.valores?.minimo||0)}</span></div>
+      <div class="review-item"><span class="k">Valor negociado</span><span class="v" style="font-weight:700">${fmtBRL(im.valores?.negociado||0)}</span></div>
+      <div class="review-item"><span class="k">Comissão estimada</span><span class="v" style="color:#128A56;font-weight:700">${fmtBRL((im.valores?.negociado||0)*((parseFloat((im.comissao||'').replace(',','.'))||0)/100))}</span></div>
       <div class="review-item"><span class="k">Condomínio</span><span class="v">${condoVal>0?fmtBRL(condoVal):'Sem condomínio'}</span></div>
       <div class="review-item"><span class="k">Contrato PDF</span><span class="v">${im.contrato?esc(im.contrato.nome):'—'}</span></div></div>
     <div class="btnrow" style="margin-top:16px">
@@ -1591,6 +1595,7 @@ function montarTextoImovel(im){
 // ── Config ──
 // ══════════════ MÓDULO AGENDA ══════════════
 let agSelDate = null; // 'YYYY-MM-DD' selecionado na tira de dias
+let agBuscaQ = '';    // busca da agenda
 function isoDate(d){ return d.toISOString().slice(0,10); }
 function renderAgenda(){
   if(!agSelDate) agSelDate = isoDate(new Date());
@@ -1604,13 +1609,28 @@ function renderAgenda(){
     strip += `<div class="day ${iso===agSelDate?'active':''} ${has?'has':''}" onclick="agSelDate='${iso}';renderAgenda()">
       <div class="dw">${dias[d.getDay()]}</div><div class="dn">${d.getDate()}</div><div class="dd"></div></div>`;
   }
-  const doDia = DB.agendamentos.filter(a=>a.data===agSelDate).sort((a,b)=>(a.hora||'').localeCompare(b.hora||''));
+  let doDia = DB.agendamentos.filter(a=>a.data===agSelDate).sort((a,b)=>(a.hora||'').localeCompare(b.hora||''));
+  const q = (agBuscaQ||'').trim().toLowerCase();
+  let resultadosBusca = null;
+  if(q){
+    // busca em TODOS os agendamentos por comprador, código do imóvel ou endereço
+    resultadosBusca = DB.agendamentos.filter(a=>{
+      const im = DB.imoveis.find(x=>x.id===a.imovelId);
+      const alvo = [a.compradorNome, a.imovelCodigo, im?.codigo, im?.localizacao?.endereco, im?.localizacao?.cidade]
+        .map(s=>(s||'').toLowerCase()).join(' ');
+      return alvo.includes(q);
+    }).sort((a,b)=>(a.data||'').localeCompare(b.data||'')||(a.hora||'').localeCompare(b.hora||''));
+  }
   document.getElementById('mainContent').innerHTML = `
     <div class="ag-search">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-      <span>Buscar visita, cliente ou imóvel</span>
-      <div class="go"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M7 12h10M10 18h4" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></div>
+      <input style="border:none;outline:none;flex:1;background:none;font-size:13.5px;color:var(--text)" placeholder="Buscar visita, cliente ou imóvel" value="${esc(agBuscaQ)}" oninput="agBuscaQ=this.value;renderAgenda()">
+      ${q?`<div class="go" style="background:var(--danger)" onclick="agBuscaQ='';renderAgenda()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg></div>`:`<div class="go"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M7 12h10M10 18h4" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></div>`}
     </div>
+    ${resultadosBusca!==null ? `
+      <div class="srow"><span class="t">Resultados da busca</span><span class="a">${resultadosBusca.length} visita(s)</span></div>
+      ${resultadosBusca.length===0?`<div class="empty"><div class="big">🔍</div>Nenhuma visita encontrada.</div>`:resultadosBusca.map(a=>agCardHTML(a,true)).join('')}
+    ` : `
     <div class="weekstrip">${strip}</div>
     <div class="pills">
       <div class="pill" style="background:var(--primary);border-color:var(--primary);color:#fff" onclick="novaVisita()">＋ Visita</div>
@@ -1622,12 +1642,14 @@ function renderAgenda(){
       <div class="q" onclick="novaVisita()"><div class="c"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div><div class="l">Nova</div></div>
       <div class="q" onclick="agSelDate='${isoDate(hoje)}';renderAgenda()"><div class="c"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="4" y="5" width="16" height="16" rx="3" stroke="currentColor" stroke-width="1.7"/><path d="M4 9h16M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></div><div class="l">Hoje</div></div>
       <div class="q" onclick="toast('Visão semanal em fase futura.')"><div class="c"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="10" r="6.5" stroke="currentColor" stroke-width="1.7"/><path d="M12 6.5V10l2.2 1.3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></div><div class="l">Semana</div></div>
-      <div class="q" onclick="goTab('imoveis')"><div class="c"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 21s7-5.4 7-11a7 7 0 1 0-14 0c0 5.6 7 11 7 11Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.4" stroke="currentColor" stroke-width="1.6"/></svg></div><div class="l">Mapa</div></div>
+      <div class="q" onclick="goTab('imoveis')"><div class="c"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 21s7-5.4 7-11a7 7 0 1 0-14 0c0 5.6 7 11 7 11Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.4" stroke="currentColor" stroke-width="1.6"/></svg></div><div class="l">Imóveis</div></div>
     </div>
     <div class="srow"><span class="t">${fmtDataBR(agSelDate)}</span><span class="a">${doDia.length} visita(s)</span></div>
     ${doDia.length===0 ? `<div class="empty"><div class="big">🗓️</div>Nada agendado para este dia.<br><button class="btn" style="margin-top:16px;max-width:220px" onclick="novaVisita()">＋ Nova visita</button></div>` :
-      doDia.map(a=>agCardHTML(a)).join('')}`;
-  doDia.forEach(a=>{
+      doDia.map(a=>agCardHTML(a)).join('')}
+    `}`;
+  const paraThumbs = resultadosBusca!==null ? resultadosBusca : doDia;
+  paraThumbs.forEach(a=>{
     const im = DB.imoveis.find(x=>x.id===a.imovelId);
     if(im && im.fotosPublicas?.some(Boolean)){
       const i = im.fotosPublicas.findIndex(Boolean);
@@ -1635,14 +1657,14 @@ function renderAgenda(){
     }
   });
 }
-function agCardHTML(a){
+function agCardHTML(a, mostrarData){
   const im = DB.imoveis.find(x=>x.id===a.imovelId);
   const endereco = im ? `${im.localizacao.endereco||''}, ${im.localizacao.numero||''} — ${im.localizacao.cidade||''}/${im.localizacao.estado||''}` : 'Imóvel removido';
   const enderecoFull = im ? `${im.localizacao.endereco||''}, ${im.localizacao.numero||''} ${im.localizacao.cidade||''} ${im.localizacao.estado||''} ${im.localizacao.cep||''}`.trim() : '';
   const totalDesp = ['transporte','refeicao','gasolina','outros'].reduce((s,k)=>s+parseMoeda(a.despesas?.[k]||''),0);
   const tel = (a.compradorTel1||'').replace(/\D/g,'');
   return `<div class="appt">
-    <div class="tt">${a.hora||'--:--'}</div>
+    <div class="tt">${mostrarData?fmtDataBR(a.data)+' · ':''}${a.hora||'--:--'}</div>
     <div style="display:flex;gap:12px">
       <div class="thumb" id="agthumb_${a.id}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 11.5L12 4l8 7.5M6 10.5V19h12v-8.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
       <div style="flex:1;min-width:0">
@@ -1653,7 +1675,7 @@ function agCardHTML(a){
       </div>
     </div>
     <div class="acts">
-      <div class="act wa" onclick="window.open('https://wa.me/55${tel}','_blank')">💬 WhatsApp</div>
+      <div class="act wa" ${tel.length>=10?`onclick="window.open('https://wa.me/55${tel}','_blank')"`:`onclick="toast('Telefone do comprador não cadastrado.')" style="opacity:.5"`}>💬 WhatsApp</div>
       <div class="act gps" onclick="abrirRota('${esc(enderecoFull).replace(/'/g,"\\'")}')">🧭 Rota</div>
       <div class="act" onclick="editarAgendamento('${a.id}')">✏️ Editar</div>
       <div class="act" onclick="excluirAgendamento('${a.id}')">🗑 Cancelar</div>
@@ -1684,7 +1706,22 @@ function editarAgendamento(id){
   if(!a){ toast('Compromisso não encontrado.'); return; }
   V = JSON.parse(JSON.stringify(a));
   V.despesas = Object.assign({ transporte:'', refeicao:'', gasolina:'', outros:'' }, V.despesas||{});
+  // compat: se a visita não tiver terreno/construída, busca do imóvel
+  if(V.terreno===undefined || V.construida===undefined){
+    const im = DB.imoveis.find(x=>x.id===V.imovelId);
+    V.terreno = im ? (im.caracteristicas.terreno||'') : '';
+    V.construida = im ? (im.caracteristicas.construcao||'') : '';
+  }
   V._novo = false;
+  renderVisitaForm();
+}
+function selecionarImovelVisita(id){
+  V.imovelId = id;
+  const im = DB.imoveis.find(x=>x.id===id);
+  // traz do cadastro e grava no agendamento
+  V.terreno = im ? (im.caracteristicas.terreno||'') : '';
+  V.construida = im ? (im.caracteristicas.construcao||'') : '';
+  V.imovelCodigo = im ? (im.codigo||'').toUpperCase() : '';
   renderVisitaForm();
 }
 function renderVisitaForm(){
@@ -1694,14 +1731,14 @@ function renderVisitaForm(){
   document.getElementById('mainContent').innerHTML = `
     <div class="section-title">Imóvel da visita</div>
     <div class="field"><label>Escolher imóvel</label>
-      <select onchange="V.imovelId=this.value;renderVisitaForm()">
+      <select onchange="selecionarImovelVisita(this.value)">
         <option value="">— selecione —</option>
         ${DB.imoveis.map(x=>`<option value="${x.id}" ${V.imovelId===x.id?'selected':''}>${(x.codigo||'').toUpperCase()} · ${esc(x.localizacao.endereco||'')}, ${esc(x.localizacao.numero||'')}</option>`).join('')}
       </select></div>
     ${im?`<div class="field"><label>Registro do imóvel</label><input value="${(im.codigo||'').toUpperCase()}" disabled style="font-family:'IBM Plex Mono',monospace;letter-spacing:1px;background:var(--pblue);color:var(--dark);font-weight:700"></div>
     <div class="row2">
-      <div class="field"><label>Tamanho do terreno</label><input value="${esc(im.caracteristicas.terreno||'')} m²" disabled></div>
-      <div class="field"><label>Área construída</label><input value="${esc(im.caracteristicas.construcao||'')} m²" disabled></div>
+      <div class="field"><label>Tamanho do terreno</label><input value="${esc(V.terreno||'')} m²" disabled></div>
+      <div class="field"><label>Área construída</label><input value="${esc(V.construida||'')} m²" disabled></div>
     </div>`:''}
     <div class="row2">
       <div class="field"><label>Data confirmada</label><input type="date" value="${esc(V.data)}" oninput="V.data=this.value"></div>

@@ -1,7 +1,7 @@
 {
   "name": "Corretor Imóveis Autônomo",
   "short_name": "Corretor",
-  "version": "1.4.3",
+  "version": "1.5.0",
   "description": "Aplicativo para corretor de imóveis autônomo cadastrar e organizar imóveis para venda.",
   "start_url": "./index.html",
   "scope": "./",
