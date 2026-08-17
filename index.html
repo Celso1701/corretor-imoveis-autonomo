@@ -27,6 +27,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--primary)}
 label{display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin:12px 0 6px}
 h2{font-size:19px;font-weight:800;letter-spacing:-.3px}
 .hidden{display:none!important}
+.filein{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;opacity:0}
 .mono{font-family:'IBM Plex Mono',monospace}
 
 /* ---- splash / lock ---- */
@@ -237,7 +238,7 @@ svg{display:block}
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.5.0';
+const APP_VERSION = '1.5.1';
 const val = id => document.getElementById(id)?.value.trim() || '';
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2,10)+Date.now().toString(36));
 function toast(msg){
@@ -840,8 +841,8 @@ function renderPropForm(){
       </div>
     </div>
     ${pFotoCache?`<div style="text-align:center;margin-bottom:8px"><button class="btn sm gray" style="width:auto;display:inline-flex" onclick="removerPropFoto()">Remover foto</button></div>`:''}
-    <input type="file" id="propFotoCam" accept="image/*" capture="user" class="hidden" onchange="onPropFoto(this)">
-    <input type="file" id="propFotoGal" accept="image/*" class="hidden" onchange="onPropFoto(this)">
+    <input type="file" id="propFotoCam" accept="image/*" capture="user" class="filein" onchange="onPropFoto(this)">
+    <input type="file" id="propFotoGal" accept="image/*" class="filein" onchange="onPropFoto(this)">
     <div class="field"><label>Registro do proprietário</label>
       <input value="Nº ${esc(P.codigo||proximoCodigoProp())}" disabled style="font-family:'IBM Plex Mono',monospace;letter-spacing:1px;background:var(--pblue);color:var(--dark);font-weight:700">
       <div class="hint">Gerado automaticamente — não editável.</div></div>
@@ -885,8 +886,8 @@ async function onPropFoto(input){
 function escolherOrigemPropFoto(){
   showSheet('Foto do proprietário', `<div style="font-size:13px;color:var(--muted);margin-bottom:6px">Como você quer adicionar a foto?</div>`,
     `<button class="btn gray" onclick="closeSheet()">Cancelar</button>
-     <button class="btn gray" onclick="closeSheet();document.getElementById('propFotoGal').click()">🖼 Galeria</button>
-     <button class="btn" onclick="closeSheet();document.getElementById('propFotoCam').click()">📷 Câmera</button>`);
+     <button class="btn gray" onclick="var el=document.getElementById('propFotoGal');el.click();closeSheet()">🖼 Galeria</button>
+     <button class="btn" onclick="var el=document.getElementById('propFotoCam');el.click();closeSheet()">📷 Câmera</button>`);
 }
 async function removerPropFoto(){
   await idbDel(keyPropFoto(P.id)).catch(()=>{});
@@ -1149,7 +1150,7 @@ function stepPaneHTML(i){
         <div class="remove" style="position:static" onclick="event.stopPropagation();removerContrato()">✕</div>`:
       `<span style="font-size:20px">📎</span><span>Selecionar contrato em PDF (galeria/arquivos)</span>`}
     </div>
-    <input type="file" id="contratoInput" accept="application/pdf,.pdf" class="hidden" onchange="onContratoSelected(this)">`;
+    <input type="file" id="contratoInput" accept="application/pdf,.pdf" class="filein" onchange="onContratoSelected(this)">`;
 
   if(i===6) return `
     <div class="section-title">Vídeo do imóvel</div>
@@ -1158,8 +1159,8 @@ function stepPaneHTML(i){
       ${W.video?`<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M4 6.5A1.5 1.5 0 0 1 5.5 5h9A1.5 1.5 0 0 1 16 6.5v11a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 4 17.5v-11Z" stroke="currentColor" stroke-width="1.5"/><path d="M16 10l4.2-2.4a.8.8 0 0 1 1.2.7v7.4a.8.8 0 0 1-1.2.7L16 14" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span class="mono" style="font-size:11px;color:var(--dark);font-weight:700">${esc(nomeVideoArq())}</span><span style="font-size:10px;color:var(--muted)">${W.video.duracao?W.video.duracao+'s · ':''}${esc(W.video.nome||'')}</span><div class="remove" onclick="event.stopPropagation();removerVideo()">✕</div>`:
       `<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M4 6.5A1.5 1.5 0 0 1 5.5 5h9A1.5 1.5 0 0 1 16 6.5v11a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 4 17.5v-11Z" stroke="currentColor" stroke-width="1.5"/><path d="M16 10l4.2-2.4a.8.8 0 0 1 1.2.7v7.4a.8.8 0 0 1-1.2.7L16 14" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span>Gravar com a câmera ou escolher da galeria</span>`}
     </div>
-    <input type="file" id="videoCam" accept="video/*" capture="environment" class="hidden" onchange="onVideoSelected(this)">
-    <input type="file" id="videoGal" accept="video/*" class="hidden" onchange="onVideoSelected(this)">
+    <input type="file" id="videoCam" accept="video/*" capture="environment" class="filein" onchange="onVideoSelected(this)">
+    <input type="file" id="videoGal" accept="video/*" class="filein" onchange="onVideoSelected(this)">
     <div class="toggle-row"><div class="lbl">Incluir no compartilhamento<span class="d">Enviar junto com fotos por e-mail/WhatsApp</span></div>
       <div class="switch ${W.video?.compartilhar?'on':''}" onclick="if(W.video){W.video.compartilhar=!W.video.compartilhar;renderWizard()}"></div></div>`;
 
@@ -1231,8 +1232,8 @@ function fotoSlotHTML(kind, i, existingKey, allowPublic, isPublic){
     : (existingKey ? `<span data-needload="${existingKey}">carregando…</span>` : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7H8l1-2h6l1 2h2.5A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5v-9Z" stroke="currentColor" stroke-width="1.4"/><circle cx="12" cy="12.5" r="3" stroke="currentColor" stroke-width="1.4"/></svg><span>Foto ${i+1}</span>`);
   return `<div class="photo-slot ${existingKey?'filled':''}" onclick="${existingKey?`editarFoto('${kind}',${i})`:`escolherOrigemFoto('${kind}',${i})`}">
     ${inner}
-    <input type="file" id="inpCam_${kind}${i}" accept="image/*" capture="environment" class="hidden" onchange="onFotoSelected('${kind}',${i},this)">
-    <input type="file" id="inpGal_${kind}${i}" accept="image/*" class="hidden" onchange="onFotoSelected('${kind}',${i},this)">
+    <input type="file" id="inpCam_${kind}${i}" accept="image/*" capture="environment" class="filein" onchange="onFotoSelected('${kind}',${i},this)">
+    <input type="file" id="inpGal_${kind}${i}" accept="image/*" class="filein" onchange="onFotoSelected('${kind}',${i},this)">
   </div>`;
 }
 // Toque numa foto já preenchida: pergunta se quer substituir (gravar sobre a anterior).
@@ -1248,8 +1249,8 @@ function escolherOrigemFoto(kind, i){
   const nome = nomeFotoArq(kind, i);
   showSheet('Adicionar foto', `<div style="font-size:13px;color:var(--muted);margin-bottom:6px">Foto <b>${esc(nome)}</b> — como você quer adicionar?</div>`,
     `<button class="btn gray" onclick="closeSheet()">Cancelar</button>
-     <button class="btn gray" onclick="closeSheet();document.getElementById('inpGal_${kind}${i}').click()">🖼 Galeria</button>
-     <button class="btn" onclick="closeSheet();document.getElementById('inpCam_${kind}${i}').click()">📷 Câmera</button>`);
+     <button class="btn gray" onclick="var el=document.getElementById('inpGal_${kind}${i}');el.click();closeSheet()">🖼 Galeria</button>
+     <button class="btn" onclick="var el=document.getElementById('inpCam_${kind}${i}');el.click();closeSheet()">📷 Câmera</button>`);
 }
 async function hydratarFotos(){
   const els = document.querySelectorAll('[data-needload]');
@@ -1323,8 +1324,8 @@ async function onVideoSelected(input){
 function escolherOrigemVideo(){
   showSheet('Adicionar vídeo', `<div style="font-size:13px;color:var(--muted);margin-bottom:6px">Vídeo <b>${esc(nomeVideoArq())}</b> — como você quer adicionar? (máx. 45s)</div>`,
     `<button class="btn gray" onclick="closeSheet()">Cancelar</button>
-     <button class="btn gray" onclick="closeSheet();document.getElementById('videoGal').click()">🖼 Galeria</button>
-     <button class="btn" onclick="closeSheet();document.getElementById('videoCam').click()">📷 Câmera</button>`);
+     <button class="btn gray" onclick="var el=document.getElementById('videoGal');el.click();closeSheet()">🖼 Galeria</button>
+     <button class="btn" onclick="var el=document.getElementById('videoCam');el.click();closeSheet()">📷 Câmera</button>`);
 }
 function editarVideo(){
   confirmar({icon:'🎬', title:'Substituir o vídeo?',
@@ -2146,10 +2147,10 @@ function renderDadosCorretor(){
         <input id="corValidade" type="date" value="${esc(c.validadeCreci)}">
         <div class="hint">Campo obrigatório. Avisaremos na tela inicial quando faltar 30, 15, 7 e 1 dia.</div></div>
 
-      <input type="file" id="corFotoCam" accept="image/*" capture="user" class="hidden" onchange="onCorFoto('foto',this)">
-      <input type="file" id="corFotoGal" accept="image/*" class="hidden" onchange="onCorFoto('foto',this)">
-      <input type="file" id="corCreciCam" accept="image/*" capture="environment" class="hidden" onchange="onCorFoto('creci',this)">
-      <input type="file" id="corCreciGal" accept="image/*" class="hidden" onchange="onCorFoto('creci',this)">
+      <input type="file" id="corFotoCam" accept="image/*" capture="user" class="filein" onchange="onCorFoto('foto',this)">
+      <input type="file" id="corFotoGal" accept="image/*" class="filein" onchange="onCorFoto('foto',this)">
+      <input type="file" id="corCreciCam" accept="image/*" capture="environment" class="filein" onchange="onCorFoto('creci',this)">
+      <input type="file" id="corCreciGal" accept="image/*" class="filein" onchange="onCorFoto('creci',this)">
     </div>
     <div style="height:80px"></div>
     <div class="wizfooter"><div class="btnrow">
@@ -2163,8 +2164,8 @@ function escolherOrigemCorFoto(kind){
   const titulo = kind==='foto' ? 'Foto do corretor' : 'Carteira CRECI';
   showSheet(titulo, `<div style="font-size:13px;color:var(--muted);margin-bottom:6px">Como você quer adicionar?</div>`,
     `<button class="btn gray" onclick="closeSheet()">Cancelar</button>
-     <button class="btn gray" onclick="closeSheet();document.getElementById('${kind==='foto'?'corFotoGal':'corCreciGal'}').click()">🖼 Galeria</button>
-     <button class="btn" onclick="closeSheet();document.getElementById('${kind==='foto'?'corFotoCam':'corCreciCam'}').click()">📷 Câmera</button>`);
+     <button class="btn gray" onclick="var el=document.getElementById('${kind==='foto'?'corFotoGal':'corCreciGal'}');el.click();closeSheet()">🖼 Galeria</button>
+     <button class="btn" onclick="var el=document.getElementById('${kind==='foto'?'corFotoCam':'corCreciCam'}');el.click();closeSheet()">📷 Câmera</button>`);
 }
 async function onCorFoto(kind, input){
   const file = input.files[0]; if(!file) return;

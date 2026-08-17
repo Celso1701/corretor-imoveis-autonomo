@@ -1,21 +1,18 @@
 # Corretor Imóveis Autônomo — Histórico de versões
 
+## v1.5.1 — correção da câmera/galeria
+- Corrigido: em vários pontos (fotos do imóvel, vídeo, foto do proprietário, foto do
+  corretor e carteira CRECI), a opção "Câmera"/"Galeria" não abria em alguns celulares.
+  Causa: os campos de arquivo ficavam com display:none, e vários navegadores móveis
+  (iOS/Safari e PWA instalado no Android) ignoram o clique nesse caso.
+  Agora os campos ficam ocultos porém "presentes" (fora da tela), e o disparo acontece
+  no toque, antes de fechar a janela — a câmera/galeria abre e grava no campo correto.
+
 ## v1.5.0 — correções da análise técnica
-- [Bug] Variável CSS --line não definida: bordas da Agenda ficavam invisíveis. Corrigido.
-- [Bug] Busca do Início não fazia nada: agora leva para a lista de Imóveis.
-- [Bug] Busca da Agenda não funcionava: agora filtra por comprador, código do imóvel
-  ou endereço (com botão de limpar).
-- [Bug] Botão WhatsApp na Agenda com telefone vazio: agora desabilita e avisa.
-- [Bug] Tipos "em breve" (Apto/Chácara/Terreno) sem resposta ao toque: agora dão aviso.
-- [Bug] Taxa de condomínio sem máscara: agora usa máscara de moeda (0,00).
-- [Bug] Atalho "Mapa" da Agenda renomeado para "Imóveis" (é o que ele abre).
-- [Bug] Cabeçalho passa a saudar pelo nome do corretor cadastrado ("Olá, João").
-- [Bug] Validação mínima no wizard: endereço (etapa 1) e nome do proprietário (etapa 2).
-- Campos de valor mostram 0,00 quando gravados como zero.
-- Nova visita: ao escolher o imóvel, grava tamanho do terreno e área construída.
+- --line, buscas do Início/Agenda, WhatsApp sem telefone, tipos "em breve", máscara do
+  condomínio, atalho Mapa→Imóveis, saudação com nome, validação do wizard, valores 0,00,
+  terreno/área construída na visita.
 
-## v1.4.x
-- Fluxo semana, contatos na Início, botões Editar/Cancelar, valores na última etapa.
-
-## v1.3.x / v1.2.x / v1.1.0 / v1.0.x
-- Renome + README, extrato do imóvel, receitas + fluxo, agenda editável, ZIP inicial.
+## v1.4.x / v1.3.x / v1.2.x / v1.1.0 / v1.0.x
+- Fluxo semana, contatos na Início, extrato do imóvel, receitas + fluxo, agenda editável,
+  renome + README, ZIP inicial.
