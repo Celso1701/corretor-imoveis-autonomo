@@ -1,0 +1,2148 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1E3FAE">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Corretor PWA">
+<title>Corretor PWA — Gestão de Imóveis</title>
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --primary:#5D5FEF; --dark:#4B3FD6; --accent:#20B472;
+  --bg:#F4F4FB; --surface:#FFFFFF; --text:#191A2C; --muted:#8B8DA3;
+  --border:#EDEDF4; --success:#20B472; --warning:#F5A623; --danger:#E0453B;
+  --pblue:#ECEBFE; --pgreen:#E6F8EF; --pred:#FCEBEA;
+  --shadow:0 2px 10px rgba(25,26,44,.06);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--text);max-width:480px;margin:0 auto;min-height:100vh;padding-bottom:78px}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+input,select,textarea{font-family:inherit;width:100%;padding:12px 14px;border-radius:14px;border:1.5px solid var(--border);font-size:15px;background:var(--surface);color:var(--text);outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--primary)}
+label{display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin:12px 0 6px}
+h2{font-size:19px;font-weight:800;letter-spacing:-.3px}
+.hidden{display:none!important}
+.mono{font-family:'IBM Plex Mono',monospace}
+
+/* ---- splash / lock ---- */
+#splash,#lockScreen,#setupScreen{position:fixed;inset:0;background:linear-gradient(160deg,#2F5FEC 0%,#1E3FAE 60%,#16307A 100%);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 26px calc(32px + env(safe-area-inset-bottom));text-align:center;overflow-y:auto}
+#splash .mark,#lockScreen .mark,#setupScreen .mark{width:74px;height:74px;border-radius:22px;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;margin-bottom:18px}
+#splash .wm{font-size:30px;font-weight:800;color:#fff;letter-spacing:-.5px}
+#splash .wm span{color:#8FB0FF}
+#splash .tag{color:rgba(255,255,255,.6);font-size:10px;letter-spacing:2px;font-weight:700;margin-top:8px;text-transform:uppercase}
+.auth-box{width:100%;max-width:320px}
+.auth-title{color:#fff;font-size:19px;font-weight:800;margin-top:4px}
+.auth-sub{color:rgba(255,255,255,.75);font-size:13px;margin-top:6px;line-height:1.5;margin-bottom:20px}
+.auth-box input{text-align:left;padding:14px 44px 14px 16px}
+.pwwrap{position:relative}
+.pwwrap .eye{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:16px;color:var(--muted)}
+.auth-box .btn{margin-top:14px}
+.pw-rules{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;margin:12px 0 4px;text-align:left}
+.pw-rule{display:flex;align-items:center;gap:6px;font-size:11px;color:rgba(255,255,255,.55);font-weight:600}
+.pw-rule .rc{width:13px;height:13px;border-radius:50%;border:1.5px solid rgba(255,255,255,.4);flex-shrink:0}
+.pw-rule.ok{color:#8FE0B5}
+.pw-rule.ok .rc{background:#1FAE6B;border-color:#1FAE6B}
+.auth-err{color:#FFB3AC;font-size:12.5px;font-weight:700;margin-top:12px;min-height:16px}
+.auth-link{margin-top:18px;background:none;color:rgba(255,255,255,.6);font-size:12px;text-decoration:underline;text-underline-offset:3px}
+
+/* ---- buttons ---- */
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px 18px;border-radius:14px;font-weight:700;font-size:14.5px;background:var(--primary);color:#fff;transition:transform .1s ease,filter .1s ease}
+.btn:active{transform:scale(.98)}
+.btn:disabled{background:#C7CDDB;color:#8890a0;cursor:not-allowed}
+.btn.gray{background:var(--surface);color:var(--text);border:1.5px solid var(--border)}
+.btn.green{background:var(--accent)}
+.btn.danger{background:var(--danger)}
+.btn.sm{padding:9px 14px;font-size:13px;border-radius:11px}
+.btnrow{display:flex;gap:10px}
+.btnrow .btn{flex:1}
+
+/* ---- header / topbar ---- */
+header.topbar{padding:18px 18px 6px;position:sticky;top:0;background:var(--bg);z-index:10}
+.greet{display:flex;align-items:center;justify-content:space-between}
+.eyebrow{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--primary);font-weight:700}
+.bell{width:38px;height:38px;border-radius:12px;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow)}
+.searchbar{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-top:14px;color:var(--muted);font-size:13.5px;box-shadow:var(--shadow)}
+main{padding:6px 18px 10px}
+
+/* ---- action cards ---- */
+.action-card{position:relative;border-radius:20px;overflow:hidden;padding:18px;margin-bottom:12px;width:100%;text-align:left;box-shadow:0 12px 22px -14px rgba(21,27,46,.3)}
+.action-card.vender{background:linear-gradient(135deg,var(--primary) 0%,var(--dark) 100%);color:#fff}
+.action-card.comprar{background:var(--surface);color:var(--text);border:1.5px dashed var(--border);box-shadow:none;opacity:.75}
+.ac-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center}
+.action-card.vender .ac-icon{background:rgba(255,255,255,.18)}
+.action-card.comprar .ac-icon{background:var(--pblue);color:var(--primary)}
+.ac-title{font-weight:800;font-size:16px;margin-top:12px}
+.ac-sub{font-size:12px;margin-top:3px;opacity:.85;max-width:85%}
+.badge-soon{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.06em;text-transform:uppercase;background:var(--pblue);color:var(--primary);padding:3px 8px;border-radius:100px;font-weight:700;float:right}
+
+/* ---- categories ---- */
+.cat-row{display:flex;gap:15px;overflow-x:auto;padding:2px 0 6px}
+.cat-item{display:flex;flex-direction:column;align-items:center;gap:7px;flex-shrink:0}
+.cat-circle{width:52px;height:52px;border-radius:50%;background:var(--pblue);color:var(--primary);display:flex;align-items:center;justify-content:center}
+.cat-item.disabled{opacity:.4}
+.cat-label{font-size:11px;font-weight:700}
+
+/* ---- lists / cards ---- */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px;margin-bottom:10px;box-shadow:var(--shadow)}
+.stitle{font-weight:800;font-size:15px;margin:18px 0 10px}
+.ptile{display:flex;align-items:center;gap:13px;width:100%;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:13px;text-align:left;margin-bottom:10px;box-shadow:var(--shadow)}
+.ptile.disabled{opacity:.5}
+.ptile-icon{width:42px;height:42px;border-radius:12px;background:var(--pblue);color:var(--primary);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
+.ptile-icon img{width:100%;height:100%;object-fit:cover}
+.ptile-title{font-weight:700;font-size:14px}
+.ptile-sub{font-size:11.5px;color:var(--muted);margin-top:2px}
+.ptile-chev{margin-left:auto;color:var(--muted);flex-shrink:0}
+.tag{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.05em;color:var(--muted);background:#EEF0F5;padding:3px 7px;border-radius:100px;text-transform:uppercase;font-weight:700}
+
+.empty{text-align:center;padding:40px 16px;color:var(--muted)}
+.empty .big{font-size:38px;margin-bottom:10px}
+
+/* ---- wizard ---- */
+.progress-wrap{padding:14px 18px 4px}
+.step-back{display:flex;align-items:center;gap:6px;background:none;border:none;color:var(--muted);font-size:12px;font-weight:700;margin-bottom:8px}
+.progress-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px}
+.progress-label{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:.06em}
+.progress-name{font-size:12.5px;font-weight:700;color:var(--primary)}
+.progress-track{height:5px;background:var(--pblue);border-radius:100px;overflow:hidden}
+.progress-fill{height:100%;background:var(--primary);border-radius:100px;transition:width .25s ease}
+.section-title{font-weight:800;font-size:16px;margin:6px 0 14px}
+
+.chip-group{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:9px 14px;border-radius:100px;border:1.5px solid var(--border);background:var(--surface);font-size:12.5px;font-weight:700;cursor:pointer;user-select:none}
+.chip.selected{background:var(--primary);border-color:var(--primary);color:#fff}
+fieldset{border:none;padding:0;margin:0 0 15px}
+legend{padding:0;margin-bottom:8px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+.row2{display:flex;gap:10px}
+.row2>*{flex:1;min-width:0}
+.field{margin-bottom:14px}
+.hint{font-size:11px;color:var(--muted);margin-top:5px}
+.charcount{font-size:11px;color:var(--muted);margin-top:4px;text-align:right}
+
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:12px 2px;border-bottom:1px solid var(--border)}
+.toggle-row:last-child{border-bottom:none}
+.toggle-row .lbl{font-size:13.5px;font-weight:600}
+.toggle-row .lbl .d{display:block;font-size:11px;font-weight:400;color:var(--muted);margin-top:1px}
+.switch{width:42px;height:25px;border-radius:100px;background:#E4E7EF;border:1.5px solid var(--border);position:relative;cursor:pointer;flex-shrink:0}
+.switch::after{content:'';position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .15s ease}
+.switch.on{background:var(--primary);border-color:var(--primary)}
+.switch.on::after{transform:translateX(17px)}
+
+.photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:6px}
+.photo-slot{aspect-ratio:1/1;border-radius:16px;border:1.5px dashed var(--border);background:var(--surface);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;position:relative;overflow:hidden;color:var(--primary)}
+.photo-slot span{font-size:10px;color:var(--muted);font-weight:600}
+.photo-slot.filled{border-style:solid;border-color:var(--primary)}
+.photo-slot img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
+.photo-slot .badge{position:absolute;top:5px;left:5px;background:rgba(21,27,46,.75);color:#fff;font-size:8px;font-weight:700;padding:2px 6px;border-radius:100px;z-index:2;font-family:'IBM Plex Mono',monospace}
+.photo-slot .remove{position:absolute;top:5px;right:5px;z-index:2;width:19px;height:19px;border-radius:50%;background:rgba(15,20,40,.7);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px}
+.public-note{font-size:11.5px;color:var(--dark);background:var(--pblue);border-radius:14px;padding:10px 12px;margin:8px 0 16px;line-height:1.5;font-weight:500}
+
+.review-item{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px}
+.review-item:last-child{border-bottom:none}
+.review-item .k{color:var(--muted);width:44%;flex-shrink:0}
+.review-item .v{font-weight:700;text-align:right}
+.review-block{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:4px 14px;margin-bottom:12px;box-shadow:var(--shadow)}
+.review-block-title{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--primary);padding-top:11px;font-weight:700}
+.wizfooter{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;padding:12px 18px calc(12px + env(safe-area-inset-bottom));background:var(--bg);border-top:1px solid var(--border);z-index:20}
+
+/* ---- bottom nav ---- */
+nav{position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;background:var(--surface);border-top:1px solid var(--border);display:flex;padding:6px 0 calc(8px + env(safe-area-inset-bottom));z-index:50}
+nav button{flex:1;background:none;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--muted);font-size:9px;font-weight:700;padding:0 1px}
+nav button .nic{width:30px;height:26px;border-radius:14px;display:flex;align-items:center;justify-content:center}
+nav button.on{color:var(--primary)}
+nav button.on .nic{background:var(--pblue)}
+
+/* ---- sheet / confirm ---- */
+.modal{position:fixed;inset:0;background:rgba(15,20,40,.5);z-index:300;display:flex;align-items:flex-end;justify-content:center}
+.modal.ov{z-index:400}
+.sheet{width:100%;max-width:480px;background:var(--surface);border-radius:22px 22px 0 0;max-height:88vh;display:flex;flex-direction:column;animation:sheetup .2s ease}
+@keyframes sheetup{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
+.sheet .mh{display:flex;align-items:center;justify-content:space-between;padding:18px 18px 6px}
+.sheet .mh h2{font-size:16.5px}
+.sheet .mh .x{width:30px;height:30px;border-radius:50%;background:var(--bg);color:var(--muted);font-size:14px}
+.sheet .mb{padding:8px 18px 4px;overflow-y:auto}
+.sheet .mf{display:flex;gap:10px;padding:14px 18px calc(14px + env(safe-area-inset-bottom))}
+.sheet .mf .btn{flex:1}
+
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;padding:11px 20px;border-radius:14px;font-size:13px;font-weight:600;z-index:500;box-shadow:0 10px 24px rgba(0,0,0,.3);white-space:nowrap;max-width:92vw;overflow:hidden;text-overflow:ellipsis}
+
+/* ── Agenda ── */
+.ag-search{display:flex;align-items:center;gap:11px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px 14px;margin-top:14px;color:var(--muted);box-shadow:var(--shadow)}
+.ag-search span{font-size:13px;font-weight:500;flex:1}
+.ag-search .go{width:34px;height:34px;border-radius:11px;background:var(--primary);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.weekstrip{display:flex;gap:8px;margin-top:16px;overflow-x:auto;padding-bottom:2px}
+.day{flex-shrink:0;width:50px;border-radius:16px;background:var(--surface);border:1px solid var(--line);padding:10px 0;text-align:center;cursor:pointer;transition:.15s}
+.day .dw{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase}
+.day .dn{font-size:17px;font-weight:800;margin-top:3px}
+.day .dd{width:5px;height:5px;border-radius:50%;background:var(--primary);margin:5px auto 0;opacity:0}
+.day.has .dd{opacity:1}
+.day.active{background:var(--primary);border-color:var(--primary);color:#fff;box-shadow:0 10px 18px -8px rgba(93,95,239,.55)}
+.day.active .dw{color:rgba(255,255,255,.85)}
+.day.active .dd{background:#fff}
+.pills{display:flex;gap:8px;margin-top:16px;overflow-x:auto;padding-bottom:2px}
+.pill{flex-shrink:0;padding:9px 15px;border-radius:100px;background:var(--surface);border:1px solid var(--line);font-size:12.5px;font-weight:700;color:var(--muted);cursor:pointer}
+.quick{display:flex;gap:16px;margin:18px 0 2px;overflow-x:auto;padding-bottom:2px}
+.q{display:flex;flex-direction:column;align-items:center;gap:7px;flex-shrink:0;cursor:pointer}
+.q .c{width:54px;height:54px;border-radius:50%;background:var(--pblue);color:var(--primary);display:flex;align-items:center;justify-content:center}
+.q .l{font-size:11px;font-weight:700}
+.srow{display:flex;align-items:baseline;justify-content:space-between;margin:20px 0 12px}
+.srow .t{font-size:15.5px;font-weight:800}
+.srow .a{font-size:12px;font-weight:700;color:var(--primary)}
+.appt{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:12px;margin-bottom:13px;box-shadow:var(--shadow);position:relative}
+.appt .tt{position:absolute;top:12px;right:12px;background:var(--pblue);color:var(--dark);font-size:11px;font-weight:800;padding:5px 10px;border-radius:100px;font-family:'IBM Plex Mono',monospace}
+.appt .thumb{width:64px;height:64px;border-radius:15px;flex-shrink:0;object-fit:cover;background:var(--pblue);color:var(--primary);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.appt .kind{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:800;color:var(--primary);background:var(--pblue);padding:3px 8px;border-radius:100px;text-transform:uppercase}
+.appt .acts{display:flex;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+.appt .act{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;border-radius:12px;font-size:12px;font-weight:700;border:1px solid var(--line);background:var(--surface);color:var(--text);cursor:pointer}
+.appt .act.wa{background:#E9F9F1;border-color:#CFF0E0;color:#128A56}
+.appt .act.gps{background:var(--pblue);border-color:var(--pblue);color:var(--dark)}
+svg{display:block}
+</style>
+</head>
+<body>
+
+<!-- ============ SPLASH ============ -->
+<div id="splash">
+  <div class="mark"><svg width="34" height="34" viewBox="0 0 24 24" fill="none"><path d="M4 11.5L12 4l8 7.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 10.5V19a1 1 0 0 0 1 1h3.5v-5h3v5H17a1 1 0 0 0 1-1v-8.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+  <div class="wm">Corretor<span>PWA</span></div>
+  <div class="tag">Organiza · Cadastra · Vende</div>
+</div>
+
+<!-- ============ APP SHELL ============ -->
+<header class="topbar hidden" id="appHeader"></header>
+<main id="mainContent"></main>
+<nav id="mainNav" class="hidden">
+  <button data-tab="inicio" onclick="goTab('inicio')"><span class="nic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 11.5L12 4l8 7.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 10.5V19a1 1 0 0 0 1 1h3.5v-5h3v5H17a1 1 0 0 0 1-1v-8.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Início</button>
+  <button data-tab="imoveis" onclick="goTab('imoveis')"><span class="nic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.7"/><rect x="13" y="4" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.7"/><rect x="4" y="13" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.7"/><rect x="13" y="13" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.7"/></svg></span>Imóveis</button>
+  <button data-tab="agenda" onclick="goTab('agenda')"><span class="nic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="4" y="5" width="16" height="16" rx="3" stroke="currentColor" stroke-width="1.7"/><path d="M4 9h16M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span>Agenda</button>
+  <button data-tab="proprietarios" onclick="goTab('proprietarios')"><span class="nic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.4" stroke="currentColor" stroke-width="1.6"/><path d="M5 20c1.2-3.8 4-5.6 7-5.6s5.8 1.8 7 5.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>Propriet.</button>
+  <button data-tab="financeiro" onclick="goTab('financeiro')"><span class="nic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 7h18v12H3z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="13" r="2.4" stroke="currentColor" stroke-width="1.7"/><path d="M3 10h2M19 10h2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span>Financ.</button>
+  <button data-tab="config" onclick="goTab('config')"><span class="nic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.7"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 9 19.36a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.64 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.64 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.64 1.7 1.7 0 0 0 10 3.09V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.36 9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1Z" stroke="currentColor" stroke-width="1.5"/></svg></span>Ajustes</button>
+</nav>
+
+<div id="modals"></div>
+<div id="modals2"></div>
+<div id="fileHost" class="hidden"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   CORRETOR PWA — Gestão de imóveis (módulo VENDER · CASA)
+   Arquitetura de referência: SPA de arquivo único, sem framework,
+   dados locais (localStorage + IndexedDB), com login criptografado.
+   ═══════════════════════════════════════════════════════════ */
+
+// ═══ util básicos ═══
+function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
+const APP_VERSION = '1.3.2';
+const val = id => document.getElementById(id)?.value.trim() || '';
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2,10)+Date.now().toString(36));
+function toast(msg){
+  document.querySelectorAll('.toast').forEach(t=>t.remove());
+  const t=document.createElement('div'); t.className='toast'; t.textContent=msg;
+  document.body.appendChild(t); setTimeout(()=>t.remove(),2600);
+}
+function fmtBRL(v){ return 'R$ ' + (parseFloat(v)||0).toFixed(2).replace('.',','); }
+function fmtDataBR(iso){ if(!iso) return '—'; const [a,m,d]=iso.split('-'); return `${d}/${m}/${a}`; }
+
+// ═══ Máscaras ═══
+// Telefone (99)99999.9999
+function maskTelefone(input){
+  let d = input.value.replace(/\D/g,'').slice(0,11);
+  let out = '';
+  if(d.length>0) out = '(' + d.slice(0,2);
+  if(d.length>=2) out += ')';
+  out += d.slice(2,7);
+  if(d.length>7) out += '.' + d.slice(7,11);
+  input.value = out;
+  return out;
+}
+// CEP 99999-999
+function maskCEP(input){
+  let d = input.value.replace(/\D/g,'').slice(0,8);
+  input.value = d.length>5 ? d.slice(0,5)+'-'+d.slice(5) : d;
+  return input.value;
+}
+// Moeda 99.999,99 (máx 99.999,99)
+function maskMoeda(input){
+  let d = input.value.replace(/\D/g,'').slice(0,7); // até 7 dígitos => 99999,99
+  if(!d){ input.value=''; return ''; }
+  let n = parseInt(d,10);
+  let s = (n/100).toFixed(2);                 // "1234.56"
+  let [int,dec] = s.split('.');
+  int = int.replace(/\B(?=(\d{3})+(?!\d))/g,'.'); // milhar
+  input.value = int + ',' + dec;
+  return input.value;
+}
+// Valores maiores (imóvel): até 9 dígitos => 9.999.999,99
+function maskMoedaG(input){
+  let d = input.value.replace(/\D/g,'').slice(0,9);
+  if(!d){ input.value=''; return ''; }
+  let s = (parseInt(d,10)/100).toFixed(2);
+  let [int,dec] = s.split('.');
+  int = int.replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+  input.value = int + ',' + dec;
+  return input.value;
+}
+function parseMoeda(str){ if(!str) return 0; return parseFloat(str.replace(/\./g,'').replace(',','.'))||0; }
+function maskMoedaFromNumber(n){ n=parseFloat(n)||0; let [int,dec]=n.toFixed(2).split('.'); int=int.replace(/\B(?=(\d{3})+(?!\d))/g,'.'); return int+','+dec; }
+
+// ═══ Busca de CEP (ViaCEP) ═══
+// CEP é opcional. Se preenchido (8 dígitos), busca o endereço e preenche
+// o campo Endereço, permitindo complementar. Requer internet no momento do uso.
+async function buscarCEP(cepRaw, alvoIds){
+  const cep = (cepRaw||'').replace(/\D/g,'');
+  if(cep.length!==8) return;
+  const hint = document.getElementById('cepHint');
+  if(hint) hint.textContent = 'Buscando endereço…';
+  try{
+    const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+    const j = await r.json();
+    if(j.erro){ if(hint) hint.textContent='CEP não encontrado — preencha manualmente.'; return; }
+    // preenche endereço, cidade e UF (sempre gravando o estado)
+    if(j.logradouro){ W.endereco = j.logradouro; }
+    if(j.localidade){ W.cidade = j.localidade; }
+    if(j.uf){ W.estado = String(j.uf).toUpperCase().slice(0,2); }
+    if(j.bairro && !W.complemento){ W.complemento = j.bairro; }
+    renderWizard();
+    toast(`Endereço preenchido — ${j.localidade||''}/${(j.uf||'').toUpperCase()}`);
+  }catch(e){
+    if(hint) hint.textContent = 'Sem conexão para buscar o CEP — preencha manualmente.';
+  }
+}
+
+// ═══ Rota por GPS — sempre Waze + Google Maps ═══
+function abrirRota(endereco){
+  const q = encodeURIComponent(endereco||'');
+  if(!q){ toast('Endereço não informado.'); return; }
+  showSheet('Abrir rota', `
+    <div style="font-size:13px;color:var(--muted);margin-bottom:10px">Escolha o app de navegação para traçar a rota até:</div>
+    <div style="font-size:13.5px;font-weight:600;margin-bottom:14px">📍 ${esc(endereco)}</div>`,
+    `<button class="btn gray" onclick="closeSheet()">Fechar</button>
+     <button class="btn" style="background:#33CCFF" onclick="window.open('https://waze.com/ul?q=${q}&navigate=yes','_blank');closeSheet()">Waze</button>
+     <button class="btn" onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${q}','_blank');closeSheet()">Google Maps</button>`);
+}
+
+// ═══ Código sequencial do imóvel (cs/ap/tr/ch + 5 dígitos) ═══
+function prefixoTipo(tipo){ return ({casa:'cs',apartamento:'ap',terreno:'tr',chacara:'ch'})[tipo]||'cs'; }
+function pad5(n){ return String(Math.min(n,99999)).padStart(5,'0'); }
+function pad6(n){ return String(Math.min(n,999999)).padStart(6,'0'); }
+// sequencial numérico do proprietário (até 999999)
+function maiorSeqProp(){
+  let maxN = (DB.contadores && DB.contadores.prop) || 0;
+  (DB.proprietarios||[]).forEach(p=>{ const n = parseInt(p.codigo,10)||0; if(n>maxN) maxN=n; });
+  return maxN;
+}
+function proximoCodigoProp(){ return pad6(maiorSeqProp()+1); }
+// maior sequência já usada por aquele tipo (contador OU maior código gravado)
+function maiorSeq(tipo){
+  const pref = prefixoTipo(tipo);
+  let maxN = (DB.contadores && DB.contadores[pref]) || 0;
+  (DB.imoveis||[]).forEach(im=>{
+    if((im.codigo||'').toLowerCase().startsWith(pref)){
+      const n = parseInt(im.codigo.slice(2),10) || 0;
+      if(n>maxN) maxN=n;
+    }
+  });
+  return maxN;
+}
+function proximoCodigo(tipo){ return prefixoTipo(tipo) + pad5(maiorSeq(tipo) + 1); }
+function b64e(buf){ return btoa(String.fromCharCode(...new Uint8Array(buf))); }
+function b64d(str){ return Uint8Array.from(atob(str), c=>c.charCodeAt(0)); }
+
+// ═══ sheet / confirm (reaproveitados do padrão original) ═══
+function showSheet(title, bodyHTML, footHTML){
+  document.getElementById('modals').innerHTML = `
+  <div class="modal" onclick="if(event.target===this)closeSheet()">
+    <div class="sheet" role="dialog" aria-modal="true">
+      <div class="mh"><h2>${title}</h2><button class="x" onclick="closeSheet()">✕</button></div>
+      <div class="mb">${bodyHTML}</div>
+      ${footHTML?`<div class="mf">${footHTML}</div>`:''}
+    </div></div>`;
+}
+function closeSheet(){ document.getElementById('modals').innerHTML=''; }
+function confirmar(o){
+  document.getElementById('modals2').innerHTML = `
+  <div class="modal ov" onclick="if(event.target===this)closeConfirm()">
+    <div class="sheet" role="alertdialog" aria-modal="true">
+      <div class="mb" style="text-align:center;padding:24px 20px 8px">
+        <div style="font-size:40px">${o.icon||'⚠️'}</div>
+        <div style="font-size:16.5px;font-weight:800;margin-top:10px">${o.title||'Confirmar?'}</div>
+        <div style="font-size:13.5px;margin-top:8px;line-height:1.6;color:var(--muted)">${o.msg||''}</div>
+      </div>
+      <div class="mf">
+        ${o.single?'':`<button class="btn gray" onclick="closeConfirm();${o.no||''}">${o.noLabel||'Cancelar'}</button>`}
+        <button class="btn" style="background:${o.yesBg||'var(--danger)'}" onclick="closeConfirm();${o.yes||''}">${o.yesLabel||'Confirmar'}</button>
+      </div></div></div>`;
+}
+function closeConfirm(){ document.getElementById('modals2').innerHTML=''; }
+
+// ═══ IndexedDB — mídia (fotos/vídeo) separada do banco principal ═══
+function idbOpen(){
+  return new Promise((resolve,reject)=>{
+    const r = indexedDB.open('corretorimoveis_midia', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('midia');
+    r.onsuccess = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+  });
+}
+async function idbPut(key, value){
+  const db = await idbOpen();
+  return new Promise((res,rej)=>{
+    const tx = db.transaction('midia','readwrite');
+    tx.objectStore('midia').put(value, key);
+    tx.oncomplete = () => res(true);
+    tx.onerror = () => rej(tx.error);
+  });
+}
+async function idbGet(key){
+  const db = await idbOpen();
+  return new Promise((res,rej)=>{
+    const tx = db.transaction('midia','readonly');
+    const rq = tx.objectStore('midia').get(key);
+    rq.onsuccess = () => res(rq.result);
+    rq.onerror = () => rej(rq.error);
+  });
+}
+async function idbDel(key){
+  const db = await idbOpen();
+  return new Promise((res,rej)=>{
+    const tx = db.transaction('midia','readwrite');
+    tx.objectStore('midia').delete(key);
+    tx.oncomplete = () => res(true);
+    tx.onerror = () => rej(tx.error);
+  });
+}
+function keyFotoPub(id,i){ return `foto_${id}_pub${i}`; }
+function keyFotoAdd(id,i){ return `foto_${id}_add${i}`; }
+function keyVideo(id){ return `video_${id}`; }
+function keyContrato(id){ return `contrato_${id}`; }
+function keyPropFoto(id){ return `prop_${id}`; }
+function keyCorretorFoto(){ return 'corretor_foto'; }
+function keyCorretorCreci(){ return 'corretor_creci'; }
+
+// ═══ Banco de dados principal — criptografado em repouso (AES-256-GCM) ═══
+// A senha nunca é gravada. Deriva-se uma chave (PBKDF2) e o JSON do banco
+// é criptografado com ela antes de ir para o localStorage. Sem a senha
+// certa, o conteúdo do banco não pode ser lido — mesmo com acesso ao
+// aparelho. É o mesmo padrão usado no app de referência (VetFlowCare).
+const LS_KEY = 'corretorimoveis_db';
+const LS_AUTH = 'corretorimoveis_auth';
+let DB = null;
+let _cryptoKey = null;
+
+function defaultDB(){ return { imoveis: [], proprietarios: [], agendamentos: [], financeiro:{ despesas:[], receitas:[] }, contadores:{cs:0,ap:0,tr:0,ch:0,prop:0}, corretor: { nome:'', creci:'', validadeCreci:'', temFoto:false, temCreci:false } }; }
+function getAuth(){ try{ return JSON.parse(localStorage.getItem(LS_AUTH)||'null'); }catch(e){ return null; } }
+
+async function deriveKey(pass, saltU8){
+  const km = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2', salt:saltU8, iterations:150000, hash:'SHA-256'},
+    km, {name:'AES-GCM', length:256}, false, ['encrypt','decrypt']);
+}
+async function makeCheck(key){
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({name:'AES-GCM', iv}, key, new TextEncoder().encode('corretor-ok'));
+  return {iv:b64e(iv), ct:b64e(new Uint8Array(ct))};
+}
+async function verifyKey(key, check){
+  try{
+    const pt = await crypto.subtle.decrypt({name:'AES-GCM', iv:b64d(check.iv)}, key, b64d(check.ct));
+    return new TextDecoder().decode(pt) === 'corretor-ok';
+  }catch(e){ return false; }
+}
+let _saveTimer=null;
+function save(){ clearTimeout(_saveTimer); _saveTimer=setTimeout(persistDB, 150); }
+async function persistDB(){
+  const raw = JSON.stringify(DB);
+  if(_cryptoKey){
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const ct = await crypto.subtle.encrypt({name:'AES-GCM', iv}, _cryptoKey, new TextEncoder().encode(raw));
+    localStorage.setItem(LS_KEY, JSON.stringify({iv:b64e(iv), ct:b64e(new Uint8Array(ct))}));
+  } else {
+    localStorage.setItem(LS_KEY, raw);
+  }
+}
+
+// ═══ Regras de senha exigidas pelo projeto original ═══
+// Exatamente 10 caracteres, com maiúscula, minúscula, número e especial.
+function validatePassword(v){
+  return { len: v.length===10, up:/[A-Z]/.test(v), low:/[a-z]/.test(v), num:/[0-9]/.test(v), sp:/[^A-Za-z0-9]/.test(v) };
+}
+function pwRulesHTML(){
+  return `<div class="pw-rules" id="pwRules">
+    <div class="pw-rule" data-r="len"><span class="rc"></span>10 caracteres</div>
+    <div class="pw-rule" data-r="up"><span class="rc"></span>1 maiúscula</div>
+    <div class="pw-rule" data-r="low"><span class="rc"></span>1 minúscula</div>
+    <div class="pw-rule" data-r="num"><span class="rc"></span>1 número</div>
+    <div class="pw-rule" data-r="sp"><span class="rc"></span>1 especial</div>
+  </div>`;
+}
+function checkPwRules(inputId, btnId){
+  const res = validatePassword(document.getElementById(inputId).value);
+  Object.keys(res).forEach(k=>{
+    document.querySelector(`.pw-rule[data-r="${k}"]`)?.classList.toggle('ok', res[k]);
+  });
+  const ok = Object.values(res).every(Boolean);
+  const btn = document.getElementById(btnId);
+  if(btn) btn.disabled = !ok;
+  return ok;
+}
+function togglePw(id, btn){
+  const el = document.getElementById(id);
+  el.type = el.type==='password' ? 'text' : 'password';
+  btn.textContent = el.type==='password' ? '👁' : '🙈';
+}
+
+// ═══ Splash → App ═══
+// NOTA: o login por senha está DESATIVADO nesta versão (será reativado numa
+// versão futura). Toda a estrutura de segurança — renderSetup, renderLock,
+// deriveKey, criptografia AES-GCM — continua no código abaixo, apenas não é
+// mais chamada. Para reativar, basta restaurar a lógica original de boot()
+// (ver função bootComLogin abaixo, mantida como referência).
+window.addEventListener('DOMContentLoaded', ()=>{
+  setTimeout(()=>{
+    document.getElementById('splash').classList.add('hidden');
+    boot();
+  }, 1100);
+});
+function boot(){
+  // Sem senha: carrega o banco em texto puro do localStorage (ou cria vazio).
+  _cryptoKey = null;
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    // Se por acaso houver um blob criptografado antigo, ignora e recomeça limpo.
+    DB = (parsed && Array.isArray(parsed.imoveis)) ? parsed : defaultDB();
+    if(!DB.corretor) DB.corretor = { nome:'', creci:'', validadeCreci:'', temFoto:false, temCreci:false };
+    if(DB.corretor.validadeCreci===undefined) DB.corretor.validadeCreci='';
+    if(!Array.isArray(DB.proprietarios)) DB.proprietarios = [];
+    if(!Array.isArray(DB.agendamentos)) DB.agendamentos = [];
+    if(!DB.financeiro || !Array.isArray(DB.financeiro.despesas)) DB.financeiro = { despesas:[], receitas:[] };
+    if(!Array.isArray(DB.financeiro.receitas)) DB.financeiro.receitas = [];
+    if(!DB.contadores) DB.contadores = {cs:0,ap:0,tr:0,ch:0,prop:0};
+    if(DB.contadores.prop===undefined) DB.contadores.prop=0;
+  }catch(e){ DB = defaultDB(); }
+  enterApp();
+}
+// Referência para reativar o login no futuro (não usada agora):
+function bootComLogin(){
+  const auth = getAuth();
+  if(!auth) renderSetup();
+  else if(sessionStorage.getItem('unlocked')==='1'){ /* já veio de unlockApp nesta sessão */ }
+  else renderLock();
+}
+
+function renderSetup(){
+  const div = document.createElement('div');
+  div.id = 'setupScreen';
+  div.innerHTML = `
+    <div class="mark"><svg width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M4 11.5L12 4l8 7.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 10.5V19a1 1 0 0 0 1 1h3.5v-5h3v5H17a1 1 0 0 0 1-1v-8.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <div class="auth-title">Crie sua senha de acesso</div>
+    <div class="auth-sub">Seus dados (proprietários, endereços, telefones) ficam criptografados neste aparelho. Guarde bem esta senha — sem ela os dados não podem ser recuperados.</div>
+    <div class="auth-box">
+      <div class="pwwrap"><input id="setupPass" type="password" placeholder="Crie sua senha" maxlength="10" oninput="checkPwRules('setupPass','setupBtn')">
+        <button type="button" class="eye" onclick="togglePw('setupPass',this)">👁</button></div>
+      ${pwRulesHTML()}
+      <button class="btn" id="setupBtn" disabled onclick="doSetup()" style="margin-top:16px">Criar e entrar</button>
+      <div class="auth-err" id="setupErr"></div>
+    </div>`;
+  document.body.appendChild(div);
+}
+async function doSetup(){
+  const pass = val('setupPass');
+  if(!Object.values(validatePassword(pass)).every(Boolean)) return;
+  const err = document.getElementById('setupErr');
+  if(!crypto.subtle){ err.textContent = 'Criptografia indisponível neste navegador.'; return; }
+  err.textContent = 'Criando…';
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const key = await deriveKey(pass, salt);
+  const check = await makeCheck(key);
+  localStorage.setItem(LS_AUTH, JSON.stringify({salt:b64e(salt), check, createdAt:Date.now()}));
+  _cryptoKey = key;
+  DB = defaultDB();
+  await persistDB();
+  sessionStorage.setItem('unlocked','1');
+  document.getElementById('setupScreen').remove();
+  enterApp();
+}
+
+function renderLock(){
+  const div = document.createElement('div');
+  div.id = 'lockScreen';
+  div.innerHTML = `
+    <div class="mark"><svg width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M4 11.5L12 4l8 7.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 10.5V19a1 1 0 0 0 1 1h3.5v-5h3v5H17a1 1 0 0 0 1-1v-8.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <div class="auth-title">Bem-vindo de volta</div>
+    <div class="auth-sub">Digite sua senha de acesso para abrir sua carteira de imóveis.</div>
+    <div class="auth-box">
+      <div class="pwwrap"><input id="lockPass" type="password" placeholder="Digite sua senha" maxlength="10" onkeydown="if(event.key==='Enter')unlockApp()">
+        <button type="button" class="eye" onclick="togglePw('lockPass',this)">👁</button></div>
+      <button class="btn" onclick="unlockApp()" style="margin-top:16px">Entrar</button>
+      <div class="auth-err" id="lockErr"></div>
+      <button class="auth-link" onclick="lockForgot()">Esqueci minha senha</button>
+    </div>`;
+  document.body.appendChild(div);
+  setTimeout(()=>document.getElementById('lockPass')?.focus(),200);
+}
+async function unlockApp(){
+  const auth = getAuth();
+  const pass = val('lockPass');
+  const err = document.getElementById('lockErr');
+  const until = parseInt(localStorage.getItem('cim_lock_until')||'0');
+  if(Date.now() < until){ err.textContent = `Muitas tentativas — aguarde ${Math.ceil((until-Date.now())/1000)}s`; return; }
+  if(!pass){ err.textContent = 'Digite a senha'; return; }
+  err.textContent = 'Verificando…';
+  const key = await deriveKey(pass, b64d(auth.salt));
+  if(!(await verifyKey(key, auth.check))){
+    const tries = parseInt(localStorage.getItem('cim_bad')||'0') + 1;
+    localStorage.setItem('cim_bad', tries);
+    if(tries>=5){
+      localStorage.setItem('cim_lock_until', Date.now()+30000);
+      localStorage.setItem('cim_bad','0');
+      err.textContent = '5 tentativas erradas — aguarde 30 segundos';
+    } else {
+      err.textContent = `Senha incorreta (${tries}/5)`;
+    }
+    return;
+  }
+  localStorage.removeItem('cim_bad'); localStorage.removeItem('cim_lock_until');
+  _cryptoKey = key;
+  try{
+    const blob = JSON.parse(localStorage.getItem(LS_KEY));
+    const pt = await crypto.subtle.decrypt({name:'AES-GCM', iv:b64d(blob.iv)}, key, b64d(blob.ct));
+    DB = JSON.parse(new TextDecoder().decode(pt));
+  }catch(e){ DB = defaultDB(); }
+  sessionStorage.setItem('unlocked','1');
+  document.getElementById('lockScreen').remove();
+  enterApp();
+}
+function lockForgot(){
+  confirmar({icon:'🔑', title:'Esqueceu a senha?',
+    msg:'Sem a senha, os dados criptografados <b>não podem</b> ser recuperados. Deseja apagar tudo e recomeçar?',
+    noLabel:'← Voltar', yesLabel:'Apagar e recomeçar', yes:'doWipe()'});
+}
+function doWipe(){
+  localStorage.removeItem(LS_KEY);
+  localStorage.removeItem(LS_AUTH);
+  sessionStorage.removeItem('unlocked');
+  location.reload();
+}
+
+// ═══ App principal ═══
+function enterApp(){
+  document.getElementById('appHeader').classList.remove('hidden');
+  document.getElementById('mainNav').classList.remove('hidden');
+  goTab('inicio');
+}
+let currentTab = 'inicio';
+function goTab(tab){
+  currentTab = tab;
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on', b.dataset.tab===tab));
+  document.getElementById('mainNav').classList.remove('hidden');
+  if(tab==='inicio') renderHeader(true), renderInicio();
+  else if(tab==='imoveis') renderHeader(false), renderListaImoveis();
+  else if(tab==='agenda') renderHeader(false), renderAgenda();
+  else if(tab==='proprietarios') renderHeader(false), renderListaProprietarios();
+  else if(tab==='financeiro') renderHeader(false), renderFinanceiro();
+  else if(tab==='config') renderHeader(false), renderConfig();
+}
+function renderHeader(withSearch){
+  document.getElementById('appHeader').innerHTML = `
+    <div class="greet">
+      <div><div class="eyebrow">Painel do corretor</div><h2>Olá, corretor(a)</h2></div>
+      <div class="bell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 10a6 6 0 1 1 12 0c0 4 1.5 5.5 1.5 5.5H4.5S6 14 6 10Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M10 19a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+    </div>
+    ${withSearch?`<div class="searchbar"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>Buscar imóvel cadastrado</span></div>`:''}`;
+}
+
+// ── Início ──
+function diasParaValidadeCreci(){
+  const v = DB.corretor?.validadeCreci;
+  if(!v) return null;
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const [a,m,d] = v.split('-').map(Number);
+  const val = new Date(a, m-1, d); val.setHours(0,0,0,0);
+  return Math.round((val - hoje)/86400000);
+}
+function avisoCreciHTML(){
+  const dias = diasParaValidadeCreci();
+  if(dias===null) return '';
+  // avisa quando faltar 30, 15, 7 ou 1 dia (dentro de 30 dias) e também se já venceu
+  if(dias>30) return '';
+  let cor, icone, txt;
+  if(dias<0){ cor='var(--danger)'; icone='⛔'; txt=`Sua carteira CRECI <b>venceu</b> há ${Math.abs(dias)} dia(s).`; }
+  else if(dias===0){ cor='var(--danger)'; icone='⛔'; txt='Sua carteira CRECI <b>vence hoje</b>.'; }
+  else if(dias<=7){ cor='var(--danger)'; icone='⚠️'; txt=`Sua carteira CRECI vence em <b>${dias} dia(s)</b>.`; }
+  else { cor='var(--warning)'; icone='⚠️'; txt=`Sua carteira CRECI vence em <b>${dias} dia(s)</b>.`; }
+  return `<div onclick="goTab('config')" class="card" style="cursor:pointer;border:none;background:${cor};color:#fff;display:flex;align-items:center;gap:12px;margin-bottom:14px">
+    <div style="font-size:24px">${icone}</div>
+    <div style="flex:1"><div style="font-size:13.5px;font-weight:700;line-height:1.4">${txt}</div>
+      <div style="font-size:11.5px;opacity:.9;margin-top:2px">Toque para atualizar em Ajustes › Perfil do corretor.</div></div>
+  </div>`;
+}
+function renderInicio(){
+  const nImo = DB.imoveis.length, nProp = DB.proprietarios.length;
+  document.getElementById('mainContent').innerHTML = `
+    ${avisoCreciHTML()}
+    <div class="stitle">O que você quer fazer?</div>
+    <button class="action-card vender" style="background:linear-gradient(135deg,#57724C 0%,#435C39 100%)" onclick="novoProprietario()">
+      <div class="ac-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.4" stroke="#fff" stroke-width="1.7"/><path d="M5 20c1.2-3.8 4-5.6 7-5.6s5.8 1.8 7 5.6" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/></svg></div>
+      <div class="ac-title">Cadastro de proprietário</div>
+      <div class="ac-sub">Cadastrar dono do imóvel com foto e contatos</div>
+    </button>
+    <button class="action-card vender" onclick="abrirTipos()">
+      <div class="ac-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M4 11.5L12 4l8 7.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 10.5V19a1 1 0 0 0 1 1h3.5v-5h3v5H17a1 1 0 0 0 1-1v-8.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="ac-title">Cadastro de imóveis</div>
+      <div class="ac-sub">Cadastrar um imóvel novo para venda</div>
+    </button>
+    <button class="action-card comprar" onclick="toast('O módulo Comprar será desenvolvido em uma fase futura.')">
+      <span class="badge-soon">Em breve</span>
+      <div class="ac-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+      <div class="ac-title">Comprar</div>
+      <div class="ac-sub">Busca de imóveis para clientes compradores</div>
+    </button>
+    <div class="stitle">Resumo</div>
+    <div class="card">
+      <div class="review-item"><span class="k">Proprietários cadastrados</span><span class="v">${nProp}</span></div>
+      <div class="review-item"><span class="k">Imóveis cadastrados</span><span class="v">${nImo}</span></div>
+    </div>`;
+}
+
+// ── Tipos de imóvel ──
+function abrirTipos(){
+  document.getElementById('mainNav').classList.add('hidden');
+  document.getElementById('appHeader').innerHTML = `
+    <button class="step-back" onclick="goTab('inicio')">‹ Início</button>
+    <div class="eyebrow">Vender</div><h2>Tipo de imóvel</h2>
+    <div class="cat-row" style="margin-top:14px">
+      <div class="cat-item" onclick="iniciarCadastro()"><div class="cat-circle"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 11.5L12 4l8 7.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 10.5V19a1 1 0 0 0 1 1h3.5v-5h3v5H17a1 1 0 0 0 1-1v-8.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="cat-label">Casa</div></div>
+      <div class="cat-item disabled"><div class="cat-circle"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="6" y="3" width="12" height="18" rx="1.5" stroke="currentColor" stroke-width="1.8"/></svg></div><div class="cat-label">Apto</div></div>
+      <div class="cat-item disabled"><div class="cat-circle"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 20l4-9 4 5 3-6 5 10H4Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></div><div class="cat-label">Chácara</div></div>
+      <div class="cat-item disabled"><div class="cat-circle"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 19h16M6 19V10M18 19V10M4 10l8-6 8 6" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></div><div class="cat-label">Terreno</div></div>
+    </div>`;
+  document.getElementById('mainContent').innerHTML = `
+    <div class="stitle">Detalhes</div>
+    <button class="ptile" onclick="iniciarCadastro()">
+      <div class="ptile-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 11.5L12 4l8 7.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div><div class="ptile-title">Casa</div><div class="ptile-sub">Cadastro completo — 8 etapas</div></div>
+    </button>
+    <div class="ptile disabled"><div class="ptile-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="6" y="3" width="12" height="18" rx="1.5" stroke="currentColor" stroke-width="1.8"/></svg></div><div><div class="ptile-title">Apartamento <span class="tag">em breve</span></div></div></div>
+    <div class="ptile disabled"><div class="ptile-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 20l4-9 4 5 3-6 5 10H4Z" stroke="currentColor" stroke-width="1.5"/></svg></div><div><div class="ptile-title">Chácara / Sítio <span class="tag">em breve</span></div></div></div>
+    <div class="ptile disabled"><div class="ptile-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 19h16M6 19V10M18 19V10M4 10l8-6 8 6" stroke="currentColor" stroke-width="1.6"/></svg></div><div><div class="ptile-title">Terreno <span class="tag">em breve</span></div></div></div>`;
+}
+
+// ══════════════ MÓDULO PROPRIETÁRIOS ══════════════
+let P = null;          // rascunho do proprietário em edição
+let pFotoCache = null;  // dataURL da foto em memória durante edição
+let propBuscaModo = 'nome';   // 'nome' | 'celular'
+let propBuscaQ = '';
+
+function renderListaProprietarios(){
+  const total = DB.proprietarios.length;
+  document.getElementById('mainContent').innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin:8px 0 12px">
+      <div class="stitle" style="margin:0">Proprietários (${total})</div>
+      <button class="btn sm" style="width:auto" onclick="novoProprietario()">+ Novo</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      ${fchip(propBuscaModo==='nome','🔤 Nome',"propBuscaModo='nome';renderListaProprietarios()")}
+      ${fchip(propBuscaModo==='celular','📱 Celular',"propBuscaModo='celular';renderListaProprietarios()")}
+    </div>
+    <div class="ag-search" style="margin-top:0;margin-bottom:12px">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <input style="border:none;outline:none;flex:1;background:none;font-size:13.5px;color:var(--text)" placeholder="${propBuscaModo==='celular'?'Fragmento do celular…':'Fragmento do nome…'}" value="${esc(propBuscaQ)}" ${propBuscaModo==='celular'?'inputmode="numeric"':''} oninput="propBuscaQ=this.value;preencherListaProprietarios()">
+      ${propBuscaQ?`<button style="background:none;color:var(--muted);font-size:15px" onclick="propBuscaQ='';renderListaProprietarios()">✕</button>`:''}
+    </div>
+    <div id="propListContainer"></div>`;
+  preencherListaProprietarios();
+}
+function preencherListaProprietarios(){
+  let items = DB.proprietarios.slice().sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+  const q = propBuscaQ.trim().toLowerCase();
+  if(q){
+    if(propBuscaModo==='celular'){
+      const qd = q.replace(/\D/g,'');
+      items = items.filter(p=>[p.tel1,p.tel2,p.tel3].some(t=>(t||'').replace(/\D/g,'').includes(qd)) );
+    } else {
+      items = items.filter(p=>(p.nome||'').toLowerCase().includes(q));
+    }
+  }
+  const cont = document.getElementById('propListContainer');
+  if(!cont) return;
+  cont.innerHTML = items.length===0
+    ? (DB.proprietarios.length===0
+        ? `<div class="empty"><div class="big">👤</div>Nenhum proprietário cadastrado.<br><button class="btn" style="margin-top:16px;max-width:220px" onclick="novoProprietario()">+ Cadastrar proprietário</button></div>`
+        : `<div class="empty"><div class="big">🔍</div>Nenhum proprietário encontrado.</div>`)
+    : items.map(p=>`
+      <button class="ptile" onclick="editarProprietario('${p.id}')">
+        <div class="ptile-icon" id="pthumb_${p.id}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.4" stroke="currentColor" stroke-width="1.6"/><path d="M5 20c1.2-3.8 4-5.6 7-5.6s5.8 1.8 7 5.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+        <div><div class="ptile-title">${esc(p.nome||'Sem nome')}</div><div class="ptile-sub"><span class="mono" style="color:var(--primary);font-weight:700">Nº ${esc(p.codigo||'—')}</span> · ${esc(p.tel1||'')}</div></div>
+        <div class="ptile-chev">›</div>
+      </button>`).join('');
+  items.forEach(p=>{
+    if(p.temFoto) idbGet(keyPropFoto(p.id)).then(data=>{ if(data){ const el=document.getElementById('pthumb_'+p.id); if(el) el.innerHTML=`<img src="${data}">`; } }).catch(()=>{});
+  });
+}
+function novoProprietario(){
+  P = { id: uid(), codigo: proximoCodigoProp(), nome:'', tel1:'', tel2:'', tel3:'', email1:'', email2:'', temFoto:false, createdAt:Date.now() };
+  pFotoCache = null;
+  renderPropForm();
+}
+async function editarProprietario(id){
+  const p = DB.proprietarios.find(x=>x.id===id); if(!p) return;
+  P = JSON.parse(JSON.stringify(p));
+  pFotoCache = P.temFoto ? await idbGet(keyPropFoto(P.id)).catch(()=>null) : null;
+  renderPropForm();
+}
+function renderPropForm(){
+  const editing = DB.proprietarios.some(x=>x.id===P.id);
+  document.getElementById('mainNav').classList.add('hidden');
+  document.getElementById('appHeader').innerHTML = `
+    <button class="step-back" onclick="goTab('proprietarios')">‹ Proprietários</button>
+    <h2>${editing?'Editar proprietário':'Novo proprietário'}</h2>`;
+  document.getElementById('mainContent').innerHTML = `
+    <div style="display:flex;justify-content:center;margin:10px 0 6px">
+      <div onclick="escolherOrigemPropFoto()" style="width:96px;height:96px;border-radius:50%;overflow:hidden;background:var(--pblue);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--primary);cursor:pointer;position:relative">
+        ${pFotoCache?`<img src="${pFotoCache}" style="width:100%;height:100%;object-fit:cover">`:`<svg width="34" height="34" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.6" stroke="currentColor" stroke-width="1.6"/><path d="M5 20c1.2-3.8 4-5.6 7-5.6s5.8 1.8 7 5.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`}
+        <div style="position:absolute;bottom:0;right:0;background:var(--primary);color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;border:2px solid var(--surface)">📷</div>
+      </div>
+    </div>
+    ${pFotoCache?`<div style="text-align:center;margin-bottom:8px"><button class="btn sm gray" style="width:auto;display:inline-flex" onclick="removerPropFoto()">Remover foto</button></div>`:''}
+    <input type="file" id="propFotoCam" accept="image/*" capture="user" class="hidden" onchange="onPropFoto(this)">
+    <input type="file" id="propFotoGal" accept="image/*" class="hidden" onchange="onPropFoto(this)">
+    <div class="field"><label>Registro do proprietário</label>
+      <input value="Nº ${esc(P.codigo||proximoCodigoProp())}" disabled style="font-family:'IBM Plex Mono',monospace;letter-spacing:1px;background:var(--pblue);color:var(--dark);font-weight:700">
+      <div class="hint">Gerado automaticamente — não editável.</div></div>
+    <div class="field"><label>Nome do proprietário</label><input id="pNome" value="${esc(P.nome)}" oninput="P.nome=this.value"></div>
+    <div class="field"><label>Tel 1</label><input id="pTel1" value="${esc(P.tel1)}" inputmode="numeric" placeholder="(99)99999.9999" oninput="P.tel1=maskTelefone(this)"></div>
+    <div class="field"><label>Tel 2</label><input value="${esc(P.tel2)}" inputmode="numeric" placeholder="(99)99999.9999" oninput="P.tel2=maskTelefone(this)"></div>
+    <div class="field"><label>Tel 3</label><input value="${esc(P.tel3)}" inputmode="numeric" placeholder="(99)99999.9999" oninput="P.tel3=maskTelefone(this)"></div>
+    <div class="field"><label>E-mail 1</label><input value="${esc(P.email1)}" oninput="P.email1=this.value"></div>
+    <div class="field"><label>E-mail 2</label><input value="${esc(P.email2)}" oninput="P.email2=this.value"></div>
+    ${editing?`<button class="btn danger" style="margin-top:6px" onclick="excluirProprietario('${P.id}')">🗑 Excluir proprietário</button>`:''}
+    <div style="height:80px"></div>
+    <div class="wizfooter"><div class="btnrow">
+      <button class="btn gray" onclick="goTab('proprietarios')">Voltar</button>
+      <button class="btn green" onclick="salvarProprietario()">Salvar</button>
+    </div></div>`;
+}
+function excluirProprietario(id){
+  const p = DB.proprietarios.find(x=>x.id===id);
+  const nome = p ? (p.nome||'este proprietário') : 'este proprietário';
+  const vinculados = DB.imoveis.filter(im=>im.proprietario?.id===id).length;
+  confirmar({icon:'🗑️', title:'Excluir proprietário?',
+    msg:`Deseja realmente excluir <b>${esc(nome)}</b>?${vinculados?` <br>Há ${vinculados} imóvel(is) que usam estes dados — eles não serão apagados, mas perderão o vínculo.`:''} Esta ação não pode ser desfeita.`,
+    noLabel:'Cancelar', yesLabel:'Excluir', yes:`doExcluirProprietario('${id}')`});
+}
+async function doExcluirProprietario(id){
+  await idbDel(keyPropFoto(id)).catch(()=>{});
+  DB.proprietarios = DB.proprietarios.filter(x=>x.id!==id);
+  // desvincula dos imóveis (mantém os dados copiados no imóvel)
+  DB.imoveis.forEach(im=>{ if(im.proprietario?.id===id) im.proprietario.id=''; });
+  save();
+  toast('Proprietário excluído.');
+  P=null; pFotoCache=null;
+  goTab('proprietarios');
+}
+async function onPropFoto(input){
+  const file = input.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async (ev)=>{ pFotoCache = ev.target.result; await idbPut(keyPropFoto(P.id), pFotoCache); P.temFoto=true; renderPropForm(); };
+  reader.readAsDataURL(file);
+}
+function escolherOrigemPropFoto(){
+  showSheet('Foto do proprietário', `<div style="font-size:13px;color:var(--muted);margin-bottom:6px">Como você quer adicionar a foto?</div>`,
+    `<button class="btn gray" onclick="closeSheet()">Cancelar</button>
+     <button class="btn gray" onclick="closeSheet();document.getElementById('propFotoGal').click()">🖼 Galeria</button>
+     <button class="btn" onclick="closeSheet();document.getElementById('propFotoCam').click()">📷 Câmera</button>`);
+}
+async function removerPropFoto(){
+  await idbDel(keyPropFoto(P.id)).catch(()=>{});
+  pFotoCache = null; P.temFoto=false; renderPropForm();
+}
+function salvarProprietario(){
+  P.nome = val('pNome') || P.nome;
+  if(!P.nome.trim()){ toast('Informe o nome do proprietário.'); return; }
+  const idx = DB.proprietarios.findIndex(x=>x.id===P.id);
+  // novo proprietário: grava o sequencial (maior existente + 1)
+  if(idx<0){ const prox = maiorSeqProp()+1; DB.contadores.prop = prox; P.codigo = pad6(prox); }
+  else if(!P.codigo){ P.codigo = DB.proprietarios[idx].codigo || pad6(maiorSeqProp()+1); }
+  P.updatedAt = Date.now();
+  if(idx>=0) DB.proprietarios[idx]=P; else DB.proprietarios.push(P);
+  save();
+  toast('Proprietário salvo — Nº ' + P.codigo);
+  P=null; pFotoCache=null;
+  goTab('proprietarios');
+}
+
+// ── Wizard de cadastro (CASA) ──
+const stepNames = ['Localização','Proprietário','Características','Garagem e portão','Água, energia, internet','Fotos','Vídeo','Revisão'];
+let W = null;       // rascunho do imóvel em edição
+let wStep = 0;
+let wCache = {};    // cache em memória: chave IDB -> dataURL (evita reler do IDB a cada render)
+
+function blankDraft(){
+  return {
+    id: uid(), createdAt: Date.now(),
+    tipo:'casa', codigo: proximoCodigo('casa'), dataInclusao: isoDate(new Date()),
+    tipoEndereco:'Rua', endereco:'', numero:'', complemento:'', cidade:'', estado:'', cep:'',
+    proprietarioId:'', nome:'', tel1:'', tel2:'', tel3:'', email1:'', email2:'',
+    terreno:'', construcao:'', condicao:'Usada', morador:'Não', tipoCasa:'Térrea', outroTipo:'',
+    vendaExclusiva:'Não', dataInicial:'', dataFinal:'',
+    condominio:'0', comissao:'',
+    valorSolicitado:'', valorMinimo:'', valorNegociado:'',
+    vagas:'', coberta:true, disposicao:'Lado a lado', portao:false,
+    agua:'Individual', aguaFonte:'Sabesp', aguaSituacao:'Instalado', energia:'Instalado', internet:'Instalado',
+    fotosPublicas:[false,false,false,false,false,false],
+    fotosAdicionais:[null,null,null],   // null | {publica:true/false}
+    contrato:null,                       // null | {nome}
+    video:null                           // null | {nome, compartilhar, duracao}
+  };
+}
+function iniciarCadastro(){
+  W = blankDraft(); wStep = 0; wCache = {};
+  document.getElementById('mainNav').classList.add('hidden');
+  renderWizard();
+}
+async function editarImovel(id){
+  const im = DB.imoveis.find(x=>x.id===id);
+  if(!im) return;
+  W = JSON.parse(JSON.stringify(im));
+  if(!W.codigo) W.codigo = (im.codigo||proximoCodigo('casa')); // compat p/ registros antigos
+  W.tipo = im.tipo || 'casa';
+  W.dataInclusao = im.dataInclusao || isoDate(new Date(im.createdAt||Date.now()));
+  // reconstrói os campos de valor (planos) a partir de im.valores
+  const centavos = n => n ? maskMoedaFromNumber(n) : '';
+  W.valorSolicitado = centavos(im.valores?.solicitado);
+  W.valorMinimo     = centavos(im.valores?.minimo);
+  W.valorNegociado  = centavos(im.valores?.negociado);
+  wStep = 0; wCache = {};
+  document.getElementById('mainNav').classList.add('hidden');
+  renderWizard();
+}
+function sairWizardSemSalvar(){
+  confirmar({icon:'🚪', title:'Sair sem salvar?', msg:'As informações preenchidas neste cadastro serão perdidas.',
+    noLabel:'Continuar editando', yesLabel:'Sair', yes:'descartarDraftEVoltar()'});
+}
+async function descartarDraftEVoltar(){
+  const jaSalvo = DB.imoveis.some(x=>x.id===W.id);
+  if(!jaSalvo){
+    for(let i=0;i<6;i++) idbDel(keyFotoPub(W.id,i)).catch(()=>{});
+    for(let i=0;i<3;i++) idbDel(keyFotoAdd(W.id,i)).catch(()=>{});
+    idbDel(keyVideo(W.id)).catch(()=>{});
+    idbDel(keyContrato(W.id)).catch(()=>{});
+  }
+  W = null;
+  abrirTipos();
+}
+
+function renderWizard(){
+  document.getElementById('appHeader').innerHTML = `
+    <div class="progress-wrap" style="padding:0">
+      <button class="step-back" onclick="wStep===0?sairWizardSemSalvar():irStep(wStep-1)">‹ Voltar</button>
+      <div class="progress-top"><span class="progress-label">ETAPA ${wStep+1} DE 8</span><span class="progress-name">${stepNames[wStep]}</span></div>
+      <div class="progress-track"><div class="progress-fill" style="width:${((wStep+1)/8)*100}%"></div></div>
+    </div>`;
+  document.getElementById('mainContent').innerHTML = `<div style="padding-bottom:76px">${stepPaneHTML(wStep)}</div>
+    <div class="wizfooter"><div class="btnrow">
+      <button class="btn gray" onclick="${wStep===0?'sairWizardSemSalvar()':'irStep(wStep-1)'}">Voltar</button>
+      <button class="btn ${wStep===7?'green':''}" onclick="${wStep===7?'salvarImovel()':'irStep(wStep+1)'}">${wStep===7?'Salvar imóvel':'Avançar'}</button>
+    </div></div>`;
+  if(wStep===5) hydratarFotos();
+  if(wStep===7) {} // revisão já é montada estática a partir de W
+}
+function irStep(i){ wStep = Math.max(0, Math.min(i,7)); renderWizard(); window.scrollTo(0,0); }
+
+function chip(group,valv,label){ return `<div class="chip ${W[group]===valv?'selected':''}" onclick="setChip('${group}','${valv.replace(/'/g,"\\'")}')">${esc(label)}</div>`; }
+function setChip(group,v){
+  W[group]=v;
+  if(group==='vendaExclusiva' && v==='Não'){ W.dataInicial=''; W.dataFinal=''; }
+  renderWizard();
+}
+// Comissão: até 2 dígitos inteiros e 1 casa decimal (0.0 – 99.9)
+function sanitizarComissao(input){
+  let v = input.value.replace(',', '.').replace(/[^0-9.]/g,'');
+  const parts = v.split('.');
+  let intp = (parts[0]||'').slice(0,2);
+  let dec = parts.length>1 ? '.' + (parts[1]||'').slice(0,1) : (v.endsWith('.') ? '.' : '');
+  v = intp + dec;
+  input.value = v;
+  return v;
+}
+// Cálculo da comissão: valor negociado × (comissão% ÷ 100). Só aparece se o negociado ≠ 0.
+function comissaoCalcHTML(){
+  const neg = parseMoeda(W.valorNegociado||'');
+  const pct = parseFloat((W.comissao||'').replace(',','.'))||0;
+  if(neg<=0) return '';
+  const valor = neg * (pct/100);
+  return `<div class="card" style="background:var(--pgreen);border:none;margin-top:4px">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div><div style="font-size:10px;font-weight:700;color:#128A56;text-transform:uppercase">Comissão estimada</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${fmtBRL(neg)} × ${(pct||0).toString().replace('.',',')}%</div></div>
+      <b style="font-size:19px;color:#128A56">${fmtBRL(valor)}</b>
+    </div></div>`;
+}
+function atualizaComissaoCalc(){
+  const el = document.getElementById('comissaoCalc');
+  if(el) el.innerHTML = comissaoCalcHTML();
+}
+function toggle(field){ return `<div class="switch ${W[field]?'on':''}" onclick="W.${field}=!W.${field};renderWizard()"></div>`; }
+
+// Escolha de proprietário cadastrado no passo do imóvel.
+// Se já houver dados preenchidos, pergunta antes de regravar.
+function escolherProprietario(id){
+  if(!id){ return; }
+  const temDados = (W.nome||W.tel1||W.tel2||W.tel3||W.email1||W.email2);
+  if(temDados){
+    // reseta a seleção visual até o usuário decidir
+    const sel = document.getElementById('propSelect'); if(sel) sel.value = W.proprietarioId||'';
+    confirmar({icon:'✍️', title:'Regravar os dados?',
+      msg:'Já existem informações preenchidas neste imóvel. Deseja substituí-las pelos dados do proprietário selecionado?',
+      noLabel:'Manter', yesLabel:'Regravar', yesBg:'var(--primary)', yes:`aplicarProprietario('${id}')`});
+    return;
+  }
+  aplicarProprietario(id);
+}
+function aplicarProprietario(id){
+  const p = DB.proprietarios.find(x=>x.id===id); if(!p) return;
+  W.proprietarioId = p.id;
+  W.nome=p.nome||''; W.tel1=p.tel1||''; W.tel2=p.tel2||''; W.tel3=p.tel3||'';
+  W.email1=p.email1||''; W.email2=p.email2||'';
+  renderWizard();
+  toast('Dados do proprietário preenchidos.');
+}
+
+function stepPaneHTML(i){
+  if(i===0) return `
+    <div class="section-title">Onde fica o imóvel?</div>
+    <div class="row2">
+      <div class="field"><label>Registro do imóvel</label>
+        <input value="${esc(W.codigo)}" disabled style="font-family:'IBM Plex Mono',monospace;letter-spacing:1px;background:var(--pblue);color:var(--dark);font-weight:700;text-transform:uppercase">
+        <div class="hint">Gerado automaticamente.</div></div>
+      <div class="field"><label>Data de inclusão</label>
+        <input type="date" value="${esc(W.dataInclusao)}" oninput="W.dataInclusao=this.value">
+        <div class="hint">Início do extrato do imóvel.</div></div>
+    </div>
+    <div class="field"><label>CEP (opcional)</label>
+      <input value="${esc(W.cep)}" inputmode="numeric" placeholder="99999-999" maxlength="9"
+        oninput="W.cep=maskCEP(this)" onblur="buscarCEP(W.cep)">
+      <div class="hint" id="cepHint">Se preencher, buscamos o endereço automaticamente (Waze/Google/ViaCEP). Pode deixar em branco.</div></div>
+    <div class="field"><label>Endereço</label><input value="${esc(W.endereco)}" placeholder="Preenchido pelo CEP — você pode complementar" oninput="W.endereco=this.value"></div>
+    <div class="row2">
+      <div class="field"><label>Número</label><input value="${esc(W.numero)}" oninput="W.numero=this.value"></div>
+      <div class="field"><label>Complemento</label><input value="${esc(W.complemento)}" oninput="W.complemento=this.value"></div>
+    </div>
+    <div class="field"><label>Cidade</label><input value="${esc(W.cidade)}" oninput="W.cidade=this.value"></div>
+    <div class="field"><label>Estado</label><input value="${esc(W.estado)}" maxlength="2" oninput="W.estado=this.value"></div>`;
+
+  if(i===1) return `
+    <div class="section-title">Dados do proprietário</div>
+    ${DB.proprietarios.length ? `<div class="field"><label>Escolher proprietário cadastrado</label>
+      <select id="propSelect" onchange="escolherProprietario(this.value)">
+        <option value="">— selecione para preencher —</option>
+        ${DB.proprietarios.slice().sort((a,b)=>(a.nome||'').localeCompare(b.nome||'')).map(p=>`<option value="${p.id}" ${W.proprietarioId===p.id?'selected':''}>${esc(p.nome||'Sem nome')}</option>`).join('')}
+      </select><div class="hint">Selecionar preenche os campos abaixo automaticamente.</div></div>` :
+      `<div class="public-note">Nenhum proprietário cadastrado ainda. Você pode digitar abaixo ou cadastrar em <b>Início › Cadastro de proprietário</b>.</div>`}
+    <div class="field"><label>Nome do proprietário</label><input value="${esc(W.nome)}" oninput="W.nome=this.value;W.proprietarioId=''"></div>
+    <div class="field"><label>Tel 1</label><input value="${esc(W.tel1)}" inputmode="numeric" placeholder="(99)99999.9999" oninput="W.tel1=maskTelefone(this)"></div>
+    <div class="field"><label>Tel 2</label><input value="${esc(W.tel2)}" inputmode="numeric" placeholder="(99)99999.9999" oninput="W.tel2=maskTelefone(this)"></div>
+    <div class="field"><label>Tel 3</label><input value="${esc(W.tel3)}" inputmode="numeric" placeholder="(99)99999.9999" oninput="W.tel3=maskTelefone(this)"></div>
+    <div class="field"><label>E-mail 1</label><input value="${esc(W.email1)}" oninput="W.email1=this.value"></div>
+    <div class="field"><label>E-mail 2</label><input value="${esc(W.email2)}" oninput="W.email2=this.value"></div>`;
+
+  if(i===2) return `
+    <div class="section-title">Características da casa</div>
+    <div class="row2">
+      <div class="field"><label>Terreno (m²)</label><input type="number" value="${esc(W.terreno)}" oninput="W.terreno=this.value"></div>
+      <div class="field"><label>Construção (m²)</label><input type="number" value="${esc(W.construcao)}" oninput="W.construcao=this.value"></div>
+    </div>
+    <div class="row2">
+      <fieldset><legend>Condição do imóvel</legend><div class="chip-group">${chip('condicao','Nova','Nova')}${chip('condicao','Usada','Usada')}</div></fieldset>
+      <fieldset><legend>Tem morador?</legend><div class="chip-group">${chip('morador','Sim','Sim')}${chip('morador','Não','Não')}</div></fieldset>
+    </div>
+    <fieldset><legend>Tipo da casa</legend><div class="chip-group">${chip('tipoCasa','Térrea','Térrea')}${chip('tipoCasa','Sobrado','Sobrado')}${chip('tipoCasa','Outro','Outro')}</div></fieldset>
+    ${W.tipoCasa==='Outro'?`<div class="field"><label>Outro (máx. 20)</label><input maxlength="20" value="${esc(W.outroTipo)}" oninput="W.outroTipo=this.value;document.getElementById('oc').textContent=this.value.length"><div class="charcount"><span id="oc">${W.outroTipo.length}</span>/20</div></div>`:''}
+    <fieldset><legend>Venda exclusiva</legend><div class="chip-group">${chip('vendaExclusiva','Não','Não')}${chip('vendaExclusiva','Sim','Sim')}</div></fieldset>
+    <div class="row2">
+      <div class="field"><label>Data inicial</label><input type="date" value="${esc(W.dataInicial)}" ${W.vendaExclusiva==='Sim'?'':'disabled'} oninput="W.dataInicial=this.value"></div>
+      <div class="field"><label>Data final</label><input type="date" value="${esc(W.dataFinal)}" ${W.vendaExclusiva==='Sim'?'':'disabled'} oninput="W.dataFinal=this.value"></div>
+    </div>
+    ${W.vendaExclusiva!=='Sim'?`<div class="hint" style="margin-top:-8px;margin-bottom:12px">As datas só podem ser preenchidas se a venda exclusiva estiver marcada como <b>Sim</b>.</div>`:''}
+    <div class="row2">
+      <div class="field"><label>Taxa de condomínio (R$)</label><input type="number" value="${esc(W.condominio)}" oninput="W.condominio=this.value"></div>
+      <div class="field"><label>Comissão (%)</label><input inputmode="decimal" value="${esc(W.comissao)}" placeholder="0.0" oninput="W.comissao=sanitizarComissao(this);atualizaComissaoCalc()"><div class="hint">Até 99,9%</div></div>
+    </div>
+    <div class="section-title" style="margin-top:6px">Valores do imóvel</div>
+    <div class="field"><label>Valor solicitado (R$)</label><input inputmode="numeric" placeholder="9.999.999,99" value="${esc(W.valorSolicitado)}" oninput="W.valorSolicitado=maskMoedaG(this)"></div>
+    <div class="row2">
+      <div class="field"><label>Valor mínimo (R$)</label><input inputmode="numeric" placeholder="9.999.999,99" value="${esc(W.valorMinimo)}" oninput="W.valorMinimo=maskMoedaG(this)"></div>
+      <div class="field"><label>Valor negociado (R$)</label><input inputmode="numeric" placeholder="9.999.999,99" value="${esc(W.valorNegociado)}" oninput="W.valorNegociado=maskMoedaG(this);atualizaComissaoCalc()"></div>
+    </div>
+    <div id="comissaoCalc">${comissaoCalcHTML()}</div>`;
+
+  if(i===3) return `
+    <div class="section-title">Garagem e portão</div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+      <input type="number" min="0" max="99" value="${esc(W.vagas)}" oninput="W.vagas=this.value.slice(0,2)" style="width:64px;text-align:center;flex:none">
+      <label style="margin:0;text-transform:none;font-size:14px;font-weight:600;color:var(--text);letter-spacing:0">Garagem para quantos carros?</label>
+    </div>
+    <div class="toggle-row"><div class="lbl">Garagem coberta<span class="d">A cobertura protege os veículos</span></div>${toggle('coberta')}</div>
+    <fieldset style="margin-top:14px"><legend>Disposição dos carros</legend><div class="chip-group">${chip('disposicao','Lado a lado','Lado a lado')}${chip('disposicao','Em fila','Em fila')}</div></fieldset>
+    <div class="toggle-row"><div class="lbl">Portão eletrônico<span class="d">Abertura automática</span></div>${toggle('portao')}</div>`;
+
+  if(i===4) return `
+    <div class="section-title">Água, energia e internet</div>
+    <fieldset><legend>Abastecimento de água</legend><div class="chip-group">${chip('agua','Coletivo','Coletivo / rateio')}${chip('agua','Individual','Individual')}</div></fieldset>
+    ${W.agua==='Individual'?`<fieldset><legend>Fonte</legend><div class="chip-group">${chip('aguaFonte','Sabesp','Sabesp')}${chip('aguaFonte','Poço artesiano','Poço artesiano')}${chip('aguaFonte','Poço caipira','Poço caipira')}</div></fieldset>`:''}
+    <fieldset><legend>Situação da água</legend><div class="chip-group">${chip('aguaSituacao','Instalado','Instalado')}${chip('aguaSituacao','A instalar','A instalar')}</div></fieldset>
+    <fieldset><legend>Energia elétrica</legend><div class="chip-group">${chip('energia','Instalado','Instalado')}${chip('energia','A instalar','A instalar')}</div></fieldset>
+    <fieldset><legend>Internet</legend><div class="chip-group">${chip('internet','Instalado','Instalado')}${chip('internet','A instalar','A instalar')}</div></fieldset>`;
+
+  if(i===5) return `
+    <div class="section-title">Fotos principais públicas</div>
+    <div class="public-note">📸 As 6 fotos abaixo são <b>fotos principais públicas</b> — usadas em anúncios, e-mail e WhatsApp.</div>
+    <div class="photo-grid">${[0,1,2,3,4,5].map(i=>fotoSlotHTML('pub',i,W.fotosPublicas[i]?keyFotoPub(W.id,i):null,false)).join('')}</div>
+    <div class="section-title" style="margin-top:20px">Fotos adicionais privativas</div>
+    <div class="public-note">Estas 3 <b>fotos adicionais privativas</b> podem ser marcadas individualmente como públicas ou privadas no compartilhamento.</div>
+    <div class="photo-grid">${[0,1,2].map(i=>fotoSlotHTML('add',i,W.fotosAdicionais[i]?keyFotoAdd(W.id,i):null,true,W.fotosAdicionais[i]?.publica)).join('')}</div>
+    <div class="section-title" style="margin-top:20px">Contrato (PDF)</div>
+    <div class="public-note">Guarde o contrato de venda/autorização em PDF junto ao imóvel.</div>
+    <div class="photo-slot ${W.contrato?'filled':''}" style="width:100%;aspect-ratio:auto;padding:16px 14px;margin-bottom:6px;flex-direction:row;gap:10px;justify-content:flex-start" onclick="${W.contrato?'editarContrato()':'document.getElementById(\'contratoInput\').click()'}">
+      ${W.contrato?`<span style="font-size:22px">📄</span>
+        <span style="flex:1;text-align:left;overflow:hidden">
+          <span class="mono" style="display:block;font-size:12px;color:var(--dark);font-weight:700">${esc(nomeContratoArq())}.pdf</span>
+          <span style="display:block;font-size:10.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(W.contrato.nome||'')}</span>
+        </span>
+        <div class="remove" style="position:static" onclick="event.stopPropagation();removerContrato()">✕</div>`:
+      `<span style="font-size:20px">📎</span><span>Selecionar contrato em PDF (galeria/arquivos)</span>`}
+    </div>
+    <input type="file" id="contratoInput" accept="application/pdf,.pdf" class="hidden" onchange="onContratoSelected(this)">`;
+
+  if(i===6) return `
+    <div class="section-title">Vídeo do imóvel</div>
+    <div class="public-note">Opcional. Limite de <b>45 segundos</b>. Pode ser incluído ou não no compartilhamento.</div>
+    <div class="photo-slot ${W.video?'filled':''}" style="width:100%;aspect-ratio:16/10;margin-bottom:14px" onclick="${W.video?'editarVideo()':'escolherOrigemVideo()'}">
+      ${W.video?`<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M4 6.5A1.5 1.5 0 0 1 5.5 5h9A1.5 1.5 0 0 1 16 6.5v11a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 4 17.5v-11Z" stroke="currentColor" stroke-width="1.5"/><path d="M16 10l4.2-2.4a.8.8 0 0 1 1.2.7v7.4a.8.8 0 0 1-1.2.7L16 14" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span class="mono" style="font-size:11px;color:var(--dark);font-weight:700">${esc(nomeVideoArq())}</span><span style="font-size:10px;color:var(--muted)">${W.video.duracao?W.video.duracao+'s · ':''}${esc(W.video.nome||'')}</span><div class="remove" onclick="event.stopPropagation();removerVideo()">✕</div>`:
+      `<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M4 6.5A1.5 1.5 0 0 1 5.5 5h9A1.5 1.5 0 0 1 16 6.5v11a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 4 17.5v-11Z" stroke="currentColor" stroke-width="1.5"/><path d="M16 10l4.2-2.4a.8.8 0 0 1 1.2.7v7.4a.8.8 0 0 1-1.2.7L16 14" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span>Gravar com a câmera ou escolher da galeria</span>`}
+    </div>
+    <input type="file" id="videoCam" accept="video/*" capture="environment" class="hidden" onchange="onVideoSelected(this)">
+    <input type="file" id="videoGal" accept="video/*" class="hidden" onchange="onVideoSelected(this)">
+    <div class="toggle-row"><div class="lbl">Incluir no compartilhamento<span class="d">Enviar junto com fotos por e-mail/WhatsApp</span></div>
+      <div class="switch ${W.video?.compartilhar?'on':''}" onclick="if(W.video){W.video.compartilhar=!W.video.compartilhar;renderWizard()}"></div></div>`;
+
+  if(i===7){
+    const pubCount = W.fotosPublicas.filter(Boolean).length;
+    const addCount = W.fotosAdicionais.filter(Boolean).length;
+    const condoVal = parseFloat(W.condominio)||0;
+    let aguaTxt = W.agua; if(W.agua==='Individual') aguaTxt += ` (${W.aguaFonte})`; aguaTxt += ` · ${W.aguaSituacao}`;
+    return `
+    <div class="section-title">Revisar antes de salvar</div>
+    <div class="review-block"><div class="review-block-title">Registro</div>
+      <div class="review-item"><span class="k">Código do imóvel</span><span class="v mono" style="color:var(--primary)">${(W.codigo||'').toUpperCase()}</span></div></div>
+    <div class="review-block"><div class="review-block-title">Localização</div>
+      <div class="review-item"><span class="k">Endereço</span><span class="v">${esc([W.endereco,W.numero].filter(Boolean).join(', ')||'—')}</span></div>
+      <div class="review-item"><span class="k">Cidade / UF</span><span class="v">${esc([W.cidade,W.estado].filter(Boolean).join(' / ')||'—')}</span></div>
+      <div class="review-item"><span class="k">CEP</span><span class="v">${esc(W.cep||'—')}</span></div></div>
+    <div class="review-block"><div class="review-block-title">Proprietário</div>
+      <div class="review-item"><span class="k">Nome</span><span class="v">${esc(W.nome||'—')}</span></div>
+      <div class="review-item"><span class="k">Telefone</span><span class="v">${esc(W.tel1||'—')}</span></div>
+      <div class="review-item"><span class="k">E-mail</span><span class="v">${esc(W.email1||'—')}</span></div></div>
+    <div class="review-block"><div class="review-block-title">Características</div>
+      <div class="review-item"><span class="k">Terreno / Construção</span><span class="v">${W.terreno||0} m² / ${W.construcao||0} m²</span></div>
+      <div class="review-item"><span class="k">Condição</span><span class="v">${esc(W.condicao)}</span></div>
+      <div class="review-item"><span class="k">Morador</span><span class="v">${esc(W.morador)}</span></div>
+      <div class="review-item"><span class="k">Tipo da casa</span><span class="v">${esc(W.tipoCasa==='Outro'&&W.outroTipo?W.outroTipo:W.tipoCasa)}</span></div>
+      <div class="review-item"><span class="k">Venda exclusiva</span><span class="v">${W.vendaExclusiva==='Sim'?('Sim'+((W.dataInicial||W.dataFinal)?` (${fmtDataBR(W.dataInicial)} → ${fmtDataBR(W.dataFinal)})`:'')):'Não'}</span></div>
+      <div class="review-item"><span class="k">Comissão</span><span class="v">${W.comissao?W.comissao.replace('.',',')+'%':'—'}</span></div>
+      <div class="review-item"><span class="k">Valor solicitado</span><span class="v">${parseMoeda(W.valorSolicitado)>0?fmtBRL(parseMoeda(W.valorSolicitado)):'—'}</span></div>
+      <div class="review-item"><span class="k">Valor mínimo</span><span class="v">${parseMoeda(W.valorMinimo)>0?fmtBRL(parseMoeda(W.valorMinimo)):'—'}</span></div>
+      <div class="review-item"><span class="k">Valor negociado</span><span class="v">${parseMoeda(W.valorNegociado)>0?fmtBRL(parseMoeda(W.valorNegociado)):'—'}</span></div>
+      ${parseMoeda(W.valorNegociado)>0?`<div class="review-item"><span class="k">Comissão estimada</span><span class="v" style="color:#128A56;font-weight:700">${fmtBRL(parseMoeda(W.valorNegociado)*((parseFloat((W.comissao||'').replace(',','.'))||0)/100))}</span></div>`:''}
+      <div class="review-item"><span class="k">Condomínio</span><span class="v">${condoVal>0?fmtBRL(condoVal):'Sem condomínio'}</span></div></div>
+    <div class="review-block"><div class="review-block-title">Garagem</div>
+      <div class="review-item"><span class="k">Vagas</span><span class="v">${W.vagas||0} · ${W.coberta?'Coberta':'Descoberta'}</span></div>
+      <div class="review-item"><span class="k">Disposição</span><span class="v">${esc(W.disposicao)}</span></div>
+      <div class="review-item"><span class="k">Portão eletrônico</span><span class="v">${W.portao?'Sim':'Não'}</span></div></div>
+    <div class="review-block"><div class="review-block-title">Infraestrutura</div>
+      <div class="review-item"><span class="k">Água</span><span class="v">${esc(aguaTxt)}</span></div>
+      <div class="review-item"><span class="k">Energia</span><span class="v">${esc(W.energia)}</span></div>
+      <div class="review-item"><span class="k">Internet</span><span class="v">${esc(W.internet)}</span></div></div>
+    <div class="review-block"><div class="review-block-title">Mídia e documentos</div>
+      <div class="review-item"><span class="k">Fotos públicas</span><span class="v">${pubCount}/6</span></div>
+      <div class="review-item"><span class="k">Fotos adicionais</span><span class="v">${addCount}/3</span></div>
+      <div class="review-item"><span class="k">Vídeo</span><span class="v">${W.video?(esc(W.video.nome||'Adicionado')+(W.video.duracao?` (${W.video.duracao}s)`:'')):'Não adicionado'}</span></div>
+      <div class="review-item"><span class="k">Contrato PDF</span><span class="v">${W.contrato?esc(nomeContratoArq()+'.pdf'):'Não anexado'}</span></div></div>`;
+  }
+  return '';
+}
+
+// Nome do arquivo baseado no registro do imóvel (ex.: cs00001_1, cs00001_7, cs00001_video)
+function nomeFotoArq(kind, i){
+  const cod = (W?.codigo||'').toLowerCase();
+  const n = kind==='pub' ? (i+1) : (7+i); // públicas 1-6, adicionais 7-9
+  return `${cod}_${n}`;
+}
+function nomeVideoArq(){ return `${(W?.codigo||'').toLowerCase()}_video`; }
+function nomeContratoArq(){ return `${(W?.codigo||'').toLowerCase()}_contrato`; }
+
+function fotoSlotHTML(kind, i, existingKey, allowPublic, isPublic){
+  const cacheHit = existingKey && wCache[existingKey];
+  const nome = nomeFotoArq(kind, i);
+  const inner = cacheHit
+    ? `<img src="${cacheHit}">${allowPublic?`<div class="badge" onclick="event.stopPropagation();toggleFotoPublica(${i})">${isPublic?'Pública':'Privada'}</div>`:''}<div class="remove" onclick="event.stopPropagation();removerFoto('${kind}',${i})">✕</div><div style="position:absolute;left:0;right:0;bottom:0;background:rgba(15,20,40,.72);color:#fff;font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:600;padding:2px 4px;text-align:center;letter-spacing:.02em">${esc(nome)}</div>`
+    : (existingKey ? `<span data-needload="${existingKey}">carregando…</span>` : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7H8l1-2h6l1 2h2.5A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5v-9Z" stroke="currentColor" stroke-width="1.4"/><circle cx="12" cy="12.5" r="3" stroke="currentColor" stroke-width="1.4"/></svg><span>Foto ${i+1}</span>`);
+  return `<div class="photo-slot ${existingKey?'filled':''}" onclick="${existingKey?`editarFoto('${kind}',${i})`:`escolherOrigemFoto('${kind}',${i})`}">
+    ${inner}
+    <input type="file" id="inpCam_${kind}${i}" accept="image/*" capture="environment" class="hidden" onchange="onFotoSelected('${kind}',${i},this)">
+    <input type="file" id="inpGal_${kind}${i}" accept="image/*" class="hidden" onchange="onFotoSelected('${kind}',${i},this)">
+  </div>`;
+}
+// Toque numa foto já preenchida: pergunta se quer substituir (gravar sobre a anterior).
+function editarFoto(kind, i){
+  const nome = nomeFotoArq(kind, i);
+  confirmar({icon:'📷', title:'Substituir a foto?',
+    msg:`Deseja excluir a foto atual do campo <b>${esc(nome)}</b> e gravar outra por cima?`,
+    noLabel:'Não', yesLabel:'Sim', yesBg:'var(--primary)',
+    yes:`escolherOrigemFoto('${kind}',${i})`});
+}
+// Pergunta se o usuário quer usar a câmera ou a galeria naquele campo específico.
+function escolherOrigemFoto(kind, i){
+  const nome = nomeFotoArq(kind, i);
+  showSheet('Adicionar foto', `<div style="font-size:13px;color:var(--muted);margin-bottom:6px">Foto <b>${esc(nome)}</b> — como você quer adicionar?</div>`,
+    `<button class="btn gray" onclick="closeSheet()">Cancelar</button>
+     <button class="btn gray" onclick="closeSheet();document.getElementById('inpGal_${kind}${i}').click()">🖼 Galeria</button>
+     <button class="btn" onclick="closeSheet();document.getElementById('inpCam_${kind}${i}').click()">📷 Câmera</button>`);
+}
+async function hydratarFotos(){
+  const els = document.querySelectorAll('[data-needload]');
+  if(!els.length) return;
+  let changed = false;
+  for(const el of els){
+    const key = el.dataset.needload;
+    if(wCache[key]) continue;
+    const data = await idbGet(key).catch(()=>null);
+    if(data){ wCache[key]=data; changed=true; }
+  }
+  if(changed) renderWizard();
+}
+async function onFotoSelected(kind, i, input){
+  const file = input.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async (ev)=>{
+    const dataUrl = ev.target.result;
+    const key = kind==='pub' ? keyFotoPub(W.id,i) : keyFotoAdd(W.id,i);
+    await idbPut(key, dataUrl);
+    wCache[key] = dataUrl;
+    const nome = nomeFotoArq(kind, i);
+    if(kind==='pub'){ W.fotosPublicas[i]=true; W.fotoNomesPub = W.fotoNomesPub||{}; W.fotoNomesPub[i]=nome; }
+    else { W.fotosAdicionais[i] = {publica: true, nome}; }
+    input.value='';
+    renderWizard();
+    toast('Foto gravada como ' + nome);
+  };
+  reader.readAsDataURL(file);
+}
+async function removerFoto(kind, i){
+  const key = kind==='pub' ? keyFotoPub(W.id,i) : keyFotoAdd(W.id,i);
+  await idbDel(key).catch(()=>{});
+  delete wCache[key];
+  if(kind==='pub') W.fotosPublicas[i]=false;
+  else W.fotosAdicionais[i]=null;
+  renderWizard();
+}
+function toggleFotoPublica(i){
+  if(!W.fotosAdicionais[i]) return;
+  W.fotosAdicionais[i].publica = !W.fotosAdicionais[i].publica;
+  renderWizard();
+}
+async function onVideoSelected(input){
+  const file = input.files[0]; if(!file){ return; }
+  // Verifica a duração antes de aceitar — limite de 45 segundos.
+  const url = URL.createObjectURL(file);
+  const v = document.createElement('video');
+  v.preload = 'metadata';
+  v.onloadedmetadata = ()=>{
+    const dur = v.duration;
+    URL.revokeObjectURL(url);
+    if(isFinite(dur) && dur > 45.5){
+      toast(`Vídeo de ${Math.round(dur)}s — o limite é 45 segundos.`);
+      input.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async (ev)=>{
+      await idbPut(keyVideo(W.id), ev.target.result);
+      W.video = { nome: file.name, arquivo: nomeVideoArq(), compartilhar: true, duracao: Math.round(dur||0) };
+      input.value='';
+      renderWizard();
+      toast('Vídeo gravado como ' + nomeVideoArq());
+    };
+    reader.readAsDataURL(file);
+  };
+  v.onerror = ()=>{ URL.revokeObjectURL(url); toast('Não foi possível ler o vídeo.'); input.value=''; };
+  v.src = url;
+}
+function escolherOrigemVideo(){
+  showSheet('Adicionar vídeo', `<div style="font-size:13px;color:var(--muted);margin-bottom:6px">Vídeo <b>${esc(nomeVideoArq())}</b> — como você quer adicionar? (máx. 45s)</div>`,
+    `<button class="btn gray" onclick="closeSheet()">Cancelar</button>
+     <button class="btn gray" onclick="closeSheet();document.getElementById('videoGal').click()">🖼 Galeria</button>
+     <button class="btn" onclick="closeSheet();document.getElementById('videoCam').click()">📷 Câmera</button>`);
+}
+function editarVideo(){
+  confirmar({icon:'🎬', title:'Substituir o vídeo?',
+    msg:`Deseja excluir o vídeo atual do campo <b>${esc(nomeVideoArq())}</b> e gravar outro por cima?`,
+    noLabel:'Não', yesLabel:'Sim', yesBg:'var(--primary)', yes:'escolherOrigemVideo()'});
+}
+async function removerVideo(){
+  await idbDel(keyVideo(W.id)).catch(()=>{});
+  W.video = null;
+  renderWizard();
+}
+async function onContratoSelected(input){
+  const file = input.files[0]; if(!file) return;
+  const ehPdf = file.type==='application/pdf' || /\.pdf$/i.test(file.name||'');
+  if(!ehPdf){ toast('Selecione um arquivo PDF.'); input.value=''; return; }
+  const reader = new FileReader();
+  reader.onload = async (ev)=>{
+    await idbPut(keyContrato(W.id), ev.target.result);
+    W.contrato = { nome: file.name, arquivo: nomeContratoArq() };
+    input.value='';
+    renderWizard();
+    toast('Contrato gravado como ' + nomeContratoArq());
+  };
+  reader.readAsDataURL(file);
+}
+function editarContrato(){
+  confirmar({icon:'📄', title:'Substituir o contrato?',
+    msg:`Deseja excluir o contrato atual do campo <b>${esc(nomeContratoArq())}</b> e gravar outro PDF por cima?`,
+    noLabel:'Não', yesLabel:'Sim', yesBg:'var(--primary)', yes:"document.getElementById('contratoInput').click()"});
+}
+async function removerContrato(){
+  await idbDel(keyContrato(W.id)).catch(()=>{});
+  W.contrato = null;
+  renderWizard();
+}
+
+async function salvarImovel(){
+  const jaExiste = DB.imoveis.some(x=>x.id===W.id);
+  // Em imóvel novo, confirma o código sequencial e incrementa o contador do tipo.
+  if(!jaExiste){
+    const pref = prefixoTipo(W.tipo||'casa');
+    const prox = maiorSeq(W.tipo||'casa') + 1;
+    DB.contadores[pref] = prox;
+    W.codigo = pref + pad5(prox);
+  }
+  const imovel = {
+    id: W.id, tipo: W.tipo||'casa', codigo: W.codigo, dataInclusao: W.dataInclusao||isoDate(new Date(W.createdAt||Date.now())), createdAt: W.createdAt, updatedAt: Date.now(),
+    localizacao:{ tipoEndereco:W.tipoEndereco, endereco:W.endereco, numero:W.numero, complemento:W.complemento, cidade:W.cidade, estado:W.estado, cep:W.cep },
+    proprietario:{ id:W.proprietarioId||'', nome:W.nome, tel1:W.tel1, tel2:W.tel2, tel3:W.tel3, email1:W.email1, email2:W.email2 },
+    caracteristicas:{ terreno:W.terreno, construcao:W.construcao, condicao:W.condicao, morador:W.morador, tipoCasa:W.tipoCasa, outroTipo:W.outroTipo },
+    exclusividade:{ exclusiva: W.vendaExclusiva==='Sim', dataInicial:W.dataInicial, dataFinal:W.dataFinal },
+    condominio:{ valor: parseFloat(W.condominio)||0 },
+    comissao: W.comissao||'',
+    valores:{ solicitado: parseMoeda(W.valorSolicitado||''), minimo: parseMoeda(W.valorMinimo||''), negociado: parseMoeda(W.valorNegociado||'') },
+    garagem:{ vagas:W.vagas, coberta:W.coberta, disposicao:W.disposicao, portao:W.portao },
+    agua:{ tipo:W.agua, fonte:W.aguaFonte, situacao:W.aguaSituacao },
+    energia:{ situacao:W.energia }, internet:{ situacao:W.internet },
+    fotosPublicas: W.fotosPublicas, fotosAdicionais: W.fotosAdicionais, contrato: W.contrato, video: W.video
+  };
+  const idx = DB.imoveis.findIndex(x=>x.id===imovel.id);
+  if(idx>=0) DB.imoveis[idx]=imovel; else DB.imoveis.push(imovel);
+  save();
+  toast('✓ Imóvel salvo — ' + (imovel.codigo||'').toUpperCase());
+  W = null;
+  goTab('imoveis');
+}
+
+// ── Lista de imóveis ──
+let imoBuscaModo = 'nome';   // 'nome' | 'cep' | 'cidade'
+let imoBuscaQ = '';
+function renderListaImoveis(){
+  const total = DB.imoveis.length;
+  const ph = imoBuscaModo==='cep' ? '99999-999' : imoBuscaModo==='cidade' ? 'Fragmento da cidade…' : 'Fragmento do nome do proprietário…';
+  document.getElementById('mainContent').innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin:8px 0 12px">
+      <div class="stitle" style="margin:0">Imóveis cadastrados (${total})</div>
+      <button class="btn sm" style="width:auto" onclick="abrirTipos()">+ Novo</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:8px;overflow-x:auto;padding-bottom:2px">
+      ${fchip(imoBuscaModo==='nome','🔤 Nome',"imoBuscaModo='nome';renderListaImoveis()")}
+      ${fchip(imoBuscaModo==='cep','📮 CEP',"imoBuscaModo='cep';renderListaImoveis()")}
+      ${fchip(imoBuscaModo==='cidade','🏙️ Cidade',"imoBuscaModo='cidade';renderListaImoveis()")}
+    </div>
+    <div class="ag-search" style="margin-top:0;margin-bottom:12px">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <input style="border:none;outline:none;flex:1;background:none;font-size:13.5px;color:var(--text)" placeholder="${ph}" value="${esc(imoBuscaQ)}" ${imoBuscaModo==='cep'?'inputmode="numeric" maxlength="9"':''} oninput="imoBuscaQ=${imoBuscaModo==='cep'?'maskCEP(this)':'this.value'};preencherListaImoveis()">
+      ${imoBuscaQ?`<button style="background:none;color:var(--muted);font-size:15px" onclick="imoBuscaQ='';renderListaImoveis()">✕</button>`:''}
+    </div>
+    <div id="imoListContainer"></div>`;
+  preencherListaImoveis();
+}
+function preencherListaImoveis(){
+  let items = DB.imoveis.slice().sort((a,b)=>b.updatedAt-a.updatedAt);
+  const q = imoBuscaQ.trim().toLowerCase();
+  if(q){
+    if(imoBuscaModo==='cep'){ const qd=q.replace(/\D/g,''); items = items.filter(im=>(im.localizacao.cep||'').replace(/\D/g,'').includes(qd)); }
+    else if(imoBuscaModo==='cidade'){ items = items.filter(im=>(im.localizacao.cidade||'').toLowerCase().includes(q)); }
+    else { items = items.filter(im=>(im.proprietario?.nome||'').toLowerCase().includes(q)); }
+  }
+  const cont = document.getElementById('imoListContainer');
+  if(!cont) return;
+  cont.innerHTML = items.length===0
+    ? (DB.imoveis.length===0
+        ? `<div class="empty"><div class="big">🏡</div>Nenhum imóvel cadastrado ainda.<br><button class="btn" style="margin-top:16px;max-width:220px" onclick="abrirTipos()">+ Cadastrar imóvel</button></div>`
+        : `<div class="empty"><div class="big">🔍</div>Nenhum imóvel encontrado.</div>`)
+    : items.map(im=>`
+      <button class="ptile" onclick="abrirDetalhe('${im.id}')">
+        <div class="ptile-icon" id="thumb_${im.id}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 11.5L12 4l8 7.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div style="min-width:0"><div class="ptile-title">${esc(im.localizacao.endereco||'Sem endereço')}, ${esc(im.localizacao.numero||'')}</div>
+        <div class="ptile-sub"><span class="mono" style="color:var(--primary);font-weight:700">${(im.codigo||'').toUpperCase()}</span> · ${esc(im.localizacao.cidade||'')}${im.localizacao.estado?' / '+esc(im.localizacao.estado):''}${im.proprietario?.nome?' · '+esc(im.proprietario.nome):''}</div></div>
+        <div class="ptile-chev">›</div>
+      </button>`).join('');
+  items.forEach(im=>{
+    if(im.fotosPublicas.some(Boolean)){
+      const i = im.fotosPublicas.findIndex(Boolean);
+      idbGet(keyFotoPub(im.id,i)).then(data=>{
+        if(data){ const el=document.getElementById('thumb_'+im.id); if(el) el.innerHTML = `<img src="${data}">`; }
+      }).catch(()=>{});
+    }
+  });
+}
+
+function abrirDetalhe(id){
+  const im = DB.imoveis.find(x=>x.id===id); if(!im) return;
+  const condoVal = im.condominio?.valor||0;
+  document.getElementById('mainNav').classList.add('hidden');
+  document.getElementById('appHeader').innerHTML = `<button class="step-back" onclick="goTab('imoveis')">‹ Imóveis</button><h2>${esc(im.localizacao.endereco)}, ${esc(im.localizacao.numero)}</h2><div class="mono" style="color:var(--primary);font-weight:700;font-size:12px;margin-top:2px">${(im.codigo||'').toUpperCase()}</div>`;
+  const enderecoFull = `${im.localizacao.endereco||''}, ${im.localizacao.numero||''} ${im.localizacao.cidade||''} ${im.localizacao.estado||''} ${im.localizacao.cep||''}`.trim();
+  document.getElementById('mainContent').innerHTML = `
+    <div class="photo-grid" id="detFotos" style="margin-bottom:14px">
+      ${im.fotosPublicas.map((has,i)=>`<div class="photo-slot ${has?'filled':''}" id="dfoto_${i}">${has?'<span>carregando…</span>':'<span>—</span>'}</div>`).join('')}
+    </div>
+    <div class="review-block"><div class="review-block-title">Localização</div>
+      <div class="review-item"><span class="k">Registro</span><span class="v mono" style="color:var(--primary)">${(im.codigo||'—').toUpperCase()}</span></div>
+      <div class="review-item"><span class="k">Data de inclusão</span><span class="v">${im.dataInclusao?fmtDataBR(im.dataInclusao):'—'}</span></div>
+      <div class="review-item"><span class="k">Endereço</span><span class="v">${esc(im.localizacao.endereco)}, ${esc(im.localizacao.numero)}</span></div>
+      <div class="review-item"><span class="k">Cidade / UF</span><span class="v">${esc(im.localizacao.cidade)} / ${esc(im.localizacao.estado)}</span></div>
+      <div class="review-item"><span class="k">CEP</span><span class="v">${esc(im.localizacao.cep||'—')}</span></div></div>
+    <button class="btn gray" style="margin-bottom:14px" onclick="abrirRota('${esc(enderecoFull).replace(/'/g,"\\'")}')">🧭 Traçar rota (Waze / Google Maps)</button>
+    <div class="review-block"><div class="review-block-title">Proprietário</div>
+      <div class="review-item"><span class="k">Nome</span><span class="v">${esc(im.proprietario.nome||'—')}</span></div>
+      <div class="review-item"><span class="k">Telefone</span><span class="v">${esc(im.proprietario.tel1||'—')}</span></div>
+      <div class="review-item"><span class="k">E-mail</span><span class="v">${esc(im.proprietario.email1||'—')}</span></div></div>
+    <div class="review-block"><div class="review-block-title">Características</div>
+      <div class="review-item"><span class="k">Área</span><span class="v">${im.caracteristicas.terreno||0} m² / ${im.caracteristicas.construcao||0} m²</span></div>
+      <div class="review-item"><span class="k">Tipo</span><span class="v">${esc(im.caracteristicas.tipoCasa)}</span></div>
+      <div class="review-item"><span class="k">Venda exclusiva</span><span class="v">${im.exclusividade?.exclusiva?('Sim'+((im.exclusividade.dataInicial||im.exclusividade.dataFinal)?` (${fmtDataBR(im.exclusividade.dataInicial)} → ${fmtDataBR(im.exclusividade.dataFinal)})`:'')):'Não'}</span></div>
+      <div class="review-item"><span class="k">Comissão</span><span class="v">${im.comissao?im.comissao.replace('.',',')+'%':'—'}</span></div>
+      ${im.valores?.solicitado>0?`<div class="review-item"><span class="k">Valor solicitado</span><span class="v">${fmtBRL(im.valores.solicitado)}</span></div>`:''}
+      ${im.valores?.minimo>0?`<div class="review-item"><span class="k">Valor mínimo</span><span class="v">${fmtBRL(im.valores.minimo)}</span></div>`:''}
+      ${im.valores?.negociado>0?`<div class="review-item"><span class="k">Valor negociado</span><span class="v" style="font-weight:700">${fmtBRL(im.valores.negociado)}</span></div>
+      <div class="review-item"><span class="k">Comissão estimada</span><span class="v" style="color:#128A56;font-weight:700">${fmtBRL(im.valores.negociado*((parseFloat((im.comissao||'').replace(',','.'))||0)/100))}</span></div>`:''}
+      <div class="review-item"><span class="k">Condomínio</span><span class="v">${condoVal>0?fmtBRL(condoVal):'Sem condomínio'}</span></div>
+      <div class="review-item"><span class="k">Contrato PDF</span><span class="v">${im.contrato?esc(im.contrato.nome):'—'}</span></div></div>
+    <div class="btnrow" style="margin-top:16px">
+      <button class="btn gray" onclick="editarImovel('${im.id}')">✎ Editar</button>
+      <button class="btn" onclick="abrirCompartilhar('${im.id}')">↗ Compartilhar</button>
+    </div>
+    <button class="btn green" style="margin-top:10px" onclick="abrirExtratoImovel('${im.id}')">📊 Extrato do imóvel (lançamentos)</button>
+    <button class="btn danger" style="margin-top:10px" onclick="confirmarExcluir('${im.id}')">🗑 Excluir imóvel</button>
+    <div class="btnrow" style="margin-top:10px">
+      <button class="btn gray" onclick="goTab('imoveis')">‹ Voltar</button>
+      <button class="btn green" onclick="abrirTipos()">＋ Incluir imóvel</button>
+    </div>`;
+  im.fotosPublicas.forEach((has,i)=>{
+    if(!has) return;
+    idbGet(keyFotoPub(im.id,i)).then(data=>{
+      const el = document.getElementById('dfoto_'+i);
+      if(el && data) el.innerHTML = `<img src="${data}">`;
+    }).catch(()=>{});
+  });
+}
+function confirmarExcluir(id){
+  confirmar({icon:'🗑️', title:'Excluir este imóvel?', msg:'Todos os dados e fotos deste cadastro serão apagados. Esta ação não pode ser desfeita.',
+    noLabel:'Cancelar', yesLabel:'Excluir', yes:`doExcluir('${id}')`});
+}
+// ── Extrato do imóvel: todos os lançamentos por data, desde a data de inclusão ──
+function abrirExtratoImovel(id){
+  const im = DB.imoveis.find(x=>x.id===id); if(!im) return;
+  document.getElementById('mainNav').classList.add('hidden');
+  const ini = im.dataInclusao || isoDate(new Date(im.createdAt||Date.now()));
+  document.getElementById('appHeader').innerHTML = `<button class="step-back" onclick="abrirDetalhe('${im.id}')">‹ Imóvel</button><h2>Extrato do imóvel</h2><div class="mono" style="color:var(--primary);font-weight:700;font-size:12px;margin-top:2px">${(im.codigo||'').toUpperCase()} · desde ${fmtDataBR(ini)}</div>`;
+
+  // lançamentos deste imóvel a partir da data de inclusão
+  const recs = DB.financeiro.receitas.filter(e=>e.imovelId===id && (e.data||'')>=ini).map(e=>({...e,_t:'rec'}));
+  const desps = DB.financeiro.despesas.filter(e=>e.imovelId===id && (e.data||'')>=ini).map(e=>({...e,_t:'desp'}));
+  const todos = [...recs, ...desps].sort((a,b)=> (a.data||'').localeCompare(b.data||'') || (a.createdAt||0)-(b.createdAt||0));
+
+  const totRec = recs.reduce((s,e)=>s+(e.valor||0),0);
+  const totDesp = desps.reduce((s,e)=>s+(e.valor||0),0);
+  const saldoFinal = totRec - totDesp;
+
+  let h = `<div class="card" style="margin-bottom:12px">
+    <div style="display:flex;gap:8px;text-align:center">
+      <div style="flex:1"><div style="font-size:9.5px;font-weight:700;color:var(--muted);text-transform:uppercase">Receitas</div><b style="color:var(--success);font-size:15px">${fmtBRL(totRec)}</b></div>
+      <div style="flex:1;border-left:1px solid var(--border);border-right:1px solid var(--border)"><div style="font-size:9.5px;font-weight:700;color:var(--muted);text-transform:uppercase">Despesas</div><b style="color:var(--danger);font-size:15px">${fmtBRL(totDesp)}</b></div>
+      <div style="flex:1"><div style="font-size:9.5px;font-weight:700;color:var(--muted);text-transform:uppercase">Saldo</div><b style="color:${saldoFinal>=0?'var(--success)':'var(--danger)'};font-size:15px">${fmtBRL(saldoFinal)}</b></div>
+    </div></div>`;
+
+  if(!todos.length){
+    h += `<div class="empty"><div class="big">📊</div>Nenhum lançamento vinculado a este imóvel<br><span style="font-size:12px">Lançamentos de visitas na agenda entram aqui automaticamente. Em Receitas/Despesas do Financeiro você pode vincular um imóvel.</span></div>`;
+    document.getElementById('mainContent').innerHTML = h;
+    return;
+  }
+
+  // tabela por data com saldo acumulado
+  let acc = 0;
+  let linhas = '';
+  todos.forEach(e=>{
+    const rec = e._t==='rec';
+    acc += rec ? (e.valor||0) : -(e.valor||0);
+    linhas += `<div style="display:flex;align-items:center;padding:9px 10px;border-bottom:1px solid var(--border);gap:8px">
+      <div style="width:64px;flex-shrink:0;font-size:11px;font-weight:600" class="mono">${fmtDataBR(e.data)}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12.5px;font-weight:700">${esc(e.categoria||(rec?'Receita':'Despesa'))}</div>
+        ${e.descricao?`<div style="font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(e.descricao)}</div>`:''}
+      </div>
+      <div style="text-align:right;white-space:nowrap">
+        <div style="font-size:12.5px;font-weight:700;color:${rec?'var(--success)':'var(--danger)'}">${rec?'+':'-'} ${fmtBRL(e.valor)}</div>
+        <div style="font-size:10.5px;color:${acc>=0?'var(--success)':'var(--danger)'}">saldo ${fmtBRL(acc)}</div>
+      </div></div>`;
+  });
+  h += `<div class="card" style="padding:0;overflow:hidden">
+    <div style="display:flex;align-items:center;padding:9px 10px;background:var(--pblue);font-size:9.5px;font-weight:800;text-transform:uppercase;color:var(--dark)">
+      <div style="width:64px;flex-shrink:0">Data</div><div style="flex:1">Lançamento</div><div style="text-align:right">Valor / Saldo</div></div>
+    ${linhas}
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px;background:var(--pblue);font-size:12.5px;font-weight:800">
+      <span>Saldo final</span><b style="color:${saldoFinal>=0?'var(--success)':'var(--danger)'}">${fmtBRL(saldoFinal)}</b></div>
+  </div>
+  <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5">Lançamentos em ordem de data desde a inclusão do imóvel (${fmtDataBR(ini)}). Receitas em verde, despesas em vermelho; o saldo acumula lançamento a lançamento.</div>
+  <button class="btn gray" style="margin-top:12px" onclick="abrirDetalhe('${im.id}')">‹ Voltar ao imóvel</button>`;
+  document.getElementById('mainContent').innerHTML = h;
+}
+async function doExcluir(id){
+  for(let i=0;i<6;i++) idbDel(keyFotoPub(id,i)).catch(()=>{});
+  for(let i=0;i<3;i++) idbDel(keyFotoAdd(id,i)).catch(()=>{});
+  idbDel(keyVideo(id)).catch(()=>{});
+  idbDel(keyContrato(id)).catch(()=>{});
+  DB.imoveis = DB.imoveis.filter(x=>x.id!==id);
+  save();
+  toast('Imóvel excluído.');
+  goTab('imoveis');
+}
+function abrirCompartilhar(id){
+  const im = DB.imoveis.find(x=>x.id===id); if(!im) return;
+  const texto = montarTextoImovel(im);
+  showSheet('Compartilhar imóvel', `
+    <div style="font-size:13px;color:var(--muted);margin-bottom:10px">O texto abaixo é gerado a partir do cadastro. As fotos públicas precisam ser anexadas manualmente por enquanto.</div>
+    <textarea rows="7" readonly style="font-size:12.5px">${esc(texto)}</textarea>`,
+    `<button class="btn gray" onclick="closeSheet()">Fechar</button>
+     <button class="btn green" onclick="window.open('https://wa.me/?text=${encodeURIComponent(texto)}','_blank')">WhatsApp</button>
+     <button class="btn" onclick="window.open('mailto:?subject=${encodeURIComponent('Imóvel disponível: '+im.localizacao.endereco)}&body=${encodeURIComponent(texto)}','_blank')">E-mail</button>`);
+}
+function montarTextoImovel(im){
+  const c = im.caracteristicas, l = im.localizacao, g = im.garagem;
+  const cor = DB.corretor || {};
+  const exc = im.exclusividade || {};
+  let txt = `🏡 Casa à venda\n${l.endereco}, ${l.numero} — ${l.cidade}/${l.estado}\n\n`+
+    `Terreno: ${c.terreno||'-'} m² · Construção: ${c.construcao||'-'} m²\n`+
+    `Tipo: ${c.tipoCasa} · Condição: ${c.condicao}\n`+
+    `Garagem: ${g.vagas||0} vaga(s) ${g.coberta?'coberta':'descoberta'}\n`+
+    `Condomínio: ${(im.condominio?.valor||0)>0?fmtBRL(im.condominio.valor):'sem condomínio'}`;
+  if(exc.exclusiva) txt += `\nVenda exclusiva${(exc.dataInicial||exc.dataFinal)?` (${fmtDataBR(exc.dataInicial)} a ${fmtDataBR(exc.dataFinal)})`:''}`;
+  if(cor.nome || cor.creci) txt += `\n\n${cor.nome||''}${cor.creci?` — ${cor.creci}`:''}`;
+  return txt;
+}
+
+// ── Config ──
+// ══════════════ MÓDULO AGENDA ══════════════
+let agSelDate = null; // 'YYYY-MM-DD' selecionado na tira de dias
+function isoDate(d){ return d.toISOString().slice(0,10); }
+function renderAgenda(){
+  if(!agSelDate) agSelDate = isoDate(new Date());
+  const dias=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const hoje=new Date(); hoje.setHours(0,0,0,0);
+  let strip='';
+  for(let i=0;i<14;i++){
+    const d=new Date(hoje); d.setDate(hoje.getDate()+i);
+    const iso=isoDate(d);
+    const has = DB.agendamentos.some(a=>a.data===iso);
+    strip += `<div class="day ${iso===agSelDate?'active':''} ${has?'has':''}" onclick="agSelDate='${iso}';renderAgenda()">
+      <div class="dw">${dias[d.getDay()]}</div><div class="dn">${d.getDate()}</div><div class="dd"></div></div>`;
+  }
+  const doDia = DB.agendamentos.filter(a=>a.data===agSelDate).sort((a,b)=>(a.hora||'').localeCompare(b.hora||''));
+  document.getElementById('mainContent').innerHTML = `
+    <div class="ag-search">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <span>Buscar visita, cliente ou imóvel</span>
+      <div class="go"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M7 12h10M10 18h4" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></div>
+    </div>
+    <div class="weekstrip">${strip}</div>
+    <div class="pills">
+      <div class="pill" style="background:var(--primary);border-color:var(--primary);color:#fff" onclick="novaVisita()">＋ Visita</div>
+      <div class="pill" onclick="toast('Avaliação entra em fase futura.')">Avaliação</div>
+      <div class="pill" onclick="toast('Sessão de fotos entra em fase futura.')">Fotos</div>
+      <div class="pill" onclick="toast('Assinatura entra em fase futura.')">Assinatura</div>
+    </div>
+    <div class="quick">
+      <div class="q" onclick="novaVisita()"><div class="c"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div><div class="l">Nova</div></div>
+      <div class="q" onclick="agSelDate='${isoDate(hoje)}';renderAgenda()"><div class="c"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="4" y="5" width="16" height="16" rx="3" stroke="currentColor" stroke-width="1.7"/><path d="M4 9h16M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></div><div class="l">Hoje</div></div>
+      <div class="q" onclick="toast('Visão semanal em fase futura.')"><div class="c"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="10" r="6.5" stroke="currentColor" stroke-width="1.7"/><path d="M12 6.5V10l2.2 1.3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></div><div class="l">Semana</div></div>
+      <div class="q" onclick="goTab('imoveis')"><div class="c"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 21s7-5.4 7-11a7 7 0 1 0-14 0c0 5.6 7 11 7 11Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.4" stroke="currentColor" stroke-width="1.6"/></svg></div><div class="l">Mapa</div></div>
+    </div>
+    <div class="srow"><span class="t">${fmtDataBR(agSelDate)}</span><span class="a">${doDia.length} visita(s)</span></div>
+    ${doDia.length===0 ? `<div class="empty"><div class="big">🗓️</div>Nada agendado para este dia.<br><button class="btn" style="margin-top:16px;max-width:220px" onclick="novaVisita()">＋ Nova visita</button></div>` :
+      doDia.map(a=>agCardHTML(a)).join('')}`;
+  doDia.forEach(a=>{
+    const im = DB.imoveis.find(x=>x.id===a.imovelId);
+    if(im && im.fotosPublicas?.some(Boolean)){
+      const i = im.fotosPublicas.findIndex(Boolean);
+      idbGet(keyFotoPub(im.id,i)).then(d=>{ if(d){ const el=document.getElementById('agthumb_'+a.id); if(el) el.innerHTML=`<img src="${d}" style="width:100%;height:100%;object-fit:cover">`; } }).catch(()=>{});
+    }
+  });
+}
+function agCardHTML(a){
+  const im = DB.imoveis.find(x=>x.id===a.imovelId);
+  const endereco = im ? `${im.localizacao.endereco||''}, ${im.localizacao.numero||''} — ${im.localizacao.cidade||''}/${im.localizacao.estado||''}` : 'Imóvel removido';
+  const enderecoFull = im ? `${im.localizacao.endereco||''}, ${im.localizacao.numero||''} ${im.localizacao.cidade||''} ${im.localizacao.estado||''} ${im.localizacao.cep||''}`.trim() : '';
+  const totalDesp = ['transporte','refeicao','gasolina','outros'].reduce((s,k)=>s+parseMoeda(a.despesas?.[k]||''),0);
+  const tel = (a.compradorTel1||'').replace(/\D/g,'');
+  return `<div class="appt">
+    <div class="tt">${a.hora||'--:--'}</div>
+    <div style="display:flex;gap:12px">
+      <div class="thumb" id="agthumb_${a.id}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 11.5L12 4l8 7.5M6 10.5V19h12v-8.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div style="flex:1;min-width:0">
+        <span class="kind"><svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M4 11.5L12 4l8 7.5M6 10.5V19h12v-8.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Visita${im?' · '+(im.codigo||'').toUpperCase():''}</span>
+        <div style="font-weight:800;font-size:14.5px;margin-top:6px">${esc(a.compradorNome||'Sem nome')}</div>
+        <div style="font-size:11.5px;color:var(--muted);margin-top:3px">📍 ${esc(endereco)}</div>
+        ${totalDesp>0?`<div style="font-size:11.5px;color:var(--muted);margin-top:2px">💸 Despesas: ${fmtBRL(totalDesp)}</div>`:''}
+      </div>
+    </div>
+    <div class="acts">
+      <div class="act wa" onclick="window.open('https://wa.me/55${tel}','_blank')">💬 WhatsApp</div>
+      <div class="act gps" onclick="abrirRota('${esc(enderecoFull).replace(/'/g,"\\'")}')">🧭 Rota</div>
+      <div class="act" style="flex:none;width:44px" onclick="editarAgendamento('${a.id}')">✏️</div>
+      <div class="act" style="flex:none;width:44px" onclick="excluirAgendamento('${a.id}')">🗑</div>
+    </div>
+  </div>`;
+}
+function excluirAgendamento(id){
+  confirmar({icon:'🗑️', title:'Excluir compromisso?', msg:'A visita será removida da agenda. As despesas já lançadas no financeiro serão mantidas.',
+    noLabel:'Cancelar', yesLabel:'Excluir', yes:`doExcluirAgendamento('${id}')`});
+}
+function doExcluirAgendamento(id){
+  DB.agendamentos = DB.agendamentos.filter(a=>a.id!==id);
+  save(); toast('Compromisso excluído.'); renderAgenda();
+}
+
+// ── Formulário de Visita ──
+let V = null;
+function novaVisita(){
+  if(DB.imoveis.length===0){ toast('Cadastre um imóvel antes de agendar uma visita.'); return; }
+  V = { id:uid(), tipo:'visita', imovelId:'', data: agSelDate||isoDate(new Date()), hora:'09:00',
+        compradorNome:'', compradorTel1:'', compradorTel2:'',
+        despesas:{ transporte:'', refeicao:'', gasolina:'', outros:'' }, createdAt:Date.now() };
+  V._novo = true;
+  renderVisitaForm();
+}
+function editarAgendamento(id){
+  const a = DB.agendamentos.find(x=>x.id===id);
+  if(!a){ toast('Compromisso não encontrado.'); return; }
+  V = JSON.parse(JSON.stringify(a));
+  V.despesas = Object.assign({ transporte:'', refeicao:'', gasolina:'', outros:'' }, V.despesas||{});
+  V._novo = false;
+  renderVisitaForm();
+}
+function renderVisitaForm(){
+  document.getElementById('mainNav').classList.add('hidden');
+  document.getElementById('appHeader').innerHTML = `<button class="step-back" onclick="goTab('agenda')">‹ Agenda</button><h2>${V._novo?'Nova visita':'Editar visita'}</h2>`;
+  const im = DB.imoveis.find(x=>x.id===V.imovelId);
+  document.getElementById('mainContent').innerHTML = `
+    <div class="section-title">Imóvel da visita</div>
+    <div class="field"><label>Escolher imóvel</label>
+      <select onchange="V.imovelId=this.value;renderVisitaForm()">
+        <option value="">— selecione —</option>
+        ${DB.imoveis.map(x=>`<option value="${x.id}" ${V.imovelId===x.id?'selected':''}>${(x.codigo||'').toUpperCase()} · ${esc(x.localizacao.endereco||'')}, ${esc(x.localizacao.numero||'')}</option>`).join('')}
+      </select></div>
+    ${im?`<div class="field"><label>Registro do imóvel</label><input value="${(im.codigo||'').toUpperCase()}" disabled style="font-family:'IBM Plex Mono',monospace;letter-spacing:1px;background:var(--pblue);color:var(--dark);font-weight:700"></div>
+    <div class="row2">
+      <div class="field"><label>Tamanho do terreno</label><input value="${esc(im.caracteristicas.terreno||'')} m²" disabled></div>
+      <div class="field"><label>Área construída</label><input value="${esc(im.caracteristicas.construcao||'')} m²" disabled></div>
+    </div>`:''}
+    <div class="row2">
+      <div class="field"><label>Data confirmada</label><input type="date" value="${esc(V.data)}" oninput="V.data=this.value"></div>
+      <div class="field"><label>Hora</label><input type="time" value="${esc(V.hora)}" oninput="V.hora=this.value"></div>
+    </div>
+
+    <div class="section-title" style="margin-top:8px">Dados do comprador</div>
+    <div class="field"><label>Nome do comprador</label><input value="${esc(V.compradorNome)}" oninput="V.compradorNome=this.value"></div>
+    <div class="field"><label>Telefone 1</label><input inputmode="numeric" placeholder="(99)99999.9999" value="${esc(V.compradorTel1)}" oninput="V.compradorTel1=maskTelefone(this)"></div>
+    <div class="field"><label>Telefone 2</label><input inputmode="numeric" placeholder="(99)99999.9999" value="${esc(V.compradorTel2)}" oninput="V.compradorTel2=maskTelefone(this)"></div>
+
+    <div class="section-title" style="margin-top:8px">Despesas da visita</div>
+    <div class="public-note">Os valores lançados aqui vão para o <b>Financeiro › Despesas</b>, com a data confirmada da visita.</div>
+    <div class="row2">
+      <div class="field"><label>Transporte</label><input inputmode="numeric" placeholder="99.999,99" value="${esc(V.despesas.transporte)}" oninput="V.despesas.transporte=maskMoeda(this)"></div>
+      <div class="field"><label>Refeição</label><input inputmode="numeric" placeholder="99.999,99" value="${esc(V.despesas.refeicao)}" oninput="V.despesas.refeicao=maskMoeda(this)"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Gasolina</label><input inputmode="numeric" placeholder="99.999,99" value="${esc(V.despesas.gasolina)}" oninput="V.despesas.gasolina=maskMoeda(this)"></div>
+      <div class="field"><label>Outros</label><input inputmode="numeric" placeholder="99.999,99" value="${esc(V.despesas.outros)}" oninput="V.despesas.outros=maskMoeda(this)"></div>
+    </div>
+    <div style="height:80px"></div>
+    <div class="wizfooter"><div class="btnrow">
+      <button class="btn gray" onclick="goTab('agenda')">Voltar</button>
+      <button class="btn green" onclick="salvarVisita()">${V._novo?'Salvar visita':'Regravar visita'}</button>
+    </div></div>`;
+}
+function salvarVisita(){
+  if(!V.imovelId){ toast('Escolha o imóvel da visita.'); return; }
+  if(!V.compradorNome.trim()){ toast('Informe o nome do comprador.'); return; }
+  V.updatedAt = Date.now();
+  const novo = V._novo;
+  const dados = JSON.parse(JSON.stringify(V));
+  delete dados._novo;
+
+  // grava/atualiza o compromisso
+  const idx = DB.agendamentos.findIndex(a=>a.id===V.id);
+  if(idx>=0) DB.agendamentos[idx] = dados; else DB.agendamentos.push(dados);
+
+  // re-sincroniza as despesas ligadas a este compromisso (remove as antigas e relança)
+  DB.financeiro.despesas = DB.financeiro.despesas.filter(d=>d.agendamentoId!==V.id);
+  const im = DB.imoveis.find(x=>x.id===V.imovelId);
+  const reg = (im?.codigo||'').toUpperCase();  // ex.: CS00001
+  const cats = { transporte:'Transporte', refeicao:'Refeição', gasolina:'Gasolina', outros:'Outros' };
+  Object.keys(cats).forEach(k=>{
+    const valor = parseMoeda(V.despesas[k]||'');
+    if(valor>0){
+      DB.financeiro.despesas.push({
+        id: uid(), categoria: cats[k], valor, data: V.data,
+        origem:'agenda', agendamentoId: V.id, imovelId: V.imovelId, imovelCodigo: reg,
+        descricao: `Visita ${reg} — ${V.compradorNome}`.trim(), createdAt: Date.now()
+      });
+    }
+  });
+  save();
+  toast(novo?'Visita agendada e despesas lançadas.':'Visita regravada e despesas atualizadas.');
+  V = null;
+  goTab('agenda');
+}
+
+// ══════════════ FINANCEIRO (aba) — apresentação no padrão VetFlowCare ══════════════
+const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const DESP_CATS = ['Transporte','Refeição','Gasolina','Outros'];
+let finExpM = 0;          // deslocamento de mês (0 = atual, -1 = anterior…)
+let finExpView = 'mes';   // 'mes' | 'all'
+let finExpCat = 'all';    // filtro de categoria
+function iconeCat(c){ return c==='Transporte'?'🚗':c==='Refeição'?'🍽️':c==='Gasolina'?'⛽':'📦'; }
+function fmtMoedaSemRS(v){ return (parseFloat(v)||0).toFixed(2).replace('.',','); }
+
+// barras por categoria (reaproveitado das duas visões) — padrão VetFlowCare
+function cartaoCategorias(byCat, maxCat){
+  const chaves = Object.keys(byCat);
+  if(!chaves.length) return '';
+  return `<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px">
+    ${Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([c,v])=>`
+      <div style="margin-top:6px">
+        <div style="display:flex;justify-content:space-between;font-size:11px"><span>${esc(c)}</span><b>${fmtBRL(v)}</b></div>
+        <div style="height:7px;background:var(--bg);border-radius:4px;margin-top:3px">
+          <div style="height:100%;width:${Math.round(v/maxCat*100)}%;background:var(--danger);border-radius:4px;opacity:.75"></div></div>
+      </div>`).join('')}</div>`;
+}
+function fchip(on, label, onclick){
+  return `<button onclick="${onclick}" style="padding:9px 14px;border-radius:100px;border:1.5px solid ${on?'var(--primary)':'var(--border)'};background:${on?'var(--primary)':'var(--surface)'};color:${on?'#fff':'var(--muted)'};font-size:12.5px;font-weight:700;white-space:nowrap;flex-shrink:0">${label}</button>`;
+}
+function renderFinanceiro(){
+  document.getElementById('mainNav').classList.remove('hidden');
+  document.getElementById('appHeader').innerHTML = `<div class="eyebrow">Controle</div>
+    <div style="display:flex;align-items:center;gap:8px"><h2 style="flex:1">💰 Financeiro</h2>
+      <button class="btn sm green" style="width:auto" onclick="novaReceitaManual()">Receitas +</button>
+      <button class="btn sm danger" style="width:auto" onclick="novaDespesaManual()">Despesa +</button></div>`;
+
+  // Toggle de visão: Mês / Todas / Fluxo diário
+  let htop = `<div style="display:flex;gap:8px;margin-bottom:10px;overflow-x:auto;padding-bottom:2px">
+    ${fchip(finExpView==='mes','📅 Por mês',"finExpView='mes';renderFinanceiro()")}
+    ${fchip(finExpView==='all','🗂️ Todas',"finExpView='all';renderFinanceiro()")}
+    ${fchip(finExpView==='fluxo','📊 Fluxo diário',"finExpView='fluxo';renderFinanceiro()")}
+  </div>`;
+
+  if(finExpView==='fluxo'){ document.getElementById('mainContent').innerHTML = htop + fluxoDiarioHTML(); return; }
+
+  const now = new Date();
+  const md = new Date(now.getFullYear(), now.getMonth()+finExpM, 1);
+  const ym = md.toISOString().slice(0,7);
+  const todas = finExpView === 'all';
+
+  // ── despesas e receitas do período ──
+  const despBase = todas ? DB.financeiro.despesas.slice() : DB.financeiro.despesas.filter(e=>(e.data||'').startsWith(ym));
+  const recBase  = todas ? DB.financeiro.receitas.slice() : DB.financeiro.receitas.filter(e=>(e.data||'').startsWith(ym));
+  const totDesp = despBase.reduce((s,e)=>s+(e.valor||0),0);
+  const totRec  = recBase.reduce((s,e)=>s+(e.valor||0),0);
+  const saldo   = totRec - totDesp;
+
+  const byCat = {};
+  despBase.forEach(e=>{ byCat[e.categoria||'Outros'] = (byCat[e.categoria||'Outros']||0) + (e.valor||0); });
+  const maxCat = Math.max(1, ...Object.values(byCat));
+
+  let h = htop;
+
+  if(!todas){
+    h += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <button class="btn sm gray" style="width:auto" onclick="finExpM--;renderFinanceiro()">‹</button>
+      <b style="flex:1;text-align:center;font-size:15px">${MESES[md.getMonth()]} ${md.getFullYear()}</b>
+      <button class="btn sm gray" style="width:auto" ${finExpM>=0?'disabled style="opacity:.4;width:auto"':''} onclick="finExpM++;renderFinanceiro()">›</button></div>`;
+  }
+  // Resumo Receitas / Despesas / Saldo
+  h += `<div class="card" style="margin-bottom:12px">
+    <div style="display:flex;gap:8px;text-align:center">
+      <div style="flex:1"><div style="font-size:9.5px;font-weight:700;color:var(--muted);text-transform:uppercase">Receitas</div><b style="color:var(--success);font-size:15px">${fmtBRL(totRec)}</b></div>
+      <div style="flex:1;border-left:1px solid var(--border);border-right:1px solid var(--border)"><div style="font-size:9.5px;font-weight:700;color:var(--muted);text-transform:uppercase">Despesas</div><b style="color:var(--danger);font-size:15px">${fmtBRL(totDesp)}</b></div>
+      <div style="flex:1"><div style="font-size:9.5px;font-weight:700;color:var(--muted);text-transform:uppercase">Saldo</div><b style="color:${saldo>=0?'var(--success)':'var(--danger)'};font-size:15px">${fmtBRL(saldo)}</b></div>
+    </div>
+    ${Object.keys(byCat).length?cartaoCategorias(byCat, maxCat):''}
+  </div>`;
+
+  // Lista combinada (receitas verdes + despesas vermelhas)
+  let lista = [
+    ...recBase.map(e=>({...e, _tipo:'rec'})),
+    ...despBase.map(e=>({...e, _tipo:'desp'}))
+  ].sort((a,b)=>(b.data||'').localeCompare(a.data||''));
+
+  if(!lista.length){
+    h += `<div class="empty"><div class="big">🧾</div>Nenhum lançamento ${todas?'cadastrado':'neste mês'}<br><span style="font-size:12px">Use "Receitas +" ou "Despesa +" acima</span></div>`;
+    document.getElementById('mainContent').innerHTML = h; return;
+  }
+  let mesAtual='';
+  lista.forEach(e=>{
+    if(todas){
+      const emes=(e.data||'').slice(0,7);
+      if(emes!==mesAtual){ mesAtual=emes; const [yy,mm]=emes.split('-');
+        h += `<div style="margin:14px 2px 6px"><b style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em">${mm?MESES[parseInt(mm)-1]+' '+yy:'Sem data'}</b></div>`; }
+    }
+    const rec = e._tipo==='rec';
+    h += `<div class="card" style="display:flex;align-items:center;gap:10px">
+      <div class="ptile-icon" style="width:38px;height:38px;flex-shrink:0;background:${rec?'var(--pgreen)':'var(--pblue)'}">${rec?'💚':iconeCat(e.categoria)}</div>
+      <div style="flex:1;min-width:0">
+        <b style="font-size:14px">${esc(e.categoria||(rec?'Receita':'Outros'))}</b>
+        ${e.descricao?`<div style="font-size:11px;color:var(--muted);margin-top:2px;white-space:pre-wrap">📝 ${esc(e.descricao)}</div>`:''}
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${fmtDataBR(e.data)}${e.origem==='agenda'?' · agenda':''}</div></div>
+      <b style="color:${rec?'var(--success)':'var(--danger)'};white-space:nowrap">${rec?'+':'-'} ${fmtBRL(e.valor)}</b>
+      <button style="background:none;font-size:14px" onclick="${rec?`editarReceita('${e.id}')`:`editarDespesa('${e.id}')`}">✏️</button>
+      <button style="background:none;color:var(--muted)" onclick="${rec?`excluirReceita('${e.id}')`:`excluirDespesa('${e.id}')`}">🗑</button></div>`;
+  });
+  document.getElementById('mainContent').innerHTML = h;
+}
+
+// ── Relatório de fluxo diário (Receitas / Despesas / Saldo acumulado) ──
+let fluxoIni = '', fluxoFim = '';
+function fluxoDiarioHTML(){
+  const todas = [...DB.financeiro.receitas, ...DB.financeiro.despesas].map(e=>e.data).filter(Boolean).sort();
+  const hojeIso = isoDate(new Date());
+  if(!fluxoIni) fluxoIni = todas.length ? todas[0].slice(0,8)+'01' : hojeIso.slice(0,8)+'01';
+  if(!fluxoFim) fluxoFim = hojeIso;
+  // saldo anterior (antes da data inicial)
+  const saldoAnt = DB.financeiro.receitas.filter(e=>(e.data||'')<fluxoIni).reduce((s,e)=>s+(e.valor||0),0)
+                 - DB.financeiro.despesas.filter(e=>(e.data||'')<fluxoIni).reduce((s,e)=>s+(e.valor||0),0);
+
+  let h = `<div class="card" style="margin-bottom:10px">
+    <div class="row2">
+      <div class="field" style="margin:0"><label>Data inicial</label><input type="date" value="${fluxoIni}" max="${fluxoFim}" onchange="fluxoIni=this.value;renderFinanceiro()"></div>
+      <div class="field" style="margin:0"><label>Data final</label><input type="date" value="${fluxoFim}" min="${fluxoIni}" onchange="fluxoFim=this.value;renderFinanceiro()"></div>
+    </div>
+  </div>`;
+
+  // itera dia a dia
+  const di = new Date(fluxoIni+'T00:00:00'), df = new Date(fluxoFim+'T00:00:00');
+  if(isNaN(di)||isNaN(df)||di>df){ return h + `<div class="empty"><div class="big">📊</div>Selecione um período válido.</div>`; }
+
+  let acc = saldoAnt;
+  let totR=0, totD=0;
+  let linhas = '';
+  for(let d=new Date(di); d<=df; d.setDate(d.getDate()+1)){
+    const iso = isoDate(d);
+    const r = DB.financeiro.receitas.filter(e=>e.data===iso).reduce((s,e)=>s+(e.valor||0),0);
+    const p = DB.financeiro.despesas.filter(e=>e.data===iso).reduce((s,e)=>s+(e.valor||0),0);
+    acc += r - p; totR+=r; totD+=p;
+    const temMov = (r>0||p>0);
+    linhas += `<div style="display:flex;align-items:center;padding:9px 10px;border-bottom:1px solid var(--border);${temMov?'':'opacity:.5'}">
+      <div style="width:74px;flex-shrink:0;font-size:11.5px;font-weight:600" class="mono">${fmtDataBR(iso)}</div>
+      <div style="flex:1;text-align:right;color:var(--success);font-size:12px;font-weight:700">${r>0?fmtBRL(r):'—'}</div>
+      <div style="flex:1;text-align:right;color:var(--danger);font-size:12px;font-weight:700">${p>0?fmtBRL(p):'—'}</div>
+      <div style="flex:1;text-align:right;color:${acc>=0?'var(--success)':'var(--danger)'};font-size:12px;font-weight:800">${fmtBRL(acc)}</div>
+    </div>`;
+  }
+  const saldoFinal = acc;
+  h += `<div class="card" style="padding:0;overflow:hidden">
+    <div style="display:flex;align-items:center;padding:9px 10px;background:var(--pblue);font-size:9.5px;font-weight:800;text-transform:uppercase;color:var(--dark)">
+      <div style="width:74px;flex-shrink:0">Data</div>
+      <div style="flex:1;text-align:right">Receitas</div>
+      <div style="flex:1;text-align:right">Despesas</div>
+      <div style="flex:1;text-align:right">Saldo</div>
+    </div>
+    <div style="display:flex;align-items:center;padding:8px 10px;border-bottom:1px solid var(--border);background:var(--bg);font-size:11px">
+      <div style="width:74px;flex-shrink:0;color:var(--muted);font-weight:600">Saldo ant.</div>
+      <div style="flex:1"></div><div style="flex:1"></div>
+      <div style="flex:1;text-align:right;font-weight:800;color:${saldoAnt>=0?'var(--success)':'var(--danger)'}">${fmtBRL(saldoAnt)}</div>
+    </div>
+    ${linhas}
+    <div style="display:flex;align-items:center;padding:10px;background:var(--pblue);font-size:12px;font-weight:800">
+      <div style="width:74px;flex-shrink:0">TOTAL</div>
+      <div style="flex:1;text-align:right;color:var(--success)">${fmtBRL(totR)}</div>
+      <div style="flex:1;text-align:right;color:var(--danger)">${fmtBRL(totD)}</div>
+      <div style="flex:1;text-align:right;color:${saldoFinal>=0?'var(--success)':'var(--danger)'}">${fmtBRL(saldoFinal)}</div>
+    </div>
+  </div>
+  <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5">O saldo é acumulado: cada dia soma as receitas e subtrai as despesas do saldo do dia anterior, até a data final. Verde = positivo, vermelho = negativo.</div>`;
+  return h;
+}
+function selectImovelHTML(id, sel){
+  return `<label>Imóvel (opcional)</label>
+    <select id="${id}"><option value="">— nenhum —</option>
+      ${DB.imoveis.map(im=>`<option value="${im.id}" ${sel===im.id?'selected':''}>${(im.codigo||'').toUpperCase()} · ${esc(im.localizacao.endereco||'')}, ${esc(im.localizacao.numero||'')}</option>`).join('')}
+    </select>`;
+}
+function despForm(ex){
+  const catConhecida = !ex || DESP_CATS.includes(ex.categoria);
+  return `
+    <label>Categoria</label>
+    <select id="ndCat" onchange="var n=(this.value==='__nova__');document.getElementById('ndCatNova').style.display=n?'block':'none';if(n)document.getElementById('ndCatNova').focus()">
+      <option value="">— selecione —</option>
+      ${DESP_CATS.map(c=>`<option ${ex?.categoria===c?'selected':''}>${c}</option>`).join('')}
+      <option value="__nova__" ${!catConhecida?'selected':''}>➕ Outra (digitar)…</option>
+    </select>
+    <input id="ndCatNova" placeholder="Digite uma nova categoria de despesa" value="${!catConhecida?esc(ex.categoria):''}" style="display:${!catConhecida?'block':'none'};margin-top:8px">
+    <label>Valor</label><input id="ndVal" inputmode="numeric" placeholder="99.999,99" value="${ex?fmtMoedaSemRS(ex.valor):''}" oninput="maskMoeda(this)">
+    <label>Data</label><input id="ndData" type="date" value="${ex?esc(ex.data):isoDate(new Date())}">
+    ${selectImovelHTML('ndImovel', ex?.imovelId)}
+    <label>Descrição</label><input id="ndDesc" placeholder="Opcional" value="${esc(ex?.descricao||'')}">`;
+}
+function novaDespesaManual(){
+  showSheet('🧾 Nova despesa', despForm(null),
+    `<button class="btn gray" onclick="closeSheet()">Cancelar</button><button class="btn" onclick="salvarDespesaManual('')">Salvar</button>`);
+}
+function editarDespesa(id){
+  const ex = DB.financeiro.despesas.find(d=>d.id===id); if(!ex) return;
+  showSheet('✏️ Editar despesa', despForm(ex),
+    `<button class="btn gray" onclick="closeSheet()">Cancelar</button><button class="btn" onclick="salvarDespesaManual('${id}')">Salvar</button>`);
+}
+function salvarDespesaManual(editId){
+  const valor = parseMoeda(document.getElementById('ndVal').value);
+  if(valor<=0){ toast('Informe um valor.'); return; }
+  let categoria = document.getElementById('ndCat').value;
+  if(categoria==='__nova__'){
+    categoria = (document.getElementById('ndCatNova').value||'').trim();
+    if(!categoria){ toast('Digite a nova categoria.'); return; }
+  }
+  if(!categoria){ toast('Selecione ou digite uma categoria.'); return; }
+  const imovelId = document.getElementById('ndImovel')?.value || '';
+  const imovelCodigo = imovelId ? (DB.imoveis.find(im=>im.id===imovelId)?.codigo||'').toUpperCase() : '';
+  const dados = { categoria, valor,
+    data:document.getElementById('ndData').value||isoDate(new Date()),
+    imovelId, imovelCodigo,
+    descricao:document.getElementById('ndDesc').value||'' };
+  if(editId){
+    const ex = DB.financeiro.despesas.find(d=>d.id===editId);
+    if(ex) Object.assign(ex, dados);
+  } else {
+    DB.financeiro.despesas.push({ id:uid(), origem:'manual', createdAt:Date.now(), ...dados });
+  }
+  save(); closeSheet(); toast(editId?'✏️ Despesa atualizada!':'🧾 Despesa registrada!'); renderFinanceiro();
+}
+function excluirDespesa(id){
+  const e = DB.financeiro.despesas.find(d=>d.id===id);
+  confirmar({icon:'🧾', title:'Excluir despesa?', msg:`Deseja excluir a despesa de <b>${fmtBRL(e?.valor)}</b>${e?.categoria?` (${esc(e.categoria)})`:''}?`,
+    noLabel:'Cancelar', yesLabel:'Excluir', yes:`doExcluirDespesa('${id}')`});
+}
+function doExcluirDespesa(id){
+  DB.financeiro.despesas = DB.financeiro.despesas.filter(d=>d.id!==id);
+  save(); toast('🗑️ Despesa excluída'); renderFinanceiro();
+}
+
+// ── Receitas (categoria sempre digitável) ──
+function recForm(ex){
+  return `
+    <label>Categoria da receita</label>
+    <input id="nrCat" placeholder="Digite a categoria (ex.: Comissão, Aluguel…)" value="${esc(ex?.categoria||'')}">
+    <label>Valor</label><input id="nrVal" inputmode="numeric" placeholder="99.999,99" value="${ex?fmtMoedaSemRS(ex.valor):''}" oninput="maskMoeda(this)">
+    <label>Data</label><input id="nrData" type="date" value="${ex?esc(ex.data):isoDate(new Date())}">
+    ${selectImovelHTML('nrImovel', ex?.imovelId)}
+    <label>Descrição</label><input id="nrDesc" placeholder="Opcional" value="${esc(ex?.descricao||'')}">`;
+}
+function novaReceitaManual(){
+  showSheet('💚 Nova receita', recForm(null),
+    `<button class="btn gray" onclick="closeSheet()">Cancelar</button><button class="btn green" onclick="salvarReceitaManual('')">Salvar</button>`);
+}
+function editarReceita(id){
+  const ex = DB.financeiro.receitas.find(d=>d.id===id); if(!ex) return;
+  showSheet('✏️ Editar receita', recForm(ex),
+    `<button class="btn gray" onclick="closeSheet()">Cancelar</button><button class="btn green" onclick="salvarReceitaManual('${id}')">Salvar</button>`);
+}
+function salvarReceitaManual(editId){
+  const valor = parseMoeda(document.getElementById('nrVal').value);
+  if(valor<=0){ toast('Informe um valor.'); return; }
+  const categoria = (document.getElementById('nrCat').value||'').trim();
+  if(!categoria){ toast('Digite a categoria da receita.'); return; }
+  const imovelId = document.getElementById('nrImovel')?.value || '';
+  const imovelCodigo = imovelId ? (DB.imoveis.find(im=>im.id===imovelId)?.codigo||'').toUpperCase() : '';
+  const dados = { categoria, valor,
+    data:document.getElementById('nrData').value||isoDate(new Date()),
+    imovelId, imovelCodigo,
+    descricao:document.getElementById('nrDesc').value||'' };
+  if(editId){ const ex=DB.financeiro.receitas.find(d=>d.id===editId); if(ex) Object.assign(ex,dados); }
+  else { DB.financeiro.receitas.push({ id:uid(), origem:'manual', createdAt:Date.now(), ...dados }); }
+  save(); closeSheet(); toast(editId?'✏️ Receita atualizada!':'💚 Receita registrada!'); renderFinanceiro();
+}
+function excluirReceita(id){
+  const e = DB.financeiro.receitas.find(d=>d.id===id);
+  confirmar({icon:'💚', title:'Excluir receita?', msg:`Deseja excluir a receita de <b>${fmtBRL(e?.valor)}</b>${e?.categoria?` (${esc(e.categoria)})`:''}?`,
+    noLabel:'Cancelar', yesLabel:'Excluir', yes:`doExcluirReceita('${id}')`});
+}
+function doExcluirReceita(id){
+  DB.financeiro.receitas = DB.financeiro.receitas.filter(d=>d.id!==id);
+  save(); toast('🗑️ Receita excluída'); renderFinanceiro();
+}
+
+function renderConfig(){
+  const c = DB.corretor || {nome:'',creci:'',validadeCreci:''};
+  const resumo = c.nome ? esc(c.nome) + (c.creci?` · ${esc(c.creci)}`:'') : 'Foto, CRECI, carteira e validade';
+  document.getElementById('mainContent').innerHTML = `
+    <div class="stitle" style="margin-top:6px">Corretor</div>
+    <button class="ptile" onclick="renderDadosCorretor()">
+      <div class="ptile-icon" id="cfgCorThumb">👤</div>
+      <div style="min-width:0"><div class="ptile-title">Dados do corretor</div><div class="ptile-sub" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${resumo}</div></div>
+      <div class="ptile-chev">›</div>
+    </button>
+    <div class="stitle">Segurança</div>
+    <div class="card" style="font-size:12.5px;color:var(--muted);line-height:1.6">
+      🔒 O acesso por senha está <b>desativado</b> nesta versão e será adicionado numa fase futura. Por enquanto os dados ficam salvos apenas neste aparelho, sem senha.
+    </div>
+    <div class="stitle">Dados</div>
+    <button class="ptile" onclick="confirmarReset()"><div class="ptile-icon">🗑️</div><div><div class="ptile-title">Apagar todos os dados</div><div class="ptile-sub">Remove imóveis e fotos deste aparelho</div></div></button>
+    <div class="stitle">Sobre</div>
+    <div class="card" style="font-size:12.5px;color:var(--muted);line-height:1.6">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <b style="color:var(--text)">Corretor PWA</b>
+        <span class="mono" style="color:var(--primary);font-weight:700;background:var(--pblue);padding:3px 10px;border-radius:100px">v${APP_VERSION}</span>
+      </div>
+      Dados salvos localmente neste aparelho.<br>
+      Módulo ativo: <b>Vender › Casa</b>. Demais módulos e o login por senha entram em fases futuras.
+    </div>`;
+  if(c.temFoto) idbGet(keyCorretorFoto()).then(d=>{ if(d){ const el=document.getElementById('cfgCorThumb'); if(el){ el.style.overflow='hidden'; el.innerHTML=`<img src="${d}" style="width:100%;height:100%;object-fit:cover">`; } } }).catch(()=>{});
+}
+// ── Aba: Dados do corretor (dentro de Ajustes) ──
+function renderDadosCorretor(){
+  const c = DB.corretor || {nome:'',creci:'',validadeCreci:''};
+  document.getElementById('mainNav').classList.add('hidden');
+  document.getElementById('appHeader').innerHTML = `<button class="step-back" onclick="goTab('config')">‹ Ajustes</button><h2>Dados do corretor</h2>`;
+  document.getElementById('mainContent').innerHTML = `
+    <div class="card">
+      <div style="display:flex;justify-content:center;margin:4px 0 12px">
+        <div onclick="escolherOrigemCorFoto('foto')" style="width:96px;height:96px;border-radius:50%;overflow:hidden;background:var(--pblue);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--primary);cursor:pointer;position:relative">
+          <div id="corFotoSlot"><svg width="34" height="34" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.6" stroke="currentColor" stroke-width="1.6"/><path d="M5 20c1.2-3.8 4-5.6 7-5.6s5.8 1.8 7 5.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+          <div style="position:absolute;bottom:0;right:0;background:var(--primary);color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;border:2px solid var(--surface)">📷</div>
+        </div>
+      </div>
+      <div style="text-align:center;font-size:11px;color:var(--muted);margin-bottom:12px">Foto do corretor</div>
+      <div class="field" style="margin-bottom:10px"><label>Nome do corretor</label><input id="corNome" value="${esc(c.nome)}" placeholder="Seu nome"></div>
+      <div class="field" style="margin-bottom:12px"><label>CRECI</label><input id="corCreci" value="${esc(c.creci)}" placeholder="Ex.: CRECI-SP 123456-F"></div>
+
+      <label>Carteira CRECI (foto)</label>
+      <div onclick="escolherOrigemCorFoto('creci')" id="corCreciSlot" style="width:100%;aspect-ratio:16/10;border-radius:14px;border:1.5px dashed var(--border);background:var(--surface);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--primary);cursor:pointer;overflow:hidden;margin-bottom:12px">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.6"/><circle cx="8" cy="10" r="1.6" stroke="currentColor" stroke-width="1.4"/><path d="M13 9h5M13 12h5M6 16h12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        <span style="font-size:11px;color:var(--muted);font-weight:600">Tirar foto ou escolher da galeria</span>
+      </div>
+
+      <div class="field" style="margin-bottom:12px"><label>Validade da carteira CRECI *</label>
+        <input id="corValidade" type="date" value="${esc(c.validadeCreci)}">
+        <div class="hint">Campo obrigatório. Avisaremos na tela inicial quando faltar 30, 15, 7 e 1 dia.</div></div>
+
+      <input type="file" id="corFotoCam" accept="image/*" capture="user" class="hidden" onchange="onCorFoto('foto',this)">
+      <input type="file" id="corFotoGal" accept="image/*" class="hidden" onchange="onCorFoto('foto',this)">
+      <input type="file" id="corCreciCam" accept="image/*" capture="environment" class="hidden" onchange="onCorFoto('creci',this)">
+      <input type="file" id="corCreciGal" accept="image/*" class="hidden" onchange="onCorFoto('creci',this)">
+    </div>
+    <div style="height:80px"></div>
+    <div class="wizfooter"><div class="btnrow">
+      <button class="btn gray" onclick="goTab('config')">Voltar</button>
+      <button class="btn green" onclick="salvarCorretor()">Salvar</button>
+    </div></div>`;
+  if(c.temFoto) idbGet(keyCorretorFoto()).then(d=>{ if(d){ const el=document.getElementById('corFotoSlot'); if(el) el.innerHTML=`<img src="${d}" style="width:96px;height:96px;object-fit:cover">`; } }).catch(()=>{});
+  if(c.temCreci) idbGet(keyCorretorCreci()).then(d=>{ if(d){ const el=document.getElementById('corCreciSlot'); if(el){ el.style.border='1.5px solid var(--primary)'; el.innerHTML=`<img src="${d}" style="width:100%;height:100%;object-fit:cover">`; } } }).catch(()=>{});
+}
+function escolherOrigemCorFoto(kind){
+  const titulo = kind==='foto' ? 'Foto do corretor' : 'Carteira CRECI';
+  showSheet(titulo, `<div style="font-size:13px;color:var(--muted);margin-bottom:6px">Como você quer adicionar?</div>`,
+    `<button class="btn gray" onclick="closeSheet()">Cancelar</button>
+     <button class="btn gray" onclick="closeSheet();document.getElementById('${kind==='foto'?'corFotoGal':'corCreciGal'}').click()">🖼 Galeria</button>
+     <button class="btn" onclick="closeSheet();document.getElementById('${kind==='foto'?'corFotoCam':'corCreciCam'}').click()">📷 Câmera</button>`);
+}
+async function onCorFoto(kind, input){
+  const file = input.files[0]; if(!file) return;
+  // captura os campos digitados antes de re-renderizar
+  DB.corretor.nome = val('corNome'); DB.corretor.creci = val('corCreci'); DB.corretor.validadeCreci = val('corValidade');
+  const reader = new FileReader();
+  reader.onload = async (ev)=>{
+    if(kind==='foto'){ await idbPut(keyCorretorFoto(), ev.target.result); DB.corretor.temFoto=true; }
+    else { await idbPut(keyCorretorCreci(), ev.target.result); DB.corretor.temCreci=true; }
+    save(); renderDadosCorretor();
+  };
+  reader.readAsDataURL(file);
+}
+function salvarCorretor(){
+  const validade = val('corValidade');
+  if(!validade){ toast('Informe a validade da carteira CRECI.'); return; }
+  DB.corretor.nome = val('corNome');
+  DB.corretor.creci = val('corCreci');
+  DB.corretor.validadeCreci = validade;
+  save();
+  toast('Dados do corretor salvos.');
+  goTab('config');
+}
+function openChangePass(){
+  showSheet('Alterar senha', `
+    <label>Senha atual</label><div class="pwwrap"><input id="cpOld" type="password"><button type="button" class="eye" onclick="togglePw('cpOld',this)">👁</button></div>
+    <label>Nova senha</label><div class="pwwrap"><input id="cpNew" type="password" maxlength="10" oninput="checkPwRules('cpNew','cpBtn')"><button type="button" class="eye" onclick="togglePw('cpNew',this)">👁</button></div>
+    ${pwRulesHTML()}`,
+    `<button class="btn gray" onclick="closeSheet()">Cancelar</button><button class="btn" id="cpBtn" disabled onclick="doChangePass()">Salvar</button>`);
+}
+async function doChangePass(){
+  const auth = getAuth();
+  const oldKey = await deriveKey(val('cpOld'), b64d(auth.salt));
+  if(!(await verifyKey(oldKey, auth.check))){ toast('Senha atual incorreta'); return; }
+  const novo = val('cpNew');
+  if(!Object.values(validatePassword(novo)).every(Boolean)) return;
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const key = await deriveKey(novo, salt);
+  const check = await makeCheck(key);
+  localStorage.setItem(LS_AUTH, JSON.stringify({salt:b64e(salt), check, createdAt:auth.createdAt}));
+  _cryptoKey = key;
+  await persistDB();
+  closeSheet(); toast('Senha alterada com sucesso.');
+}
+function doLogout(){
+  sessionStorage.removeItem('unlocked');
+  _cryptoKey = null;
+  location.reload();
+}
+function confirmarReset(){
+  confirmar({icon:'⚠️', title:'Apagar tudo?', msg:'Todos os imóveis, fotos e a senha serão apagados permanentemente deste aparelho.',
+    noLabel:'Cancelar', yesLabel:'Apagar tudo', yes:'doResetTudo()'});
+}
+async function doResetTudo(){
+  localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_AUTH);
+  sessionStorage.removeItem('unlocked');
+  try{ indexedDB.deleteDatabase('corretorimoveis_midia'); }catch(e){}
+  location.reload();
+}
+
+// ═══ Service Worker (offline básico) ═══
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
