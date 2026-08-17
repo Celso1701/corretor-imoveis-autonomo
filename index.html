@@ -238,7 +238,7 @@ svg{display:block}
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.5.1';
+const APP_VERSION = '1.6.1';
 const val = id => document.getElementById(id)?.value.trim() || '';
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2,10)+Date.now().toString(36));
 function toast(msg){
@@ -307,7 +307,7 @@ async function buscarCEP(cepRaw, alvoIds){
     if(j.logradouro){ W.endereco = j.logradouro; }
     if(j.localidade){ W.cidade = j.localidade; }
     if(j.uf){ W.estado = String(j.uf).toUpperCase().slice(0,2); }
-    if(j.bairro && !W.complemento){ W.complemento = j.bairro; }
+    if(j.bairro){ W.bairro = j.bairro; }
     renderWizard();
     toast(`Endereço preenchido — ${j.localidade||''}/${(j.uf||'').toUpperCase()}`);
   }catch(e){
@@ -918,7 +918,7 @@ function blankDraft(){
   return {
     id: uid(), createdAt: Date.now(),
     tipo:'casa', codigo: proximoCodigo('casa'), dataInclusao: isoDate(new Date()),
-    tipoEndereco:'Rua', endereco:'', numero:'', complemento:'', cidade:'', estado:'', cep:'',
+    tipoEndereco:'Rua', endereco:'', numero:'', complemento:'', bairro:'', cidade:'', estado:'', cep:'',
     proprietarioId:'', nome:'', tel1:'', tel2:'', tel3:'', email1:'', email2:'',
     terreno:'', construcao:'', condicao:'Usada', morador:'Não', tipoCasa:'Térrea', outroTipo:'',
     vendaExclusiva:'Não', dataInicial:'', dataFinal:'',
@@ -944,6 +944,7 @@ async function editarImovel(id){
   if(!W.codigo) W.codigo = (im.codigo||proximoCodigo('casa')); // compat p/ registros antigos
   W.tipo = im.tipo || 'casa';
   W.dataInclusao = im.dataInclusao || isoDate(new Date(im.createdAt||Date.now()));
+  if(W.bairro===undefined) W.bairro = im.localizacao?.bairro || '';
   // reconstrói os campos de valor (planos) a partir de im.valores — zero vira "0,00"
   const centavos = n => maskMoedaFromNumber(n||0);
   W.valorSolicitado = im.valores ? centavos(im.valores.solicitado) : '';
@@ -1073,8 +1074,11 @@ function stepPaneHTML(i){
       <div class="field"><label>Número</label><input value="${esc(W.numero)}" oninput="W.numero=this.value"></div>
       <div class="field"><label>Complemento</label><input value="${esc(W.complemento)}" oninput="W.complemento=this.value"></div>
     </div>
-    <div class="field"><label>Cidade</label><input value="${esc(W.cidade)}" oninput="W.cidade=this.value"></div>
-    <div class="field"><label>Estado</label><input value="${esc(W.estado)}" maxlength="2" oninput="W.estado=this.value"></div>`;
+    <div class="field"><label>Bairro</label><input value="${esc(W.bairro)}" maxlength="40" oninput="W.bairro=this.value"></div>
+    <div class="row2">
+      <div class="field" style="flex:2"><label>Cidade</label><input value="${esc(W.cidade)}" maxlength="30" oninput="W.cidade=this.value"></div>
+      <div class="field" style="flex:0 0 78px"><label>Estado</label><input value="${esc(W.estado)}" maxlength="2" oninput="W.estado=this.value.toUpperCase()"></div>
+    </div>`;
 
   if(i===1) return `
     <div class="section-title">Dados do proprietário</div>
@@ -1185,6 +1189,7 @@ function stepPaneHTML(i){
 
     <div class="review-block"><div class="review-block-title">Localização</div>
       <div class="review-item"><span class="k">Endereço</span><span class="v">${esc([W.endereco,W.numero].filter(Boolean).join(', ')||'—')}</span></div>
+      <div class="review-item"><span class="k">Bairro</span><span class="v">${esc(W.bairro||'—')}</span></div>
       <div class="review-item"><span class="k">Cidade / UF</span><span class="v">${esc([W.cidade,W.estado].filter(Boolean).join(' / ')||'—')}</span></div>
       <div class="review-item"><span class="k">CEP</span><span class="v">${esc(W.cep||'—')}</span></div></div>
     <div class="review-block"><div class="review-block-title">Proprietário</div>
@@ -1364,6 +1369,16 @@ async function removerContrato(){
 
 async function salvarImovel(){
   const jaExiste = DB.imoveis.some(x=>x.id===W.id);
+  if(jaExiste){
+    confirmar({icon:'💾', title:'Regravar o imóvel?',
+      msg:`Deseja salvar as alterações do imóvel <b>${(W.codigo||'').toUpperCase()}</b>?`,
+      noLabel:'Desistir', yesLabel:'Regravar', yesBg:'var(--accent)', yes:'gravarImovel()'});
+  } else {
+    gravarImovel();
+  }
+}
+async function gravarImovel(){
+  const jaExiste = DB.imoveis.some(x=>x.id===W.id);
   // Em imóvel novo, confirma o código sequencial e incrementa o contador do tipo.
   if(!jaExiste){
     const pref = prefixoTipo(W.tipo||'casa');
@@ -1373,7 +1388,7 @@ async function salvarImovel(){
   }
   const imovel = {
     id: W.id, tipo: W.tipo||'casa', codigo: W.codigo, dataInclusao: W.dataInclusao||isoDate(new Date(W.createdAt||Date.now())), createdAt: W.createdAt, updatedAt: Date.now(),
-    localizacao:{ tipoEndereco:W.tipoEndereco, endereco:W.endereco, numero:W.numero, complemento:W.complemento, cidade:W.cidade, estado:W.estado, cep:W.cep },
+    localizacao:{ tipoEndereco:W.tipoEndereco, endereco:W.endereco, numero:W.numero, complemento:W.complemento, bairro:W.bairro, cidade:W.cidade, estado:W.estado, cep:W.cep },
     proprietario:{ id:W.proprietarioId||'', nome:W.nome, tel1:W.tel1, tel2:W.tel2, tel3:W.tel3, email1:W.email1, email2:W.email2 },
     caracteristicas:{ terreno:W.terreno, construcao:W.construcao, condicao:W.condicao, morador:W.morador, tipoCasa:W.tipoCasa, outroTipo:W.outroTipo },
     exclusividade:{ exclusiva: W.vendaExclusiva==='Sim', dataInicial:W.dataInicial, dataFinal:W.dataFinal },
@@ -1388,7 +1403,7 @@ async function salvarImovel(){
   const idx = DB.imoveis.findIndex(x=>x.id===imovel.id);
   if(idx>=0) DB.imoveis[idx]=imovel; else DB.imoveis.push(imovel);
   save();
-  toast('✓ Imóvel salvo — ' + (imovel.codigo||'').toUpperCase());
+  toast((idx>=0?'✓ Imóvel regravado — ':'✓ Imóvel salvo — ') + (imovel.codigo||'').toUpperCase());
   W = null;
   goTab('imoveis');
 }
@@ -1462,6 +1477,7 @@ function abrirDetalhe(id){
       <div class="review-item"><span class="k">Registro</span><span class="v mono" style="color:var(--primary)">${(im.codigo||'—').toUpperCase()}</span></div>
       <div class="review-item"><span class="k">Data de inclusão</span><span class="v">${im.dataInclusao?fmtDataBR(im.dataInclusao):'—'}</span></div>
       <div class="review-item"><span class="k">Endereço</span><span class="v">${esc(im.localizacao.endereco)}, ${esc(im.localizacao.numero)}</span></div>
+      <div class="review-item"><span class="k">Bairro</span><span class="v">${esc(im.localizacao.bairro||'—')}</span></div>
       <div class="review-item"><span class="k">Cidade / UF</span><span class="v">${esc(im.localizacao.cidade)} / ${esc(im.localizacao.estado)}</span></div>
       <div class="review-item"><span class="k">CEP</span><span class="v">${esc(im.localizacao.cep||'—')}</span></div></div>
     <button class="btn gray" style="margin-bottom:14px" onclick="abrirRota('${esc(enderecoFull).replace(/'/g,"\\'")}')">🧭 Traçar rota (Waze / Google Maps)</button>
@@ -1678,8 +1694,8 @@ function agCardHTML(a, mostrarData){
     <div class="acts">
       <div class="act wa" ${tel.length>=10?`onclick="window.open('https://wa.me/55${tel}','_blank')"`:`onclick="toast('Telefone do comprador não cadastrado.')" style="opacity:.5"`}>💬 WhatsApp</div>
       <div class="act gps" onclick="abrirRota('${esc(enderecoFull).replace(/'/g,"\\'")}')">🧭 Rota</div>
-      <div class="act" onclick="editarAgendamento('${a.id}')">✏️ Editar</div>
-      <div class="act" onclick="excluirAgendamento('${a.id}')">🗑 Cancelar</div>
+      <div class="act" style="background:#E7F1FF;border-color:#CFE0FF;color:#2563EB" onclick="editarAgendamento('${a.id}')">✏️ Editar</div>
+      <div class="act" style="background:var(--danger);border-color:var(--danger);color:#fff" onclick="excluirAgendamento('${a.id}')">🗑 Cancelar</div>
     </div>
   </div>`;
 }
@@ -1831,14 +1847,18 @@ function renderFinanceiro(){
       <button class="btn sm green" style="width:auto" onclick="novaReceitaManual()">Receitas +</button>
       <button class="btn sm danger" style="width:auto" onclick="novaDespesaManual()">Despesa +</button></div>`;
 
-  // Toggle de visão: Mês / Todas / Fluxo diário
+  // Toggle de visão: Mês / Todas / Fluxo diário / Semana / Realizado
   let htop = `<div style="display:flex;gap:8px;margin-bottom:10px;overflow-x:auto;padding-bottom:2px">
     ${fchip(finExpView==='mes','📅 Por mês',"finExpView='mes';renderFinanceiro()")}
     ${fchip(finExpView==='all','🗂️ Todas',"finExpView='all';renderFinanceiro()")}
     ${fchip(finExpView==='fluxo','📊 Fluxo diário',"finExpView='fluxo';renderFinanceiro()")}
+    ${fchip(finExpView==='semana','🗓️ Semana',"finExpView='semana';fluxoPeriodo('semana')")}
+    ${fchip(finExpView==='realizado','✅ Realizado',"finExpView='realizado';renderFinanceiro()")}
   </div>`;
 
   if(finExpView==='fluxo'){ document.getElementById('mainContent').innerHTML = htop + fluxoDiarioHTML(); return; }
+  if(finExpView==='semana'){ document.getElementById('mainContent').innerHTML = htop + fluxoDiarioHTML(true); return; }
+  if(finExpView==='realizado'){ document.getElementById('mainContent').innerHTML = htop + realizadoHTML(); return; }
 
   const now = new Date();
   const md = new Date(now.getFullYear(), now.getMonth()+finExpM, 1);
@@ -1846,7 +1866,9 @@ function renderFinanceiro(){
   const todas = finExpView === 'all';
 
   // ── despesas e receitas do período ──
-  const despBase = todas ? DB.financeiro.despesas.slice() : DB.financeiro.despesas.filter(e=>(e.data||'').startsWith(ym));
+  // despesas com "data realizada" preenchida NÃO entram nos relatórios (vão para "Realizado")
+  const despAtivas = DB.financeiro.despesas.filter(e=>!e.dataRealizada);
+  const despBase = todas ? despAtivas.slice() : despAtivas.filter(e=>(e.data||'').startsWith(ym));
   const recBase  = todas ? DB.financeiro.receitas.slice() : DB.financeiro.receitas.filter(e=>(e.data||'').startsWith(ym));
   const totDesp = despBase.reduce((s,e)=>s+(e.valor||0),0);
   const totRec  = recBase.reduce((s,e)=>s+(e.valor||0),0);
@@ -1892,15 +1914,14 @@ function renderFinanceiro(){
         h += `<div style="margin:14px 2px 6px"><b style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em">${mm?MESES[parseInt(mm)-1]+' '+yy:'Sem data'}</b></div>`; }
     }
     const rec = e._tipo==='rec';
-    h += `<div class="card" style="display:flex;align-items:center;gap:10px">
+    h += `<div class="card" style="display:flex;align-items:center;gap:10px;cursor:pointer" onclick="${rec?`editarReceita('${e.id}')`:`editarDespesa('${e.id}')`}">
       <div class="ptile-icon" style="width:38px;height:38px;flex-shrink:0;background:${rec?'var(--pgreen)':'var(--pblue)'}">${rec?'💚':iconeCat(e.categoria)}</div>
       <div style="flex:1;min-width:0">
         <b style="font-size:14px">${esc(e.categoria||(rec?'Receita':'Outros'))}</b>
         ${e.descricao?`<div style="font-size:11px;color:var(--muted);margin-top:2px;white-space:pre-wrap">📝 ${esc(e.descricao)}</div>`:''}
-        <div style="font-size:11px;color:var(--muted);margin-top:2px">${fmtDataBR(e.data)}${e.origem==='agenda'?' · agenda':''}</div></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${fmtDataBR(e.data)}${e.origem==='agenda'?' · agenda':''} · toque para editar</div></div>
       <b style="color:${rec?'var(--success)':'var(--danger)'};white-space:nowrap">${rec?'+':'-'} ${fmtBRL(e.valor)}</b>
-      <button style="background:none;font-size:14px" onclick="${rec?`editarReceita('${e.id}')`:`editarDespesa('${e.id}')`}">✏️</button>
-      <button style="background:none;color:var(--muted)" onclick="${rec?`excluirReceita('${e.id}')`:`excluirDespesa('${e.id}')`}">🗑</button></div>`;
+      <button style="background:none;color:var(--muted)" onclick="event.stopPropagation();${rec?`excluirReceita('${e.id}')`:`excluirDespesa('${e.id}')`}">🗑</button></div>`;
   });
   document.getElementById('mainContent').innerHTML = h;
 }
@@ -1913,32 +1934,75 @@ function fluxoPeriodo(qual){
     fluxoIni = isoDate(hoje);
     const fim = new Date(hoje); fim.setDate(fim.getDate()+7);   // hoje até +7 dias
     fluxoFim = isoDate(fim);
+    finExpView = 'semana';
   } else if(qual==='mes'){
     fluxoIni = isoDate(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
     fluxoFim = isoDate(new Date(hoje.getFullYear(), hoje.getMonth()+1, 0));
+    finExpView = 'fluxo';
   } else if(qual==='hoje'){
     fluxoIni = isoDate(hoje); fluxoFim = isoDate(hoje);
+    finExpView = 'fluxo';
   }
   renderFinanceiro();
 }
-function fluxoDiarioHTML(){
+let realIni = '', realFim = '';
+function realizadoHTML(){
+  const realizadas = DB.financeiro.despesas.filter(e=>e.dataRealizada);
+  const hojeIso = isoDate(new Date());
+  if(!realIni){ const datas = realizadas.map(e=>e.dataRealizada).sort(); realIni = datas.length ? datas[0] : hojeIso.slice(0,8)+'01'; }
+  if(!realFim) realFim = hojeIso;
+  let lista = realizadas.filter(e=> e.dataRealizada>=realIni && e.dataRealizada<=realFim)
+                        .sort((a,b)=> (a.dataRealizada||'').localeCompare(b.dataRealizada||''));
+  const total = lista.reduce((s,e)=>s+(e.valor||0),0);
+  let h = `<div class="card" style="margin-bottom:10px">
+    <div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:8px">✅ Despesas realizadas (com data realizada preenchida)</div>
+    <div class="row2">
+      <div class="field" style="margin:0"><label>De (data realizada)</label><input type="date" value="${realIni}" onchange="realIni=this.value;renderFinanceiro()"></div>
+      <div class="field" style="margin:0"><label>Até</label><input type="date" value="${realFim}" onchange="realFim=this.value;renderFinanceiro()"></div>
+    </div>
+  </div>
+  <div class="card" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase">Total realizado no período</div>
+    <b style="font-size:18px;color:var(--danger)">${fmtBRL(total)}</b>
+  </div>`;
+  if(!lista.length){
+    return h + `<div class="empty"><div class="big">✅</div>Nenhuma despesa realizada neste período.<br><span style="font-size:12px">Preencha o campo "Data realizada" ao editar uma despesa.</span></div>`;
+  }
+  h += lista.map(e=>`<div class="card" style="display:flex;align-items:center;gap:10px;cursor:pointer" onclick="editarDespesa('${e.id}')">
+      <div class="ptile-icon" style="width:38px;height:38px;flex-shrink:0">${iconeCat(e.categoria)}</div>
+      <div style="flex:1;min-width:0">
+        <b style="font-size:14px">${esc(e.categoria||'Despesa')}</b>
+        ${e.descricao?`<div style="font-size:11px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📝 ${esc(e.descricao)}</div>`:''}
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">realizada em <b style="color:var(--text)">${fmtDataBR(e.dataRealizada)}</b> · lançada ${fmtDataBR(e.data)}</div></div>
+      <b style="color:var(--danger);white-space:nowrap">- ${fmtBRL(e.valor)}</b></div>`).join('');
+  return h;
+}
+function fluxoDiarioHTML(modoSemana){
   const todas = [...DB.financeiro.receitas, ...DB.financeiro.despesas].map(e=>e.data).filter(Boolean).sort();
   const hojeIso = isoDate(new Date());
-  if(!fluxoIni) fluxoIni = todas.length ? todas[0].slice(0,8)+'01' : hojeIso.slice(0,8)+'01';
-  if(!fluxoFim) fluxoFim = hojeIso;
+  if(modoSemana){
+    const hoje=new Date(); hoje.setHours(0,0,0,0);
+    fluxoIni = isoDate(hoje);
+    const fim=new Date(hoje); fim.setDate(fim.getDate()+7); fluxoFim = isoDate(fim);
+  } else {
+    if(!fluxoIni) fluxoIni = todas.length ? todas[0].slice(0,8)+'01' : hojeIso.slice(0,8)+'01';
+    if(!fluxoFim) fluxoFim = hojeIso;
+  }
+  // despesas com "data realizada" preenchida NÃO entram nos relatórios
+  const despAtivas = DB.financeiro.despesas.filter(e=>!e.dataRealizada);
   // saldo anterior (antes da data inicial)
   const saldoAnt = DB.financeiro.receitas.filter(e=>(e.data||'')<fluxoIni).reduce((s,e)=>s+(e.valor||0),0)
-                 - DB.financeiro.despesas.filter(e=>(e.data||'')<fluxoIni).reduce((s,e)=>s+(e.valor||0),0);
+                 - despAtivas.filter(e=>(e.data||'')<fluxoIni).reduce((s,e)=>s+(e.valor||0),0);
 
   let h = `<div class="card" style="margin-bottom:10px">
+    ${modoSemana?`<div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:8px">🗓️ Semana — de hoje até +7 dias</div>`:`
     <div style="display:flex;gap:8px;margin-bottom:10px;overflow-x:auto;padding-bottom:2px">
-      ${fchip(false,'📅 Semana',"fluxoPeriodo('semana')")}
       ${fchip(false,'🗓️ Este mês',"fluxoPeriodo('mes')")}
       ${fchip(false,'📆 Hoje',"fluxoPeriodo('hoje')")}
-    </div>
+    </div>`}
     <div class="row2">
-      <div class="field" style="margin:0"><label>Data inicial</label><input type="date" value="${fluxoIni}" max="${fluxoFim}" onchange="fluxoIni=this.value;renderFinanceiro()"></div>
-      <div class="field" style="margin:0"><label>Data final</label><input type="date" value="${fluxoFim}" min="${fluxoIni}" onchange="fluxoFim=this.value;renderFinanceiro()"></div>
+      <div class="field" style="margin:0"><label>Data inicial</label><input type="date" value="${fluxoIni}" max="${fluxoFim}" onchange="fluxoIni=this.value;finExpView='fluxo';renderFinanceiro()"></div>
+      <div class="field" style="margin:0"><label>Data final</label><input type="date" value="${fluxoFim}" min="${fluxoIni}" onchange="fluxoFim=this.value;finExpView='fluxo';renderFinanceiro()"></div>
     </div>
   </div>`;
 
@@ -1952,7 +2016,7 @@ function fluxoDiarioHTML(){
   for(let d=new Date(di); d<=df; d.setDate(d.getDate()+1)){
     const iso = isoDate(d);
     const r = DB.financeiro.receitas.filter(e=>e.data===iso).reduce((s,e)=>s+(e.valor||0),0);
-    const p = DB.financeiro.despesas.filter(e=>e.data===iso).reduce((s,e)=>s+(e.valor||0),0);
+    const p = despAtivas.filter(e=>e.data===iso).reduce((s,e)=>s+(e.valor||0),0);
     acc += r - p; totR+=r; totD+=p;
     const temMov = (r>0||p>0);
     linhas += `<div style="display:flex;align-items:center;padding:9px 10px;border-bottom:1px solid var(--border);${temMov?'':'opacity:.5'}">
@@ -2003,7 +2067,10 @@ function despForm(ex){
     </select>
     <input id="ndCatNova" placeholder="Digite uma nova categoria de despesa" value="${!catConhecida?esc(ex.categoria):''}" style="display:${!catConhecida?'block':'none'};margin-top:8px">
     <label>Valor</label><input id="ndVal" inputmode="numeric" placeholder="99.999,99" value="${ex?fmtMoedaSemRS(ex.valor):''}" oninput="maskMoeda(this)">
-    <label>Data</label><input id="ndData" type="date" value="${ex?esc(ex.data):isoDate(new Date())}">
+    <div class="row2">
+      <div class="field" style="margin:0"><label>Data</label><input id="ndData" type="date" value="${ex?esc(ex.data):isoDate(new Date())}"></div>
+      <div class="field" style="margin:0"><label>Data realizada</label><input id="ndDataReal" type="date" value="${esc(ex?.dataRealizada||'')}"><div class="hint">Pode ficar em branco</div></div>
+    </div>
     ${selectImovelHTML('ndImovel', ex?.imovelId)}
     <label>Descrição</label><input id="ndDesc" placeholder="Opcional" value="${esc(ex?.descricao||'')}">`;
 }
@@ -2029,16 +2096,19 @@ function salvarDespesaManual(editId){
   const imovelCodigo = imovelId ? (DB.imoveis.find(im=>im.id===imovelId)?.codigo||'').toUpperCase() : '';
   const dados = { categoria, valor,
     data:document.getElementById('ndData').value||isoDate(new Date()),
+    dataRealizada:document.getElementById('ndDataReal')?.value||'',
     imovelId, imovelCodigo,
     descricao:document.getElementById('ndDesc').value||'' };
-  if(editId){
-    const ex = DB.financeiro.despesas.find(d=>d.id===editId);
-    if(ex) Object.assign(ex, dados);
-  } else {
-    DB.financeiro.despesas.push({ id:uid(), origem:'manual', createdAt:Date.now(), ...dados });
-  }
-  save(); closeSheet(); toast(editId?'✏️ Despesa atualizada!':'🧾 Despesa registrada!'); renderFinanceiro();
+  const commit = ()=>{
+    if(editId){ const ex = DB.financeiro.despesas.find(d=>d.id===editId); if(ex) Object.assign(ex, dados); }
+    else { DB.financeiro.despesas.push({ id:uid(), origem:'manual', createdAt:Date.now(), ...dados }); }
+    save(); closeSheet(); toast(editId?'✏️ Despesa regravada!':'🧾 Despesa registrada!'); renderFinanceiro();
+  };
+  if(editId){ _pendingCommit = commit; confirmar({icon:'✏️', title:'Regravar o lançamento?', msg:`Confirmar as alterações da despesa de <b>${fmtBRL(valor)}</b>?`, noLabel:'Voltar', yesLabel:'Regravar', yes:'_runPendingCommit()'}); }
+  else { commit(); }
 }
+let _pendingCommit = null;
+function _runPendingCommit(){ const f=_pendingCommit; _pendingCommit=null; if(f) f(); }
 function excluirDespesa(id){
   const e = DB.financeiro.despesas.find(d=>d.id===id);
   confirmar({icon:'🧾', title:'Excluir despesa?', msg:`Deseja excluir a despesa de <b>${fmtBRL(e?.valor)}</b>${e?.categoria?` (${esc(e.categoria)})`:''}?`,
@@ -2079,9 +2149,13 @@ function salvarReceitaManual(editId){
     data:document.getElementById('nrData').value||isoDate(new Date()),
     imovelId, imovelCodigo,
     descricao:document.getElementById('nrDesc').value||'' };
-  if(editId){ const ex=DB.financeiro.receitas.find(d=>d.id===editId); if(ex) Object.assign(ex,dados); }
-  else { DB.financeiro.receitas.push({ id:uid(), origem:'manual', createdAt:Date.now(), ...dados }); }
-  save(); closeSheet(); toast(editId?'✏️ Receita atualizada!':'💚 Receita registrada!'); renderFinanceiro();
+  const commit = ()=>{
+    if(editId){ const ex=DB.financeiro.receitas.find(d=>d.id===editId); if(ex) Object.assign(ex,dados); }
+    else { DB.financeiro.receitas.push({ id:uid(), origem:'manual', createdAt:Date.now(), ...dados }); }
+    save(); closeSheet(); toast(editId?'✏️ Receita regravada!':'💚 Receita registrada!'); renderFinanceiro();
+  };
+  if(editId){ _pendingCommit = commit; confirmar({icon:'✏️', title:'Regravar o lançamento?', msg:`Confirmar as alterações da receita de <b>${fmtBRL(valor)}</b>?`, noLabel:'Voltar', yesLabel:'Regravar', yes:'_runPendingCommit()'}); }
+  else { commit(); }
 }
 function excluirReceita(id){
   const e = DB.financeiro.receitas.find(d=>d.id===id);
