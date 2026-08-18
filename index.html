@@ -238,7 +238,7 @@ svg{display:block}
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.7.0';
+const APP_VERSION = '1.8.0';
 const val = id => document.getElementById(id)?.value.trim() || '';
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2,10)+Date.now().toString(36));
 function toast(msg){
@@ -262,6 +262,35 @@ function maskTelefone(input){
   return out;
 }
 // CEP 99999-999
+// CPF: máscara 000.000.000-00 e validação dos dígitos verificadores
+function maskCPF(input){
+  let d = input.value.replace(/\D/g,'').slice(0,11);
+  let out = d;
+  if(d.length>9) out = `${d.slice(0,3)}.${d.slice(3,6)}.${d.slice(6,9)}-${d.slice(9)}`;
+  else if(d.length>6) out = `${d.slice(0,3)}.${d.slice(3,6)}.${d.slice(6)}`;
+  else if(d.length>3) out = `${d.slice(0,3)}.${d.slice(3)}`;
+  input.value = out;
+  const hint = document.getElementById('cpfHint');
+  if(hint){
+    if(d.length===0){ hint.textContent=''; hint.style.color='var(--muted)'; }
+    else if(d.length<11){ hint.textContent='Faltam dígitos…'; hint.style.color='var(--muted)'; }
+    else if(validarCPF(d)){ hint.textContent='✓ CPF válido'; hint.style.color='var(--success)'; }
+    else { hint.textContent='✗ CPF inválido'; hint.style.color='var(--danger)'; }
+  }
+  return out;
+}
+function validarCPF(cpf){
+  cpf = (cpf||'').replace(/\D/g,'');
+  if(cpf.length!==11 || /^(\d)\1{10}$/.test(cpf)) return false;
+  let soma=0;
+  for(let i=0;i<9;i++) soma += parseInt(cpf[i])*(10-i);
+  let d1 = 11 - (soma%11); if(d1>=10) d1=0;
+  if(d1!==parseInt(cpf[9])) return false;
+  soma=0;
+  for(let i=0;i<10;i++) soma += parseInt(cpf[i])*(11-i);
+  let d2 = 11 - (soma%11); if(d2>=10) d2=0;
+  return d2===parseInt(cpf[10]);
+}
 function maskCEP(input){
   let d = input.value.replace(/\D/g,'').slice(0,8);
   input.value = d.length>5 ? d.slice(0,5)+'-'+d.slice(5) : d;
@@ -442,6 +471,7 @@ function keyFotoPub(id,i){ return `foto_${id}_pub${i}`; }
 function keyFotoAdd(id,i){ return `foto_${id}_add${i}`; }
 function keyVideo(id){ return `video_${id}`; }
 function keyContrato(id){ return `contrato_${id}`; }
+function keyCertidao(id, tipo){ return `certidao_${tipo}_${id}`; }
 function keyPropFoto(id){ return `prop_${id}`; }
 function keyCorretorFoto(){ return 'corretor_foto'; }
 function keyCorretorCreci(){ return 'corretor_creci'; }
@@ -842,6 +872,11 @@ function novoProprietario(){
   pFotoCache = null;
   renderPropForm();
 }
+let _voltarAoImovel = false;
+function novoProprietarioDoImovel(){
+  _voltarAoImovel = true;
+  novoProprietario();
+}
 async function editarProprietario(id){
   const p = DB.proprietarios.find(x=>x.id===id); if(!p) return;
   P = JSON.parse(JSON.stringify(p));
@@ -868,6 +903,10 @@ function renderPropForm(){
       <input value="Nº ${esc(P.codigo||proximoCodigoProp())}" disabled style="font-family:'IBM Plex Mono',monospace;letter-spacing:1px;background:var(--pblue);color:var(--dark);font-weight:700">
       <div class="hint">Gerado automaticamente — não editável.</div></div>
     <div class="field"><label>Nome do proprietário</label><input id="pNome" value="${esc(P.nome)}" oninput="P.nome=this.value"></div>
+    <div class="row2">
+      <div class="field" style="margin:0"><label>RG</label><input value="${esc(P.rg||'')}" oninput="P.rg=this.value"></div>
+      <div class="field" style="margin:0"><label>CPF</label><input id="pCpf" value="${esc(P.cpf||'')}" inputmode="numeric" placeholder="000.000.000-00" oninput="P.cpf=maskCPF(this)"><div class="hint" id="cpfHint"></div></div>
+    </div>
     <div class="field"><label>Tel 1</label><input id="pTel1" value="${esc(P.tel1)}" inputmode="numeric" placeholder="(99)99999.9999" oninput="P.tel1=maskTelefone(this)"></div>
     <div class="field"><label>Tel 2</label><input value="${esc(P.tel2)}" inputmode="numeric" placeholder="(99)99999.9999" oninput="P.tel2=maskTelefone(this)"></div>
     <div class="field"><label>Tel 3</label><input value="${esc(P.tel3)}" inputmode="numeric" placeholder="(99)99999.9999" oninput="P.tel3=maskTelefone(this)"></div>
@@ -876,7 +915,7 @@ function renderPropForm(){
     ${editing?`<button class="btn danger" style="margin-top:6px" onclick="excluirProprietario('${P.id}')">🗑 Excluir proprietário</button>`:''}
     <div style="height:80px"></div>
     <div class="wizfooter"><div class="btnrow">
-      <button class="btn gray" onclick="goTab('proprietarios')">Voltar</button>
+      <button class="btn gray" onclick="cancelarPropForm()">Voltar</button>
       <button class="btn green" onclick="salvarProprietario()">Salvar</button>
     </div></div>`;
 }
@@ -915,9 +954,14 @@ async function removerPropFoto(){
   await idbDel(keyPropFoto(P.id)).catch(()=>{});
   pFotoCache = null; P.temFoto=false; renderPropForm();
 }
+function cancelarPropForm(){
+  if(_voltarAoImovel && W){ _voltarAoImovel=false; P=null; pFotoCache=null; wStep=1; document.getElementById('mainNav').classList.add('hidden'); renderWizard(); return; }
+  goTab('proprietarios');
+}
 function salvarProprietario(){
   P.nome = val('pNome') || P.nome;
   if(!P.nome.trim()){ toast('Informe o nome do proprietário.'); return; }
+  if(P.cpf && !validarCPF(P.cpf)){ toast('CPF inválido — confira os números.'); return; }
   const idx = DB.proprietarios.findIndex(x=>x.id===P.id);
   // novo proprietário: grava o sequencial (maior existente + 1)
   if(idx<0){ const prox = maiorSeqProp()+1; DB.contadores.prop = prox; P.codigo = pad6(prox); }
@@ -926,12 +970,22 @@ function salvarProprietario(){
   if(idx>=0) DB.proprietarios[idx]=P; else DB.proprietarios.push(P);
   save();
   toast('Proprietário salvo — Nº ' + P.codigo);
+  const novoId = P.id;
   P=null; pFotoCache=null;
+  if(_voltarAoImovel && W){
+    _voltarAoImovel = false;
+    // volta ao cadastro do imóvel já selecionando o proprietário recém-criado
+    escolherProprietario(novoId);
+    wStep = 1;
+    document.getElementById('mainNav').classList.add('hidden');
+    renderWizard();
+    return;
+  }
   goTab('proprietarios');
 }
 
 // ── Wizard de cadastro (CASA) ──
-const stepNames = ['Localização','Proprietário','Características','Garagem e portão','Água, energia, internet','Fotos','Vídeo','Revisão'];
+const stepNames = ['Localização','Proprietário','Características','Garagem e portão','Água, energia, internet','Fotos','Vídeo','Certidões','Revisão'];
 let W = null;       // rascunho do imóvel em edição
 let wStep = 0;
 let wCache = {};    // cache em memória: chave IDB -> dataURL (evita reler do IDB a cada render)
@@ -940,7 +994,7 @@ function blankDraft(){
   return {
     id: uid(), createdAt: Date.now(),
     tipo:'casa', codigo: proximoCodigo('casa'), dataInclusao: isoDate(new Date()),
-    tipoEndereco:'Rua', endereco:'', numero:'', complemento:'', bairro:'', cidade:'', estado:'', cep:'',
+    tipoEndereco:'Rua', endereco:'', numero:'', complemento:'', bairro:'', cidade:'', estado:'', cep:'', certidoes:{},
     proprietarioId:'', nome:'', tel1:'', tel2:'', tel3:'', email1:'', email2:'',
     terreno:'', construcao:'', condicao:'Usada', morador:'Não', tipoCasa:'Térrea', outroTipo:'',
     vendaExclusiva:'Não', dataInicial:'', dataFinal:'',
@@ -967,6 +1021,7 @@ async function editarImovel(id){
   W.tipo = im.tipo || 'casa';
   W.dataInclusao = im.dataInclusao || isoDate(new Date(im.createdAt||Date.now()));
   if(W.bairro===undefined) W.bairro = im.localizacao?.bairro || '';
+  if(!W.certidoes) W.certidoes = {};
   // reconstrói os campos de valor (planos) a partir de im.valores — zero vira "0,00"
   const centavos = n => maskMoedaFromNumber(n||0);
   W.valorSolicitado = im.valores ? centavos(im.valores.solicitado) : '';
@@ -996,16 +1051,16 @@ function renderWizard(){
   document.getElementById('appHeader').innerHTML = `
     <div class="progress-wrap" style="padding:0">
       <button class="step-back" onclick="wStep===0?sairWizardSemSalvar():irStep(wStep-1)">‹ Voltar</button>
-      <div class="progress-top"><span class="progress-label">ETAPA ${wStep+1} DE 8</span><span class="progress-name">${stepNames[wStep]}</span></div>
-      <div class="progress-track"><div class="progress-fill" style="width:${((wStep+1)/8)*100}%"></div></div>
+      <div class="progress-top"><span class="progress-label">ETAPA ${wStep+1} DE 9</span><span class="progress-name">${stepNames[wStep]}</span></div>
+      <div class="progress-track"><div class="progress-fill" style="width:${((wStep+1)/9)*100}%"></div></div>
     </div>`;
   document.getElementById('mainContent').innerHTML = `<div style="padding-bottom:76px">${stepPaneHTML(wStep)}</div>
     <div class="wizfooter"><div class="btnrow">
       <button class="btn gray" onclick="${wStep===0?'sairWizardSemSalvar()':'irStep(wStep-1)'}">Voltar</button>
-      <button class="btn ${wStep===7?'green':''}" onclick="${wStep===7?'salvarImovel()':'irStep(wStep+1)'}">${wStep===7?'Salvar imóvel':'Avançar'}</button>
+      <button class="btn ${wStep===8?'green':''}" onclick="${wStep===8?'salvarImovel()':'irStep(wStep+1)'}">${wStep===8?'Salvar imóvel':'Avançar'}</button>
     </div></div>`;
   if(wStep===5) hydratarFotos();
-  if(wStep===7) {} // revisão já é montada estática a partir de W
+  if(wStep===7) hydratarCertidoes();
 }
 function validarStep(s){
   if(s===0 && !(W.endereco||'').trim()){ toast('Informe o endereço do imóvel.'); return false; }
@@ -1014,7 +1069,7 @@ function validarStep(s){
 }
 function irStep(i){
   if(i > wStep && !validarStep(wStep)) return;  // só valida ao avançar
-  wStep = Math.max(0, Math.min(i,7)); renderWizard(); window.scrollTo(0,0);
+  wStep = Math.max(0, Math.min(i,8)); renderWizard(); window.scrollTo(0,0);
 }
 
 function chip(group,valv,label){ return `<div class="chip ${W[group]===valv?'selected':''}" onclick="setChip('${group}','${valv.replace(/'/g,"\\'")}')">${esc(label)}</div>`; }
@@ -1104,12 +1159,12 @@ function stepPaneHTML(i){
 
   if(i===1) return `
     <div class="section-title">Dados do proprietário</div>
-    ${DB.proprietarios.length ? `<div class="field"><label>Escolher proprietário cadastrado</label>
-      <select id="propSelect" onchange="escolherProprietario(this.value)">
+    <div class="field"><label>Escolher proprietário cadastrado</label>
+      <select id="propSelect" onchange="if(this.value==='__novo__'){novoProprietarioDoImovel()}else{escolherProprietario(this.value)}">
         <option value="">— selecione para preencher —</option>
-        ${DB.proprietarios.slice().sort((a,b)=>(a.nome||'').localeCompare(b.nome||'')).map(p=>`<option value="${p.id}" ${W.proprietarioId===p.id?'selected':''}>${esc(p.nome||'Sem nome')}</option>`).join('')}
-      </select><div class="hint">Selecionar preenche os campos abaixo automaticamente.</div></div>` :
-      `<div class="public-note">Nenhum proprietário cadastrado ainda. Você pode digitar abaixo ou cadastrar em <b>Início › Cadastro de proprietário</b>.</div>`}
+        <option value="__novo__">➕ Adicionar novo proprietário…</option>
+        ${DB.proprietarios.slice().sort((a,b)=>(a.nome||'').localeCompare(b.nome||'')).map(p=>`<option value="${p.id}" ${W.proprietarioId===p.id?'selected':''}>${esc(p.nome||'Sem nome')}${p.codigo?' · Nº '+p.codigo:''}</option>`).join('')}
+      </select><div class="hint">Selecionar preenche os campos abaixo. Use "Adicionar novo" para cadastrar na hora.</div></div>
     <div class="field"><label>Nome do proprietário</label><input value="${esc(W.nome)}" oninput="W.nome=this.value;W.proprietarioId=''"></div>
     <div class="field"><label>Tel 1</label><input value="${esc(W.tel1)}" inputmode="numeric" placeholder="(99)99999.9999" oninput="W.tel1=maskTelefone(this)"></div>
     <div class="field"><label>Tel 2</label><input value="${esc(W.tel2)}" inputmode="numeric" placeholder="(99)99999.9999" oninput="W.tel2=maskTelefone(this)"></div>
@@ -1190,7 +1245,15 @@ function stepPaneHTML(i){
     <div class="toggle-row"><div class="lbl">Incluir no compartilhamento<span class="d">Enviar junto com fotos por e-mail/WhatsApp</span></div>
       <div class="switch ${W.video?.compartilhar?'on':''}" onclick="if(W.video){W.video.compartilhar=!W.video.compartilhar;renderWizard()}"></div></div>`;
 
-  if(i===7){
+  if(i===7) return `
+    <div class="section-title">Certidões e documentos</div>
+    <div class="public-note">Opcional. Anexe por <b>galeria</b> ou <b>câmera</b>. Pode deixar em branco e anexar depois.</div>
+    ${certidaoSlotHTML('iptu','IPTU')}
+    ${certidaoSlotHTML('registro','Registro de Imóveis')}
+    ${certidaoSlotHTML('cnd','CND Prefeitura')}
+    ${certidaoSlotHTML('testamento','Testamento')}`;
+
+  if(i===8){
     const pubCount = W.fotosPublicas.filter(Boolean).length;
     const addCount = W.fotosAdicionais.filter(Boolean).length;
     const condoVal = parseFloat(W.condominio)||0;
@@ -1237,7 +1300,9 @@ function stepPaneHTML(i){
       <div class="review-item"><span class="k">Fotos públicas</span><span class="v">${pubCount}/6</span></div>
       <div class="review-item"><span class="k">Fotos adicionais</span><span class="v">${addCount}/3</span></div>
       <div class="review-item"><span class="k">Vídeo</span><span class="v">${W.video?(esc(W.video.nome||'Adicionado')+(W.video.duracao?` (${W.video.duracao}s)`:'')):'Não adicionado'}</span></div>
-      <div class="review-item"><span class="k">Contrato PDF</span><span class="v">${W.contrato?esc(nomeContratoArq()+'.pdf'):'Não anexado'}</span></div></div>`;
+      <div class="review-item"><span class="k">Contrato PDF</span><span class="v">${W.contrato?esc(nomeContratoArq()+'.pdf'):'Não anexado'}</span></div></div>
+    <div class="review-block"><div class="review-block-title">Certidões</div>
+      ${['iptu','registro','cnd','testamento'].map(t=>`<div class="review-item"><span class="k">${esc(CERTIDAO_LABEL[t])}</span><span class="v">${(W.certidoes&&W.certidoes[t])?'✓ anexada':'—'}</span></div>`).join('')}</div>`;
   }
   return '';
 }
@@ -1427,6 +1492,72 @@ async function removerContrato(){
   renderWizard();
 }
 
+// ── Certidões (IPTU, Registro, CND, Testamento) ──
+const CERTIDAO_LABEL = { iptu:'IPTU', registro:'Registro de Imóveis', cnd:'CND Prefeitura', testamento:'Testamento' };
+function certidaoSlotHTML(tipo, label){
+  W.certidoes = W.certidoes || {};
+  const tem = !!W.certidoes[tipo];
+  const cache = wCache[keyCertidao(W.id,tipo)];
+  const isPdf = tem && W.certidoes[tipo].tipoArq==='pdf';
+  return `<div class="field"><label>${esc(label)}</label>
+    <div class="photo-slot ${tem?'filled':''}" style="width:100%;height:${tem&&cache&&!isPdf?'150px':'64px'};margin-bottom:4px" onclick="${tem?`editarCertidao('${tipo}')`:`escolherOrigemCertidao('${tipo}')`}">
+      ${tem
+        ? (isPdf
+            ? `<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M7 3h7l4 4v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.5"/></svg><span style="font-size:11px;color:var(--dark);font-weight:700">PDF anexado</span><div class="remove" onclick="event.stopPropagation();removerCertidao('${tipo}')">✕</div>`
+            : (cache
+                ? `<img src="${cache}" style="width:100%;height:100%;object-fit:cover;border-radius:12px"><div class="remove" onclick="event.stopPropagation();removerCertidao('${tipo}')">✕</div>`
+                : `<span data-needcert="${tipo}" style="font-size:11px;color:var(--muted)">carregando…</span>`))
+        : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>Anexar ${esc(label)}</span>`}
+    </div>
+    <input type="file" id="certCam_${tipo}" accept="image/*" capture="environment" class="filein" onchange="onCertidaoSelected('${tipo}',this)">
+    <input type="file" id="certGal_${tipo}" accept="image/*,application/pdf" class="filein" onchange="onCertidaoSelected('${tipo}',this)">
+  </div>`;
+}
+function escolherOrigemCertidao(tipo){
+  showSheet('Anexar '+(CERTIDAO_LABEL[tipo]||'certidão'), `<div style="font-size:13px;color:var(--muted);margin-bottom:6px">Como você quer anexar?</div>`,
+    `<button class="btn gray" onclick="closeSheet()">Cancelar</button>
+     <button class="btn gray" onclick="var el=document.getElementById('certGal_${tipo}');el.click();closeSheet()">🖼 Galeria / PDF</button>
+     <button class="btn" onclick="closeSheet();abrirCameraModal('environment',function(d){storeCertidaoDataUrl('${tipo}',d,'img')},function(){document.getElementById('certCam_${tipo}').click()})">📷 Câmera</button>`);
+}
+function editarCertidao(tipo){
+  confirmar({icon:'📄', title:'Substituir o anexo?', msg:`Deseja trocar o anexo de <b>${esc(CERTIDAO_LABEL[tipo]||'')}</b>?`,
+    noLabel:'Não', yesLabel:'Sim', yesBg:'var(--primary)', yes:`escolherOrigemCertidao('${tipo}')`});
+}
+async function onCertidaoSelected(tipo, input){
+  const file = input.files[0]; if(!file) return;
+  const isPdf = file.type==='application/pdf';
+  const reader = new FileReader();
+  reader.onload = async (ev)=>{ await storeCertidaoDataUrl(tipo, ev.target.result, isPdf?'pdf':'img'); input.value=''; };
+  reader.readAsDataURL(file);
+}
+async function storeCertidaoDataUrl(tipo, dataUrl, tipoArq){
+  await idbPut(keyCertidao(W.id, tipo), dataUrl);
+  wCache[keyCertidao(W.id, tipo)] = dataUrl;
+  W.certidoes = W.certidoes || {};
+  W.certidoes[tipo] = { anexado:true, tipoArq: tipoArq||'img' };
+  renderWizard();
+  toast((CERTIDAO_LABEL[tipo]||'Certidão')+' anexada.');
+}
+async function removerCertidao(tipo){
+  await idbDel(keyCertidao(W.id, tipo)).catch(()=>{});
+  if(W.certidoes) delete W.certidoes[tipo];
+  delete wCache[keyCertidao(W.id, tipo)];
+  renderWizard();
+}
+async function hydratarCertidoes(){
+  const els = document.querySelectorAll('[data-needcert]');
+  if(!els.length) return;
+  let changed=false;
+  for(const el of els){
+    const tipo = el.dataset.needcert;
+    const key = keyCertidao(W.id, tipo);
+    if(wCache[key]) continue;
+    const data = await idbGet(key).catch(()=>null);
+    if(data){ wCache[key]=data; changed=true; }
+  }
+  if(changed) renderWizard();
+}
+
 async function salvarImovel(){
   const jaExiste = DB.imoveis.some(x=>x.id===W.id);
   if(jaExiste){
@@ -1458,7 +1589,8 @@ async function gravarImovel(){
     garagem:{ vagas:W.vagas, coberta:W.coberta, disposicao:W.disposicao, portao:W.portao },
     agua:{ tipo:W.agua, fonte:W.aguaFonte, situacao:W.aguaSituacao },
     energia:{ situacao:W.energia }, internet:{ situacao:W.internet },
-    fotosPublicas: W.fotosPublicas, fotosAdicionais: W.fotosAdicionais, contrato: W.contrato, video: W.video
+    fotosPublicas: W.fotosPublicas, fotosAdicionais: W.fotosAdicionais, contrato: W.contrato, video: W.video,
+    certidoes: W.certidoes || {}
   };
   const idx = DB.imoveis.findIndex(x=>x.id===imovel.id);
   if(idx>=0) DB.imoveis[idx]=imovel; else DB.imoveis.push(imovel);
@@ -1640,6 +1772,7 @@ async function doExcluir(id){
   for(let i=0;i<3;i++) idbDel(keyFotoAdd(id,i)).catch(()=>{});
   idbDel(keyVideo(id)).catch(()=>{});
   idbDel(keyContrato(id)).catch(()=>{});
+  ['iptu','registro','cnd','testamento'].forEach(t=>idbDel(keyCertidao(id,t)).catch(()=>{}));
   DB.imoveis = DB.imoveis.filter(x=>x.id!==id);
   save();
   toast('Imóvel excluído.');
@@ -1967,7 +2100,8 @@ function renderFinanceiro(){
   // despesas com "data realizada" preenchida NÃO entram nos relatórios (vão para "Realizado")
   const despAtivas = DB.financeiro.despesas.filter(e=>!e.dataRealizada);
   const despBase = todas ? despAtivas.slice() : despAtivas.filter(e=>(e.data||'').startsWith(ym));
-  const recBase  = todas ? DB.financeiro.receitas.slice() : DB.financeiro.receitas.filter(e=>(e.data||'').startsWith(ym));
+  const recAtivas = DB.financeiro.receitas.filter(e=>!e.dataRealizada);
+  const recBase  = todas ? recAtivas.slice() : recAtivas.filter(e=>(e.data||'').startsWith(ym));
   const totDesp = despBase.reduce((s,e)=>s+(e.valor||0),0);
   const totRec  = recBase.reduce((s,e)=>s+(e.valor||0),0);
   const saldo   = totRec - totDesp;
@@ -2097,7 +2231,8 @@ function fluxoDiarioHTML(modoSemana){
   // despesas com "data realizada" preenchida NÃO entram nos relatórios
   const despAtivas = DB.financeiro.despesas.filter(e=>!e.dataRealizada);
   // saldo anterior (antes da data inicial)
-  const saldoAnt = DB.financeiro.receitas.filter(e=>(e.data||'')<fluxoIni).reduce((s,e)=>s+(e.valor||0),0)
+  const recAtivas = DB.financeiro.receitas.filter(e=>!e.dataRealizada);
+  const saldoAnt = recAtivas.filter(e=>(e.data||'')<fluxoIni).reduce((s,e)=>s+(e.valor||0),0)
                  - despAtivas.filter(e=>(e.data||'')<fluxoIni).reduce((s,e)=>s+(e.valor||0),0);
 
   let h = `<div class="card" style="margin-bottom:10px">
@@ -2121,7 +2256,7 @@ function fluxoDiarioHTML(modoSemana){
   let linhas = '';
   for(let d=new Date(di); d<=df; d.setDate(d.getDate()+1)){
     const iso = isoDate(d);
-    const r = DB.financeiro.receitas.filter(e=>e.data===iso).reduce((s,e)=>s+(e.valor||0),0);
+    const r = recAtivas.filter(e=>e.data===iso).reduce((s,e)=>s+(e.valor||0),0);
     const p = despAtivas.filter(e=>e.data===iso).reduce((s,e)=>s+(e.valor||0),0);
     acc += r - p; totR+=r; totD+=p;
     const temMov = (r>0||p>0);
