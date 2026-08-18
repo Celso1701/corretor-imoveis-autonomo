@@ -238,7 +238,7 @@ svg{display:block}
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.6.1';
+const APP_VERSION = '1.7.0';
 const val = id => document.getElementById(id)?.value.trim() || '';
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2,10)+Date.now().toString(36));
 function toast(msg){
@@ -413,6 +413,27 @@ async function idbDel(key){
   return new Promise((res,rej)=>{
     const tx = db.transaction('midia','readwrite');
     tx.objectStore('midia').delete(key);
+    tx.oncomplete = () => res(true);
+    tx.onerror = () => rej(tx.error);
+  });
+}
+async function idbAll(){
+  const db = await idbOpen();
+  return new Promise((res,rej)=>{
+    const out = {};
+    const tx = db.transaction('midia','readonly');
+    const st = tx.objectStore('midia');
+    const rq = st.openCursor();
+    rq.onsuccess = e => { const c = e.target.result; if(c){ out[c.key]=c.value; c.continue(); } else res(out); };
+    rq.onerror = () => rej(rq.error);
+  });
+}
+async function idbPutAll(obj){
+  const db = await idbOpen();
+  return new Promise((res,rej)=>{
+    const tx = db.transaction('midia','readwrite');
+    const st = tx.objectStore('midia');
+    Object.entries(obj||{}).forEach(([k,v])=>st.put(v,k));
     tx.oncomplete = () => res(true);
     tx.onerror = () => rej(tx.error);
   });
@@ -880,14 +901,15 @@ async function doExcluirProprietario(id){
 async function onPropFoto(input){
   const file = input.files[0]; if(!file) return;
   const reader = new FileReader();
-  reader.onload = async (ev)=>{ pFotoCache = ev.target.result; await idbPut(keyPropFoto(P.id), pFotoCache); P.temFoto=true; renderPropForm(); };
+  reader.onload = async (ev)=>{ await storePropFoto(ev.target.result); };
   reader.readAsDataURL(file);
 }
+async function storePropFoto(dataUrl){ pFotoCache = dataUrl; await idbPut(keyPropFoto(P.id), dataUrl); P.temFoto=true; renderPropForm(); }
 function escolherOrigemPropFoto(){
   showSheet('Foto do proprietário', `<div style="font-size:13px;color:var(--muted);margin-bottom:6px">Como você quer adicionar a foto?</div>`,
     `<button class="btn gray" onclick="closeSheet()">Cancelar</button>
      <button class="btn gray" onclick="var el=document.getElementById('propFotoGal');el.click();closeSheet()">🖼 Galeria</button>
-     <button class="btn" onclick="var el=document.getElementById('propFotoCam');el.click();closeSheet()">📷 Câmera</button>`);
+     <button class="btn" onclick="closeSheet();abrirCameraModal('user',function(d){storePropFoto(d)})">📷 Câmera</button>`);
 }
 async function removerPropFoto(){
   await idbDel(keyPropFoto(P.id)).catch(()=>{});
@@ -1109,8 +1131,8 @@ function stepPaneHTML(i){
     ${W.tipoCasa==='Outro'?`<div class="field"><label>Outro (máx. 20)</label><input maxlength="20" value="${esc(W.outroTipo)}" oninput="W.outroTipo=this.value;document.getElementById('oc').textContent=this.value.length"><div class="charcount"><span id="oc">${W.outroTipo.length}</span>/20</div></div>`:''}
     <fieldset><legend>Venda exclusiva</legend><div class="chip-group">${chip('vendaExclusiva','Não','Não')}${chip('vendaExclusiva','Sim','Sim')}</div></fieldset>
     <div class="row2">
-      <div class="field"><label>Data inicial</label><input type="date" value="${esc(W.dataInicial)}" ${W.vendaExclusiva==='Sim'?'':'disabled'} oninput="W.dataInicial=this.value"></div>
-      <div class="field"><label>Data final</label><input type="date" value="${esc(W.dataFinal)}" ${W.vendaExclusiva==='Sim'?'':'disabled'} oninput="W.dataFinal=this.value"></div>
+      <div class="field"><label>Data inicial</label><input type="date" value="${esc(W.dataInicial)}" max="${esc(W.dataFinal||'')}" ${W.vendaExclusiva==='Sim'?'':'disabled'} oninput="W.dataInicial=this.value"></div>
+      <div class="field"><label>Data final</label><input type="date" value="${esc(W.dataFinal)}" min="${esc(W.dataInicial||'')}" ${W.vendaExclusiva==='Sim'?'':'disabled'} oninput="W.dataFinal=this.value"></div>
     </div>
     ${W.vendaExclusiva!=='Sim'?`<div class="hint" style="margin-top:-8px;margin-bottom:12px">As datas só podem ser preenchidas se a venda exclusiva estiver marcada como <b>Sim</b>.</div>`:''}
     <div class="row2">
@@ -1255,7 +1277,46 @@ function escolherOrigemFoto(kind, i){
   showSheet('Adicionar foto', `<div style="font-size:13px;color:var(--muted);margin-bottom:6px">Foto <b>${esc(nome)}</b> — como você quer adicionar?</div>`,
     `<button class="btn gray" onclick="closeSheet()">Cancelar</button>
      <button class="btn gray" onclick="var el=document.getElementById('inpGal_${kind}${i}');el.click();closeSheet()">🖼 Galeria</button>
-     <button class="btn" onclick="var el=document.getElementById('inpCam_${kind}${i}');el.click();closeSheet()">📷 Câmera</button>`);
+     <button class="btn" onclick="closeSheet();abrirCameraModal('environment',function(d){storeFotoDataUrl('${kind}',${i},d)},function(){document.getElementById('inpCam_${kind}${i}').click()})">📷 Câmera</button>`);
+}
+// ── Câmera embutida (getUserMedia) — funciona no PC e no celular via HTTPS ──
+let _camStream=null, _camCb=null;
+async function abrirCameraModal(facing, cb, onFail){
+  _camCb = cb;
+  const m = document.getElementById('modals') || document.body;
+  m.innerHTML = `<div style="position:fixed;inset:0;background:rgba(10,12,25,.92);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px">
+    <video id="camVid" autoplay playsinline muted style="width:100%;max-width:460px;border-radius:16px;background:#000"></video>
+    <div style="display:flex;gap:10px;margin-top:14px;width:100%;max-width:460px">
+      <button class="btn gray" style="flex:1" onclick="fecharCamera()">Cancelar</button>
+      <button class="btn" style="flex:2" onclick="tirarFotoCamera()">📷 Capturar</button>
+    </div>
+    <div style="color:#fff;opacity:.7;font-size:11px;margin-top:8px" id="camMsg">Permita o acesso à câmera quando o navegador pedir.</div>
+  </div>`;
+  try{
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('no-getusermedia');
+    _camStream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode: facing||'environment' }, audio:false });
+    const v = document.getElementById('camVid'); if(v){ v.srcObject = _camStream; }
+  }catch(e){
+    fecharCamera();
+    if(typeof onFail==='function'){ onFail(); }   // cai para o seletor com captura
+    else toast('Não foi possível abrir a câmera. Use a galeria ou publique o app (HTTPS).');
+  }
+}
+function tirarFotoCamera(){
+  const v = document.getElementById('camVid');
+  if(!v || !v.videoWidth){ toast('Aguarde a câmera iniciar.'); return; }
+  const c = document.createElement('canvas');
+  c.width = v.videoWidth; c.height = v.videoHeight;
+  c.getContext('2d').drawImage(v,0,0);
+  const dataUrl = c.toDataURL('image/jpeg', 0.85);
+  const cb = _camCb;
+  fecharCamera();
+  if(cb) cb(dataUrl);
+}
+function fecharCamera(){
+  if(_camStream){ _camStream.getTracks().forEach(t=>t.stop()); _camStream=null; }
+  _camCb=null;
+  const m = document.getElementById('modals'); if(m) m.innerHTML='';
 }
 async function hydratarFotos(){
   const els = document.querySelectorAll('[data-needload]');
@@ -1272,19 +1333,18 @@ async function hydratarFotos(){
 async function onFotoSelected(kind, i, input){
   const file = input.files[0]; if(!file) return;
   const reader = new FileReader();
-  reader.onload = async (ev)=>{
-    const dataUrl = ev.target.result;
-    const key = kind==='pub' ? keyFotoPub(W.id,i) : keyFotoAdd(W.id,i);
-    await idbPut(key, dataUrl);
-    wCache[key] = dataUrl;
-    const nome = nomeFotoArq(kind, i);
-    if(kind==='pub'){ W.fotosPublicas[i]=true; W.fotoNomesPub = W.fotoNomesPub||{}; W.fotoNomesPub[i]=nome; }
-    else { W.fotosAdicionais[i] = {publica: true, nome}; }
-    input.value='';
-    renderWizard();
-    toast('Foto gravada como ' + nome);
-  };
+  reader.onload = async (ev)=>{ await storeFotoDataUrl(kind, i, ev.target.result); input.value=''; };
   reader.readAsDataURL(file);
+}
+async function storeFotoDataUrl(kind, i, dataUrl){
+  const key = kind==='pub' ? keyFotoPub(W.id,i) : keyFotoAdd(W.id,i);
+  await idbPut(key, dataUrl);
+  wCache[key] = dataUrl;
+  const nome = nomeFotoArq(kind, i);
+  if(kind==='pub'){ W.fotosPublicas[i]=true; W.fotoNomesPub = W.fotoNomesPub||{}; W.fotoNomesPub[i]=nome; }
+  else { W.fotosAdicionais[i] = {publica: true, nome}; }
+  renderWizard();
+  toast('Foto gravada como ' + nome);
 }
 async function removerFoto(kind, i){
   const key = kind==='pub' ? keyFotoPub(W.id,i) : keyFotoAdd(W.id,i);
@@ -1613,7 +1673,17 @@ function montarTextoImovel(im){
 // ══════════════ MÓDULO AGENDA ══════════════
 let agSelDate = null; // 'YYYY-MM-DD' selecionado na tira de dias
 let agBuscaQ = '';    // busca da agenda
+let agVerSemana = false; // visão semana (hoje..+7) na agenda
 function isoDate(d){ return d.toISOString().slice(0,10); }
+function ehFimDeSemana(iso){ if(!iso) return false; const d=new Date(iso+'T00:00:00'); const g=d.getDay(); return g===0||g===6; }
+function ehHoje(iso){ return iso===isoDate(new Date()); }
+// estilo de destaque para relatórios: fim de semana (amarelo claro) e hoje (linhas grossas)
+function estiloLinhaData(iso){
+  let s='';
+  if(ehFimDeSemana(iso)) s+='background:#FFF7CC;';           // amarelo claro
+  if(ehHoje(iso)) s+='border-top:3px solid var(--primary);border-bottom:3px solid var(--primary);';
+  return s;
+}
 function renderAgenda(){
   if(!agSelDate) agSelDate = isoDate(new Date());
   const dias=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
@@ -1627,6 +1697,10 @@ function renderAgenda(){
       <div class="dw">${dias[d.getDay()]}</div><div class="dn">${d.getDate()}</div><div class="dd"></div></div>`;
   }
   let doDia = DB.agendamentos.filter(a=>a.data===agSelDate).sort((a,b)=>(a.hora||'').localeCompare(b.hora||''));
+  // lista da semana: de hoje até +7 dias, ordem crescente por data e hora
+  const semIni = isoDate(hoje); const semFimD = new Date(hoje); semFimD.setDate(semFimD.getDate()+7); const semFim = isoDate(semFimD);
+  const semanaLista = DB.agendamentos.filter(a=> (a.data||'')>=semIni && (a.data||'')<=semFim)
+    .sort((a,b)=> (a.data||'').localeCompare(b.data||'') || (a.hora||'').localeCompare(b.hora||''));
   const q = (agBuscaQ||'').trim().toLowerCase();
   let resultadosBusca = null;
   if(q){
@@ -1651,21 +1725,22 @@ function renderAgenda(){
     <div class="weekstrip">${strip}</div>
     <div class="pills">
       <div class="pill" style="background:var(--primary);border-color:var(--primary);color:#fff" onclick="novaVisita()">＋ Visita</div>
-      <div class="pill" onclick="toast('Avaliação entra em fase futura.')">Avaliação</div>
-      <div class="pill" onclick="toast('Sessão de fotos entra em fase futura.')">Fotos</div>
-      <div class="pill" onclick="toast('Assinatura entra em fase futura.')">Assinatura</div>
     </div>
     <div class="quick">
-      <div class="q" onclick="novaVisita()"><div class="c"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div><div class="l">Nova</div></div>
-      <div class="q" onclick="agSelDate='${isoDate(hoje)}';renderAgenda()"><div class="c"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="4" y="5" width="16" height="16" rx="3" stroke="currentColor" stroke-width="1.7"/><path d="M4 9h16M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></div><div class="l">Hoje</div></div>
-      <div class="q" onclick="toast('Visão semanal em fase futura.')"><div class="c"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="10" r="6.5" stroke="currentColor" stroke-width="1.7"/><path d="M12 6.5V10l2.2 1.3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></div><div class="l">Semana</div></div>
+      <div class="q" onclick="agVerSemana=false;agSelDate='${isoDate(hoje)}';renderAgenda()"><div class="c"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="4" y="5" width="16" height="16" rx="3" stroke="currentColor" stroke-width="1.7"/><path d="M4 9h16M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></div><div class="l">Hoje</div></div>
+      <div class="q" onclick="agVerSemana=true;renderAgenda()"><div class="c" ${agVerSemana?'style="background:var(--primary);color:#fff"':''}><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="10" r="6.5" stroke="currentColor" stroke-width="1.7"/><path d="M12 6.5V10l2.2 1.3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></div><div class="l">Semana</div></div>
       <div class="q" onclick="goTab('imoveis')"><div class="c"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 21s7-5.4 7-11a7 7 0 1 0-14 0c0 5.6 7 11 7 11Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.4" stroke="currentColor" stroke-width="1.6"/></svg></div><div class="l">Imóveis</div></div>
     </div>
-    <div class="srow"><span class="t">${fmtDataBR(agSelDate)}</span><span class="a">${doDia.length} visita(s)</span></div>
-    ${doDia.length===0 ? `<div class="empty"><div class="big">🗓️</div>Nada agendado para este dia.<br><button class="btn" style="margin-top:16px;max-width:220px" onclick="novaVisita()">＋ Nova visita</button></div>` :
-      doDia.map(a=>agCardHTML(a)).join('')}
+    ${agVerSemana ? `
+      <div class="srow"><span class="t">Próximos 7 dias</span><span class="a">${semanaLista.length} visita(s)</span></div>
+      ${semanaLista.length===0?`<div class="empty"><div class="big">🗓️</div>Nenhuma visita de hoje até +7 dias.</div>`:semanaLista.map(a=>agCardHTML(a,true)).join('')}
+    ` : `
+      <div class="srow"><span class="t">${fmtDataBR(agSelDate)}</span><span class="a">${doDia.length} visita(s)</span></div>
+      ${doDia.length===0 ? `<div class="empty"><div class="big">🗓️</div>Nada agendado para este dia.<br><button class="btn" style="margin-top:16px;max-width:220px" onclick="novaVisita()">＋ Nova visita</button></div>` :
+        doDia.map(a=>agCardHTML(a)).join('')}
+    `}
     `}`;
-  const paraThumbs = resultadosBusca!==null ? resultadosBusca : doDia;
+  const paraThumbs = resultadosBusca!==null ? resultadosBusca : (agVerSemana ? semanaLista : doDia);
   paraThumbs.forEach(a=>{
     const im = DB.imoveis.find(x=>x.id===a.imovelId);
     if(im && im.fotosPublicas?.some(Boolean)){
@@ -1697,7 +1772,30 @@ function agCardHTML(a, mostrarData){
       <div class="act" style="background:#E7F1FF;border-color:#CFE0FF;color:#2563EB" onclick="editarAgendamento('${a.id}')">✏️ Editar</div>
       <div class="act" style="background:var(--danger);border-color:var(--danger);color:#fff" onclick="excluirAgendamento('${a.id}')">🗑 Cancelar</div>
     </div>
+    <div class="act" style="margin-top:8px;background:${avaliacaoCor(a.avaliacao||0)};color:${(a.avaliacao||0)>=6?'#fff':'var(--text)'};border-color:var(--border);font-weight:800" onclick="abrirAvaliacao('${a.id}')">🌡️ Avaliação do interesse: ${a.avaliacao||0}/10 — toque para ajustar</div>
   </div>`;
+}
+// cor do termômetro: 0 = branco → 10 = verde escuro
+function avaliacaoCor(n){
+  const t = Math.max(0,Math.min(10,n))/10;
+  const r = Math.round(255+(11-255)*t), g = Math.round(255+(107-255)*t), b = Math.round(255+(58-255)*t);
+  return `rgb(${r},${g},${b})`;
+}
+function abrirAvaliacao(id){
+  const a = DB.agendamentos.find(x=>x.id===id); if(!a) return;
+  const atual = a.avaliacao||0;
+  let cells = '';
+  for(let n=0;n<=10;n++){
+    cells += `<div onclick="setAvaliacao('${id}',${n})" style="flex:1;min-width:0;height:44px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;cursor:pointer;background:${avaliacaoCor(n)};color:${n>=6?'#fff':'#191A2C'};border:${n===atual?'3px solid var(--primary)':'1px solid var(--border)'};border-radius:8px">${n}</div>`;
+  }
+  showSheet('🌡️ Avaliação do interesse', `
+    <div style="font-size:13px;color:var(--muted);margin-bottom:10px">Do 0 (nenhum interesse) ao 10 (muito interessado). A cor vai do branco ao verde escuro.</div>
+    <div style="display:flex;gap:4px;flex-wrap:wrap">${cells}</div>`,
+    `<button class="btn gray" onclick="closeSheet()">Fechar</button>`);
+}
+function setAvaliacao(id, n){
+  const a = DB.agendamentos.find(x=>x.id===id); if(!a) return;
+  a.avaliacao = n; save(); closeSheet(); toast('Avaliação: '+n+'/10'); renderAgenda();
 }
 function excluirAgendamento(id){
   confirmar({icon:'🗑️', title:'Cancelar esta visita?', msg:'A visita será removida da agenda. As despesas já lançadas no financeiro serão mantidas.',
@@ -1914,7 +2012,7 @@ function renderFinanceiro(){
         h += `<div style="margin:14px 2px 6px"><b style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em">${mm?MESES[parseInt(mm)-1]+' '+yy:'Sem data'}</b></div>`; }
     }
     const rec = e._tipo==='rec';
-    h += `<div class="card" style="display:flex;align-items:center;gap:10px;cursor:pointer" onclick="${rec?`editarReceita('${e.id}')`:`editarDespesa('${e.id}')`}">
+    h += `<div class="card" style="display:flex;align-items:center;gap:10px;cursor:pointer;${estiloLinhaData(e.data)}" onclick="${rec?`editarReceita('${e.id}')`:`editarDespesa('${e.id}')`}">
       <div class="ptile-icon" style="width:38px;height:38px;flex-shrink:0;background:${rec?'var(--pgreen)':'var(--pblue)'}">${rec?'💚':iconeCat(e.categoria)}</div>
       <div style="flex:1;min-width:0">
         <b style="font-size:14px">${esc(e.categoria||(rec?'Receita':'Outros'))}</b>
@@ -1945,6 +2043,14 @@ function fluxoPeriodo(qual){
   }
   renderFinanceiro();
 }
+function ehHoje(iso){ return iso===isoDate(new Date()); }
+function estiloLinhaData(iso){
+  const d = new Date(iso+'T00:00:00'); const dow = d.getDay();
+  let s = '';
+  if(dow===0||dow===6) s += ';background:#FFF7CC';                 // fim de semana amarelo claro
+  if(ehHoje(iso)) s += ';border-top:3px solid var(--dark);border-bottom:3px solid var(--dark);font-weight:800';
+  return s;
+}
 let realIni = '', realFim = '';
 function realizadoHTML(){
   const realizadas = DB.financeiro.despesas.filter(e=>e.dataRealizada);
@@ -1957,8 +2063,8 @@ function realizadoHTML(){
   let h = `<div class="card" style="margin-bottom:10px">
     <div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:8px">✅ Despesas realizadas (com data realizada preenchida)</div>
     <div class="row2">
-      <div class="field" style="margin:0"><label>De (data realizada)</label><input type="date" value="${realIni}" onchange="realIni=this.value;renderFinanceiro()"></div>
-      <div class="field" style="margin:0"><label>Até</label><input type="date" value="${realFim}" onchange="realFim=this.value;renderFinanceiro()"></div>
+      <div class="field" style="margin:0"><label>De (data realizada)</label><input type="date" value="${realIni}" max="${realFim}" onchange="realIni=this.value;renderFinanceiro()"></div>
+      <div class="field" style="margin:0"><label>Até</label><input type="date" value="${realFim}" min="${realIni}" onchange="realFim=this.value;renderFinanceiro()"></div>
     </div>
   </div>
   <div class="card" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -2019,8 +2125,8 @@ function fluxoDiarioHTML(modoSemana){
     const p = despAtivas.filter(e=>e.data===iso).reduce((s,e)=>s+(e.valor||0),0);
     acc += r - p; totR+=r; totD+=p;
     const temMov = (r>0||p>0);
-    linhas += `<div style="display:flex;align-items:center;padding:9px 10px;border-bottom:1px solid var(--border);${temMov?'':'opacity:.5'}">
-      <div style="width:74px;flex-shrink:0;font-size:11.5px;font-weight:600" class="mono">${fmtDataBR(iso)}</div>
+    linhas += `<div style="display:flex;align-items:center;padding:9px 10px;border-bottom:1px solid var(--border);${temMov?'':'opacity:.5'}${estiloLinhaData(iso)}">
+      <div style="width:74px;flex-shrink:0;font-size:11.5px;font-weight:${ehHoje(iso)?'800':'600'}" class="mono">${fmtDataBR(iso)}</div>
       <div style="flex:1;text-align:right;color:var(--success);font-size:12px;font-weight:700">${r>0?fmtBRL(r):'—'}</div>
       <div style="flex:1;text-align:right;color:var(--danger);font-size:12px;font-weight:700">${p>0?fmtBRL(p):'—'}</div>
       <div style="flex:1;text-align:right;color:${acc>=0?'var(--success)':'var(--danger)'};font-size:12px;font-weight:800">${fmtBRL(acc)}</div>
@@ -2125,7 +2231,10 @@ function recForm(ex){
     <label>Categoria da receita</label>
     <input id="nrCat" placeholder="Digite a categoria (ex.: Comissão, Aluguel…)" value="${esc(ex?.categoria||'')}">
     <label>Valor</label><input id="nrVal" inputmode="numeric" placeholder="99.999,99" value="${ex?fmtMoedaSemRS(ex.valor):''}" oninput="maskMoeda(this)">
-    <label>Data</label><input id="nrData" type="date" value="${ex?esc(ex.data):isoDate(new Date())}">
+    <div class="row2">
+      <div class="field" style="margin:0"><label>Data</label><input id="nrData" type="date" value="${ex?esc(ex.data):isoDate(new Date())}"></div>
+      <div class="field" style="margin:0"><label>Data realizada</label><input id="nrDataReal" type="date" value="${esc(ex?.dataRealizada||'')}"><div class="hint">Pode ficar em branco</div></div>
+    </div>
     ${selectImovelHTML('nrImovel', ex?.imovelId)}
     <label>Descrição</label><input id="nrDesc" placeholder="Opcional" value="${esc(ex?.descricao||'')}">`;
 }
@@ -2147,6 +2256,7 @@ function salvarReceitaManual(editId){
   const imovelCodigo = imovelId ? (DB.imoveis.find(im=>im.id===imovelId)?.codigo||'').toUpperCase() : '';
   const dados = { categoria, valor,
     data:document.getElementById('nrData').value||isoDate(new Date()),
+    dataRealizada:document.getElementById('nrDataReal')?.value||'',
     imovelId, imovelCodigo,
     descricao:document.getElementById('nrDesc').value||'' };
   const commit = ()=>{
@@ -2239,18 +2349,19 @@ function escolherOrigemCorFoto(kind){
   showSheet(titulo, `<div style="font-size:13px;color:var(--muted);margin-bottom:6px">Como você quer adicionar?</div>`,
     `<button class="btn gray" onclick="closeSheet()">Cancelar</button>
      <button class="btn gray" onclick="var el=document.getElementById('${kind==='foto'?'corFotoGal':'corCreciGal'}');el.click();closeSheet()">🖼 Galeria</button>
-     <button class="btn" onclick="var el=document.getElementById('${kind==='foto'?'corFotoCam':'corCreciCam'}');el.click();closeSheet()">📷 Câmera</button>`);
+     <button class="btn" onclick="capturarCorField();closeSheet();abrirCameraModal('${kind==='foto'?'user':'environment'}',function(d){storeCorFoto('${kind}',d)},function(){document.getElementById('${kind==='foto'?'corFotoCam':'corCreciCam'}').click()})">📷 Câmera</button>`);
+}
+function capturarCorField(){ DB.corretor.nome = val('corNome')||DB.corretor.nome; DB.corretor.creci = val('corCreci')||DB.corretor.creci; DB.corretor.validadeCreci = val('corValidade')||DB.corretor.validadeCreci; }
+async function storeCorFoto(kind, dataUrl){
+  if(kind==='foto'){ await idbPut(keyCorretorFoto(), dataUrl); DB.corretor.temFoto=true; }
+  else { await idbPut(keyCorretorCreci(), dataUrl); DB.corretor.temCreci=true; }
+  save(); renderDadosCorretor();
 }
 async function onCorFoto(kind, input){
   const file = input.files[0]; if(!file) return;
-  // captura os campos digitados antes de re-renderizar
-  DB.corretor.nome = val('corNome'); DB.corretor.creci = val('corCreci'); DB.corretor.validadeCreci = val('corValidade');
+  capturarCorField();
   const reader = new FileReader();
-  reader.onload = async (ev)=>{
-    if(kind==='foto'){ await idbPut(keyCorretorFoto(), ev.target.result); DB.corretor.temFoto=true; }
-    else { await idbPut(keyCorretorCreci(), ev.target.result); DB.corretor.temCreci=true; }
-    save(); renderDadosCorretor();
-  };
+  reader.onload = async (ev)=>{ await storeCorFoto(kind, ev.target.result); };
   reader.readAsDataURL(file);
 }
 function salvarCorretor(){
