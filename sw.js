@@ -3,7 +3,7 @@
 // permitir abrir o app offline. Dados ficam em localStorage/IndexedDB,
 // que já funcionam offline por padrão — isto aqui cobre só o carregamento
 // do arquivo em si.
-const CACHE_NAME = 'corretor-pwa-v1.9.0';
+const CACHE_NAME = 'corretor-pwa-v1.10.0';
 const APP_SHELL = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', (event) => {
