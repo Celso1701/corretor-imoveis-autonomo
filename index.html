@@ -6,8 +6,8 @@
 <meta name="theme-color" content="#1D4ED8">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Corretor PWA">
-<title>Corretor PWA — Gestão de Imóveis</title>
+<meta name="apple-mobile-web-app-title" content="Corretor de Imóveis">
+<title>Corretor de Imóveis — Gestão de Imóveis</title>
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
@@ -34,6 +34,8 @@ h2{font-size:19px;font-weight:800;letter-spacing:-.3px}
 /* ---- splash / lock ---- */
 #splash,#lockScreen,#setupScreen{position:fixed;inset:0;background:linear-gradient(160deg,#2F5FEC 0%,#1E3FAE 60%,#16307A 100%);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 26px calc(32px + env(safe-area-inset-bottom));text-align:center;overflow-y:auto}
 #splash .mark,#lockScreen .mark,#setupScreen .mark{width:74px;height:74px;border-radius:22px;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;margin-bottom:18px}
+.brandlogo{width:132px;height:132px;border-radius:28px;object-fit:cover;background:#fff;box-shadow:0 14px 34px rgba(0,0,0,.28);margin-bottom:20px}
+.brandlogo.sm{width:96px;height:96px;border-radius:22px;margin-bottom:16px}
 #splash .wm{font-size:30px;font-weight:800;color:#fff;letter-spacing:-.5px}
 #splash .wm span{color:#8FB0FF}
 #splash .tag{color:rgba(255,255,255,.6);font-size:10px;letter-spacing:2px;font-weight:700;margin-top:8px;text-transform:uppercase}
@@ -106,7 +108,7 @@ main{padding:6px 18px 10px}
 
 /* ---- wizard ---- */
 .progress-wrap{padding:14px 18px 4px}
-.step-back{display:flex;align-items:center;gap:6px;background:none;border:none;color:var(--muted);font-size:12px;font-weight:700;margin-bottom:8px}
+.step-back{display:inline-flex;align-items:center;gap:5px;background:var(--pblue);border:none;color:var(--primary);font-size:13.5px;font-weight:800;padding:9px 15px 9px 11px;border-radius:100px;margin-bottom:11px;cursor:pointer;line-height:1}
 .progress-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px}
 .progress-label{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:.06em}
 .progress-name{font-size:12.5px;font-weight:700;color:var(--primary)}
@@ -281,9 +283,8 @@ header.topbar.home{padding:0;background:transparent;box-shadow:none}
 
 <!-- ============ SPLASH ============ -->
 <div id="splash">
-  <div class="mark"><svg width="34" height="34" viewBox="0 0 24 24" fill="none"><path d="M4 11.5L12 4l8 7.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 10.5V19a1 1 0 0 0 1 1h3.5v-5h3v5H17a1 1 0 0 0 1-1v-8.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-  <div class="wm">Corretor<span>PWA</span></div>
-  <div class="tag">Organiza · Cadastra · Vende</div>
+  <img class="brandlogo" id="splashLogo" alt="Corretor de Imóveis">
+  <div class="tag">Gestão de imóveis</div>
 </div>
 
 <!-- ============ APP SHELL ============ -->
@@ -311,9 +312,19 @@ header.topbar.home{padding:0;background:transparent;box-shadow:none}
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.10.0';
+const APP_VERSION = '1.13.0';
 // Ajudante para inserir ícones do kit (traço) em qualquer lugar
 function ic(name, size, style){ size=size||18; return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"${style?` style="${style}"`:''}><use href="#i-${name}"/></svg>`; }
+// Logo da marca (usado na splash e nas telas de senha)
+const LOGO="data:image/jpeg;base64,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";
+try{var _sl=document.getElementById('splashLogo'); if(_sl)_sl.src=LOGO;}catch(e){}
+// ===== Acessibilidade: zoom da interface (amplia o app inteiro) =====
+const ZOOM_KEY='cor_zoom', ZOOM_MIN=0.8, ZOOM_MAX=1.7;
+function getZoom(){ const v=parseFloat(localStorage.getItem(ZOOM_KEY)); return (v && v>=ZOOM_MIN && v<=ZOOM_MAX)?v:1; }
+function aplicarZoom(f){ f=Math.max(ZOOM_MIN,Math.min(ZOOM_MAX,Math.round((f||1)*100)/100)); try{ document.documentElement.style.zoom=f; }catch(e){} try{ localStorage.setItem(ZOOM_KEY,String(f)); }catch(e){} return f; }
+function mudarZoom(delta){ const f=aplicarZoom(getZoom()+delta); const el=document.getElementById('zoomPct'); if(el) el.textContent=Math.round(f*100)+'%'; }
+function resetZoom(){ aplicarZoom(1); const el=document.getElementById('zoomPct'); if(el) el.textContent='100%'; }
+try{ document.documentElement.style.zoom=getZoom(); }catch(e){}
 const val = id => document.getElementById(id)?.value.trim() || '';
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2,10)+Date.now().toString(36));
 function toast(msg){
@@ -398,7 +409,10 @@ function maskMoedaFromNumber(n){ n=parseFloat(n)||0; let [int,dec]=n.toFixed(2).
 // ═══ Busca de CEP (ViaCEP) ═══
 // CEP é opcional. Se preenchido (8 dígitos), busca o endereço e preenche
 // o campo Endereço, permitindo complementar. Requer internet no momento do uso.
-async function buscarCEP(cepRaw, alvoIds){
+async function buscarCEP(cepRaw, alvoIds, force){
+  // Ao editar um imóvel já cadastrado, não refaz a busca nem sobrescreve os dados existentes
+  // (a não ser que o corretor peça explicitamente, via botão "Buscar endereço pelo CEP").
+  if(W && W._editando && !force) return;
   const cep = (cepRaw||'').replace(/\D/g,'');
   if(cep.length!==8) return;
   const hint = document.getElementById('cepHint');
@@ -636,6 +650,176 @@ window.addEventListener('DOMContentLoaded', ()=>{
     boot();
   }, 1100);
 });
+/* ============ BECAPE (backup / restauração) ============ */
+async function idbAllEntries(){
+  const db = await idbOpen();
+  return new Promise((res,rej)=>{
+    try{
+      const tx = db.transaction('midia','readonly'), st = tx.objectStore('midia');
+      const kq = st.getAllKeys(), vq = st.getAll(); let ks=null, vs=null;
+      kq.onsuccess = ()=>{ ks = kq.result; if(vs) done(); };
+      vq.onsuccess = ()=>{ vs = vq.result; if(ks) done(); };
+      kq.onerror = ()=>rej(kq.error); vq.onerror = ()=>rej(vq.error);
+      function done(){ const o={}; ks.forEach((k,i)=>o[k]=vs[i]); res(o); }
+    }catch(e){ rej(e); }
+  });
+}
+function diasDesdeBackup(){
+  const d = localStorage.getItem('cor_last_backup'); if(!d) return null;
+  const a = new Date(d+'T00:00:00'); return Math.floor((Date.now()-a.getTime())/86400000);
+}
+async function exportarBackup(){
+  toast('Preparando backup…');
+  let midia = {}; try{ midia = await idbAllEntries(); }catch(e){ midia = {}; }
+  const pacote = { app:'corretor-imoveis', formato:'backup', versao:APP_VERSION, exportadoEm:new Date().toISOString(), dados:DB, midia:midia };
+  let blob; try{ blob = new Blob([JSON.stringify(pacote)], {type:'application/json'}); }catch(e){ toast('Não foi possível gerar o backup.'); return; }
+  try{
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'corretor-backup-'+isoDate(new Date())+'.json';
+    document.body.appendChild(a); a.click();
+    setTimeout(()=>{ try{ URL.revokeObjectURL(a.href); }catch(e){} a.remove(); }, 1500);
+  }catch(e){ toast('Não foi possível salvar o arquivo.'); return; }
+  try{ localStorage.setItem('cor_last_backup', isoDate(new Date())); }catch(e){}
+  toast('Backup salvo! Guarde o arquivo em local seguro (nuvem ou e-mail).');
+  if(currentTab==='config') renderConfig();
+}
+function importarBackup(input){
+  const f = input.files && input.files[0]; if(!f){ return; }
+  input.value = '';
+  const r = new FileReader();
+  r.onload = e=>{
+    let pkg; try{ pkg = JSON.parse(e.target.result); }catch(err){ toast('Arquivo inválido.'); return; }
+    if(!pkg || !pkg.dados || !Array.isArray(pkg.dados.imoveis)){ toast('Este arquivo não é um backup do app.'); return; }
+    window._pendBackup = pkg;
+    const qtd = (pkg.dados.imoveis||[]).length;
+    const dt = pkg.exportadoEm ? fmtDataBR(String(pkg.exportadoEm).slice(0,10)) : '—';
+    confirmar({ icon: ic('warning',30), title:'Restaurar este backup?',
+      msg:'Backup de <b>'+dt+'</b> com <b>'+qtd+' imóvel(is)</b>.<br>Os dados atuais deste aparelho serão <b>substituídos</b> — imóveis, proprietários, agenda, financeiro e fotos.',
+      noLabel:'Cancelar', yesLabel:'Restaurar', yesBg:'var(--primary)', yes:'doRestaurarBackup()' });
+  };
+  r.readAsText(f);
+}
+async function doRestaurarBackup(){
+  const pkg = window._pendBackup; if(!pkg) return;
+  toast('Restaurando backup…');
+  try{
+    let atuais = {}; try{ atuais = await idbAllEntries(); }catch(e){ atuais = {}; }
+    for(const k of Object.keys(atuais)){ try{ await idbDel(k); }catch(e){} }
+    if(pkg.midia){ for(const k of Object.keys(pkg.midia)){ try{ await idbPut(k, pkg.midia[k]); }catch(e){} } }
+    DB = pkg.dados;
+    await persistDB();
+    toast('Backup restaurado com sucesso!');
+    setTimeout(()=>location.reload(), 800);
+  }catch(e){ toast('Falha ao restaurar o backup.'); }
+}
+
+/* ============ VERSÃO PRO (senha-contra-senha, vinculada ao aparelho) ============ */
+const PRO_WHATS = '5515998293087';
+const PRO_PLANS = {1:'1 mês', 6:'6 meses', 12:'12 meses'};
+/* PLACEHOLDER — Celso vai definir os valores reais. Basta trocar aqui. */
+const PRECOS_PRO = {1:'R$ 19,90', 6:'R$ 99,90', 12:'R$ 179,90'};
+const PLAN_BY_IDX = {1:1, 2:6, 3:12};     /* dígito do código -> meses */
+const IDX_BY_PLAN = {1:1, 6:2, 12:3};     /* meses -> dígito do código */
+/* Portão de convite (fase de testes): DESLIGADO por padrão. */
+const PORTAO_CONVITE = false;
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function addMonths(iso, m){ const d = new Date((iso||todayISO())+'T00:00:00'); d.setMonth(d.getMonth() + (m||0)); return d.toISOString().slice(0,10); }
+function makeDevId(){
+  const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let out = '';
+  try{ if(window.crypto && crypto.getRandomValues){ const r = crypto.getRandomValues(new Uint8Array(4)); out = [].slice.call(r).map(function(b){ return A[b % A.length]; }).join(''); } }catch(e){}
+  if(!/^[A-Z0-9]{4}$/.test(out)){ out=''; for(let i=0;i<4;i++) out += A[Math.floor(Math.random()*A.length)]; }
+  return out;
+}
+function myDevId(){
+  if(!DB) return '';
+  if(!/^[A-Z0-9]{4}$/.test(DB.devId||'')){ DB.devId = makeDevId(); try{ save(); }catch(e){} }
+  return DB.devId;
+}
+function corChecksum(devId, planIdx){
+  let h = 7; const s = (devId||'') + '|' + planIdx + '|CORRETORIMOVEISPRO';
+  for(let i=0;i<s.length;i++) h = (h*31 + s.charCodeAt(i)) % 99991;
+  return String(100 + (h % 900));
+}
+function corCheck(code){
+  const m = /^COR-([A-Z0-9]{4})-([123])(\d{3})$/.exec((code||'').toUpperCase().trim());
+  if(!m) return { ok:false, motivo:'formato' };
+  const dev = m[1], idx = +m[2], chk = m[3];
+  if(dev !== myDevId()) return { ok:false, motivo:'aparelho' };
+  if(corChecksum(dev, idx) !== chk) return { ok:false, motivo:'invalido' };
+  return { ok:true, meses: PLAN_BY_IDX[idx] };
+}
+/* Convite (fase de testes) — mesmo cálculo usado na Central de Envio, se ligar o portão */
+function inviteChecksum(seed){ let h=7; const s=(seed||'')+'CONVITECORRETOR'; for(let i=0;i<s.length;i++) h=(h*31 + s.charCodeAt(i))%99991; return String(1000 + (h%9000)); }
+function inviteCheck(code){ const m=/^COR-([A-Z0-9]{4})-(\d{4})$/.exec((code||'').toUpperCase().trim()); return !!m && inviteChecksum(m[1])===m[2]; }
+function isPro(){ const l = DB && DB.license; if(!l || !l.pro) return false; if(l.expiresAt && l.expiresAt < todayISO()) return false; return true; }
+function diasRestantesPro(){ const l = DB && DB.license; if(!l || !l.expiresAt) return null; const a = new Date(l.expiresAt+'T00:00:00'); return Math.ceil((a.getTime()-Date.now())/86400000); }
+function usedCodes(){ try{ return JSON.parse(localStorage.getItem('cor_used_codes')||'[]'); }catch(e){ return []; } }
+function maskProCode(el){
+  let v = el.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
+  if(v.indexOf('COR')===0) v = v.slice(3);
+  v = v.slice(0,8);
+  let out = 'COR';
+  if(v.length>0) out += '-' + v.slice(0,4);
+  if(v.length>4) out += '-' + v.slice(4,8);
+  el.value = out;
+}
+function copiarDevId(){ const d='AP-'+myDevId(); if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(d).then(function(){ toast('ID copiado!'); }).catch(function(){ toast(d); }); } else { toast(d); } }
+function abrirWhatsPro(){ const dev='AP-'+myDevId(); const msg='Oi! Quero assinar o Corretor de Imóveis Pro. Meu ID do aparelho é '+dev+'. Podemos combinar?'; window.open('https://wa.me/'+PRO_WHATS+'?text='+encodeURIComponent(msg),'_blank'); }
+function openProModal(reason){
+  const dev = 'AP-' + myDevId();
+  showSheet('Corretor de Imóveis Pro', `
+    ${reason?`<div style="background:rgba(240,165,0,.12);border:1.5px solid #F0A500;border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:12px">${reason}</div>`:''}
+    <div style="font-size:14px;font-weight:800;margin-bottom:8px">Planos</div>
+    <div style="font-size:13.5px;line-height:1.9;color:var(--text)">
+      1 mês — <b>${PRECOS_PRO[1]}</b><br>
+      6 meses — <b>${PRECOS_PRO[6]}</b><br>
+      12 meses — <b>${PRECOS_PRO[12]}</b>
+    </div>
+    <div style="background:var(--pblue);border:1.5px dashed var(--primary);border-radius:12px;padding:11px 13px;margin-top:12px">
+      <div style="font-size:10px;font-weight:800;color:var(--primary);text-transform:uppercase">ID deste aparelho</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+        <b style="font-size:20px;letter-spacing:2px;font-family:monospace;flex:1">${dev}</b>
+        <button class="btn sm" onclick="copiarDevId()">Copiar</button>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">Seu código Pro é gerado para ESTE ID e só funciona neste aparelho.</div>
+    </div>
+    <button class="btn" style="background:#25D366;margin-top:12px" onclick="abrirWhatsPro()">${ic('chat',16)} Assinar pelo WhatsApp</button>
+    <label style="display:block;margin-top:14px;font-size:12px;font-weight:700;color:var(--muted)">Já tem um código? Digite aqui</label>
+    <input id="proCode" placeholder="COR-XXXX-0000" autocapitalize="characters" style="text-transform:uppercase;letter-spacing:2px;text-align:center;font-weight:700" oninput="maskProCode(this)">
+  `,
+    `<button class="btn gray" onclick="closeSheet()">Agora não</button>
+     <button class="btn" onclick="activatePro()">Ativar Pro</button>`);
+}
+function activatePro(){
+  const el = document.getElementById('proCode');
+  const code = ((el&&el.value)||'').toUpperCase().trim();
+  const r = corCheck(code);
+  if(!r.ok){
+    toast(r.motivo==='aparelho' ? ('Este código foi gerado para outro aparelho. Confira o ID AP-'+myDevId()) : 'Código inválido para este aparelho.');
+    return;
+  }
+  if(usedCodes().indexOf(code) >= 0){ toast('Este código já foi usado neste aparelho. Peça um novo para renovar.'); return; }
+  const meses = r.meses;
+  const base = isPro() ? DB.license.expiresAt : todayISO();
+  DB.license = { pro:true, code:code, plan:meses, activatedAt:todayISO(), expiresAt: addMonths(base, meses) };
+  const u = usedCodes(); u.push(code); try{ localStorage.setItem('cor_used_codes', JSON.stringify(u)); }catch(e){}
+  save(); closeSheet(); if(currentTab==='config') renderConfig();
+  toast('Pro ativado por ' + PRO_PLANS[meses] + '! Válido até ' + fmtDataBR(DB.license.expiresAt));
+}
+function reativarPro(){
+  const l = DB.license;
+  if(l && l.expiresAt && l.expiresAt >= todayISO()){ l.pro = true; save(); if(currentTab==='config') renderConfig(); toast('Pro reativado. Válido até ' + fmtDataBR(l.expiresAt)); }
+  else { openProModal('Seu período Pro expirou. Renove com um novo código.'); }
+}
+function deactivatePro(){
+  confirmar({ icon: ic('lock',28), title:'Desativar o Pro?',
+    msg:'Os recursos Pro ficarão bloqueados neste aparelho. Seus dados NÃO serão apagados — você pode reativar enquanto o período estiver válido.',
+    noLabel:'Manter Pro', yesLabel:'Sim, desativar', yes:'doDeactivatePro()' });
+}
+function doDeactivatePro(){ if(DB.license) DB.license.pro = false; save(); if(currentTab==='config') renderConfig(); toast('Pro desativado.'); }
+
 function boot(){
   // Sem senha: carrega o banco em texto puro do localStorage (ou cria vazio).
   _cryptoKey = null;
@@ -653,6 +837,8 @@ function boot(){
     if(!Array.isArray(DB.financeiro.receitas)) DB.financeiro.receitas = [];
     if(!DB.contadores) DB.contadores = {cs:0,ap:0,tr:0,ch:0,prop:0};
     if(DB.contadores.prop===undefined) DB.contadores.prop=0;
+    if(!DB.devId || !/^[A-Z0-9]{4}$/.test(DB.devId)) DB.devId = makeDevId();
+    if(!DB.license) DB.license = { pro:false };
   }catch(e){ DB = defaultDB(); }
   enterApp();
 }
@@ -668,7 +854,7 @@ function renderSetup(){
   const div = document.createElement('div');
   div.id = 'setupScreen';
   div.innerHTML = `
-    <div class="mark"><svg width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M4 11.5L12 4l8 7.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 10.5V19a1 1 0 0 0 1 1h3.5v-5h3v5H17a1 1 0 0 0 1-1v-8.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <img class="brandlogo sm" src="${LOGO}" alt="Corretor de Imóveis">
     <div class="auth-title">Crie sua senha de acesso</div>
     <div class="auth-sub">Seus dados (proprietários, endereços, telefones) ficam criptografados neste aparelho. Guarde bem esta senha — sem ela os dados não podem ser recuperados.</div>
     <div class="auth-box">
@@ -702,7 +888,7 @@ function renderLock(){
   const div = document.createElement('div');
   div.id = 'lockScreen';
   div.innerHTML = `
-    <div class="mark"><svg width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M4 11.5L12 4l8 7.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 10.5V19a1 1 0 0 0 1 1h3.5v-5h3v5H17a1 1 0 0 0 1-1v-8.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <img class="brandlogo sm" src="${LOGO}" alt="Corretor de Imóveis">
     <div class="auth-title">Bem-vindo de volta</div>
     <div class="auth-sub">Digite sua senha de acesso para abrir sua carteira de imóveis.</div>
     <div class="auth-box">
@@ -761,6 +947,7 @@ function doWipe(){
 
 // ═══ App principal ═══
 function enterApp(){
+  try{ aplicarZoom(getZoom()); }catch(e){}
   document.getElementById('appHeader').classList.remove('hidden');
   document.getElementById('mainNav').classList.remove('hidden');
   goTab('inicio');
@@ -937,7 +1124,6 @@ function listaContatosVisitasHTML(){
 function abrirTipos(){
   document.getElementById('mainNav').classList.add('hidden');
   document.getElementById('appHeader').innerHTML = `
-    <button class="step-back" onclick="goTab('inicio')">‹ Início</button>
     <div class="eyebrow">Vender</div><h2>Tipo de imóvel</h2>
     <div class="cat-row" style="margin-top:14px">
       <div class="cat-item" onclick="iniciarCadastro('casa')"><div class="cat-circle"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 11.5L12 4l8 7.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 10.5V19a1 1 0 0 0 1 1h3.5v-5h3v5H17a1 1 0 0 0 1-1v-8.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="cat-label">Casa</div></div>
@@ -953,7 +1139,8 @@ function abrirTipos(){
     </button>
     <button class="ptile" onclick="iniciarCadastro('apartamento')"><div class="ptile-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="6" y="3" width="12" height="18" rx="1.5" stroke="currentColor" stroke-width="1.8"/></svg></div><div><div class="ptile-title">Apartamento</div><div class="ptile-sub">Com áreas de lazer do condomínio</div></div></button>
     <button class="ptile" onclick="iniciarCadastro('chacara')"><div class="ptile-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 20l4-9 4 5 3-6 5 10H4Z" stroke="currentColor" stroke-width="1.5"/></svg></div><div><div class="ptile-title">Chácara / Sítio</div><div class="ptile-sub">Área rural</div></div></button>
-    <button class="ptile" onclick="iniciarCadastro('terreno')"><div class="ptile-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 19h16M6 19V10M18 19V10M4 10l8-6 8 6" stroke="currentColor" stroke-width="1.6"/></svg></div><div><div class="ptile-title">Terreno</div><div class="ptile-sub">Cadastro simplificado</div></div></button>`;
+    <button class="ptile" onclick="iniciarCadastro('terreno')"><div class="ptile-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 19h16M6 19V10M18 19V10M4 10l8-6 8 6" stroke="currentColor" stroke-width="1.6"/></svg></div><div><div class="ptile-title">Terreno</div><div class="ptile-sub">Cadastro simplificado</div></div></button>
+    <button class="btn gray" style="margin-top:18px" onclick="goTab('inicio')">${ic('back',16)} Voltar ao Início</button>`;
 }
 
 // ══════════════ MÓDULO PROPRIETÁRIOS ══════════════
@@ -1028,7 +1215,6 @@ function renderPropForm(){
   const editing = DB.proprietarios.some(x=>x.id===P.id);
   document.getElementById('mainNav').classList.add('hidden');
   document.getElementById('appHeader').innerHTML = `
-    <button class="step-back" onclick="goTab('proprietarios')">‹ Proprietários</button>
     <h2>${editing?'Editar proprietário':'Novo proprietário'}</h2>`;
   document.getElementById('mainContent').innerHTML = `
     <div style="display:flex;justify-content:center;margin:10px 0 6px">
@@ -1088,8 +1274,8 @@ async function storePropFoto(dataUrl){ pFotoCache = dataUrl; await idbPut(keyPro
 function escolherOrigemPropFoto(){
   showSheet('Foto do proprietário', `<div style="font-size:13px;color:var(--muted);margin-bottom:6px">Como você quer adicionar a foto?</div>`,
     `<button class="btn gray" onclick="closeSheet()">Cancelar</button>
-     <button class="btn gray" onclick="var el=document.getElementById('propFotoGal');el.click();closeSheet()">🖼 Galeria</button>
-     <button class="btn" onclick="closeSheet();abrirCameraModal('user',function(d){storePropFoto(d)})">📷 Câmera</button>`);
+     <button class="btn gray" onclick="var el=document.getElementById('propFotoGal');el.click();closeSheet()">${ic('image',16)} Galeria</button>
+     <button class="btn" onclick="var el=document.getElementById('propFotoCam');el.click();closeSheet()">${ic('camera',16)} Câmera</button>`);
 }
 async function removerPropFoto(){
   await idbDel(keyPropFoto(P.id)).catch(()=>{});
@@ -1154,6 +1340,7 @@ function blankDraft(tipo){
 }
 function iniciarCadastro(tipo){
   W = blankDraft(tipo||'casa'); wStep = 0; wCache = {};
+  W._editando = false;
   document.getElementById('mainNav').classList.add('hidden');
   renderWizard();
 }
@@ -1161,15 +1348,26 @@ async function editarImovel(id){
   const im = DB.imoveis.find(x=>x.id===id);
   if(!im) return;
   W = JSON.parse(JSON.stringify(im));
+  W._editando = true;   // edição de imóvel já cadastrado → não busca CEP automaticamente
   if(!W.codigo) W.codigo = (im.codigo||proximoCodigo('casa')); // compat p/ registros antigos
   W.tipo = im.tipo || 'casa';
   W.dataInclusao = im.dataInclusao || isoDate(new Date(im.createdAt||Date.now()));
-  if(W.bairro===undefined) W.bairro = im.localizacao?.bairro || '';
   if(!W.certidoes) W.certidoes = {};
-  // extras do apartamento moram em caracteristicas — traz para a raiz de W (que o form usa)
-  const cc = im.caracteristicas||{};
+  // ── traz os dados existentes (aninhados no registro) para a raiz de W, que é o que o formulário usa ──
+  const L = im.localizacao||{}, PR = im.proprietario||{}, cc = im.caracteristicas||{},
+        EX = im.exclusividade||{}, GA = im.garagem||{}, AG = im.agua||{}, EN = im.energia||{}, IN = im.internet||{};
+  W.tipoEndereco = L.tipoEndereco||'Rua'; W.endereco = L.endereco||''; W.numero = L.numero||'';
+  W.complemento = L.complemento||''; W.bairro = L.bairro||''; W.cidade = L.cidade||''; W.estado = L.estado||''; W.cep = L.cep||'';
+  W.proprietarioId = PR.id||''; W.nome = PR.nome||''; W.tel1 = PR.tel1||''; W.tel2 = PR.tel2||''; W.tel3 = PR.tel3||''; W.email1 = PR.email1||''; W.email2 = PR.email2||'';
+  const tipoCasaDefault = ({casa:'Térrea',apartamento:'Padrão',chacara:'Lazer',terreno:'Plano'})[W.tipo]||'Térrea';
+  W.terreno = cc.terreno||''; W.construcao = cc.construcao||''; W.condicao = cc.condicao||'Usada'; W.morador = cc.morador||'Não'; W.tipoCasa = cc.tipoCasa||tipoCasaDefault; W.outroTipo = cc.outroTipo||'';
   W.piscinaAquecida=!!cc.piscinaAquecida; W.sauna=!!cc.sauna; W.churrasqueira=!!cc.churrasqueira;
   W.parquinho=!!cc.parquinho; W.academia=!!cc.academia; W.obsApto=cc.obsApto||'';
+  W.vendaExclusiva = EX.exclusiva ? 'Sim' : 'Não'; W.dataInicial = EX.dataInicial||''; W.dataFinal = EX.dataFinal||'';
+  W.condominio = (im.condominio && im.condominio.valor) ? String(im.condominio.valor) : ''; W.comissao = im.comissao||'';
+  W.vagas = GA.vagas||''; W.coberta = GA.coberta||''; W.disposicao = GA.disposicao||''; W.portao = GA.portao||'';
+  W.agua = AG.tipo||''; W.aguaFonte = AG.fonte||''; W.aguaSituacao = AG.situacao||'';
+  W.energia = EN.situacao||''; W.internet = IN.situacao||'';
   // reconstrói os campos de valor (planos) a partir de im.valores — zero vira "0,00"
   const centavos = n => maskMoedaFromNumber(n||0);
   W.valorSolicitado = im.valores ? centavos(im.valores.solicitado) : '';
@@ -1198,7 +1396,6 @@ async function descartarDraftEVoltar(){
 function renderWizard(){
   document.getElementById('appHeader').innerHTML = `
     <div class="progress-wrap" style="padding:0">
-      <button class="step-back" onclick="wStep===0?sairWizardSemSalvar():irStep(wStep-1)">‹ Voltar</button>
       <div class="progress-top"><span class="progress-label">ETAPA ${wStep+1} DE 9</span><span class="progress-name">${tipoLabel(W.tipo)} · ${stepNames[wStep]}</span></div>
       <div class="progress-track"><div class="progress-fill" style="width:${((wStep+1)/9)*100}%"></div></div>
     </div>`;
@@ -1293,8 +1490,12 @@ function stepPaneHTML(i){
     </div>
     <div class="field"><label>CEP (opcional)</label>
       <input value="${esc(W.cep)}" inputmode="numeric" placeholder="99999-999" maxlength="9"
-        oninput="W.cep=maskCEP(this)" onblur="buscarCEP(W.cep)">
-      <div class="hint" id="cepHint">Se preencher, buscamos o endereço automaticamente (Waze/Google/ViaCEP). Pode deixar em branco.</div></div>
+        oninput="W.cep=maskCEP(this)"${W._editando?'':' onblur="buscarCEP(W.cep)"'}>
+      <div class="hint" id="cepHint">${W._editando
+        ? 'Imóvel já cadastrado: os dados foram carregados e o endereço <b>não</b> é buscado de novo. Altere os campos livremente.'
+        : 'Se preencher, buscamos o endereço automaticamente (ViaCEP). Pode deixar em branco.'}</div>
+      ${W._editando?`<button type="button" class="btn gray sm" style="width:auto;margin-top:8px" onclick="buscarCEP(W.cep,null,true)">${ic('search',15)} Buscar endereço pelo CEP</button>`:''}
+    </div>
     <div class="field"><label>Endereço</label><input value="${esc(W.endereco)}" placeholder="Preenchido pelo CEP — você pode complementar" oninput="W.endereco=this.value"></div>
     <div class="row2">
       <div class="field"><label>Número</label><input value="${esc(W.numero)}" oninput="W.numero=this.value"></div>
@@ -1514,8 +1715,8 @@ function escolherOrigemFoto(kind, i){
   const nome = nomeFotoArq(kind, i);
   showSheet('Adicionar foto', `<div style="font-size:13px;color:var(--muted);margin-bottom:6px">Foto <b>${esc(nome)}</b> — como você quer adicionar?</div>`,
     `<button class="btn gray" onclick="closeSheet()">Cancelar</button>
-     <button class="btn gray" onclick="var el=document.getElementById('inpGal_${kind}${i}');el.click();closeSheet()">🖼 Galeria</button>
-     <button class="btn" onclick="closeSheet();abrirCameraModal('environment',function(d){storeFotoDataUrl('${kind}',${i},d)},function(){document.getElementById('inpCam_${kind}${i}').click()})">📷 Câmera</button>`);
+     <button class="btn gray" onclick="var el=document.getElementById('inpGal_${kind}${i}');el.click();closeSheet()">${ic('image',16)} Galeria</button>
+     <button class="btn" onclick="var el=document.getElementById('inpCam_${kind}${i}');el.click();closeSheet()">${ic('camera',16)} Câmera</button>`);
 }
 // ── Câmera nativa do aparelho (mesmo método do VetFlowCare) ──
 // Abre a câmera do próprio celular pelo seletor nativo com "capture".
@@ -1635,8 +1836,8 @@ async function onVideoSelected(input){
 function escolherOrigemVideo(){
   showSheet('Adicionar vídeo', `<div style="font-size:13px;color:var(--muted);margin-bottom:6px">Vídeo <b>${esc(nomeVideoArq())}</b> — como você quer adicionar? (máx. 45s)</div>`,
     `<button class="btn gray" onclick="closeSheet()">Cancelar</button>
-     <button class="btn gray" onclick="var el=document.getElementById('videoGal');el.click();closeSheet()">🖼 Galeria</button>
-     <button class="btn" onclick="var el=document.getElementById('videoCam');el.click();closeSheet()">📷 Câmera</button>`);
+     <button class="btn gray" onclick="var el=document.getElementById('videoGal');el.click();closeSheet()">${ic('image',16)} Galeria</button>
+     <button class="btn" onclick="var el=document.getElementById('videoCam');el.click();closeSheet()">${ic('camera',16)} Câmera</button>`);
 }
 function editarVideo(){
   confirmar({icon:'🎬', title:'Substituir o vídeo?',
@@ -1697,8 +1898,8 @@ function certidaoSlotHTML(tipo, label){
 function escolherOrigemCertidao(tipo){
   showSheet('Anexar '+(CERTIDAO_LABEL[tipo]||'certidão'), `<div style="font-size:13px;color:var(--muted);margin-bottom:6px">Como você quer anexar?</div>`,
     `<button class="btn gray" onclick="closeSheet()">Cancelar</button>
-     <button class="btn gray" onclick="var el=document.getElementById('certGal_${tipo}');el.click();closeSheet()">🖼 Galeria / PDF</button>
-     <button class="btn" onclick="closeSheet();abrirCameraModal('environment',function(d){storeCertidaoDataUrl('${tipo}',d,'img')},function(){document.getElementById('certCam_${tipo}').click()})">📷 Câmera</button>`);
+     <button class="btn gray" onclick="var el=document.getElementById('certGal_${tipo}');el.click();closeSheet()">${ic('image',16)} Galeria / PDF</button>
+     <button class="btn" onclick="var el=document.getElementById('certCam_${tipo}');el.click();closeSheet()">${ic('camera',16)} Câmera</button>`);
 }
 function editarCertidao(tipo){
   confirmar({icon:'📄', title:'Substituir o anexo?', msg:`Deseja trocar o anexo de <b>${esc(CERTIDAO_LABEL[tipo]||'')}</b>?`,
@@ -1844,7 +2045,7 @@ function abrirDetalhe(id){
   const im = DB.imoveis.find(x=>x.id===id); if(!im) return;
   const condoVal = im.condominio?.valor||0;
   document.getElementById('mainNav').classList.add('hidden');
-  document.getElementById('appHeader').innerHTML = `<button class="step-back" onclick="goTab('imoveis')">‹ Imóveis</button><h2>${esc(im.localizacao.endereco)}, ${esc(im.localizacao.numero)}</h2><div class="mono" style="color:var(--primary);font-weight:700;font-size:12px;margin-top:2px">${(im.codigo||'').toUpperCase()}</div>`;
+  document.getElementById('appHeader').innerHTML = `<h2>${esc(im.localizacao.endereco)}, ${esc(im.localizacao.numero)}</h2><div class="mono" style="color:var(--primary);font-weight:700;font-size:12px;margin-top:2px">${(im.codigo||'').toUpperCase()}</div>`;
   const enderecoFull = `${im.localizacao.endereco||''}, ${im.localizacao.numero||''} ${im.localizacao.cidade||''} ${im.localizacao.estado||''} ${im.localizacao.cep||''}`.trim();
   document.getElementById('mainContent').innerHTML = `
     <div class="photo-grid" id="detFotos" style="margin-bottom:14px">
@@ -1882,7 +2083,7 @@ function abrirDetalhe(id){
     <button class="btn green" style="margin-top:10px" onclick="abrirExtratoImovel('${im.id}')">${ic('chart',15)} Extrato do imóvel (lançamentos)</button>
     <button class="btn danger" style="margin-top:10px" onclick="confirmarExcluir('${im.id}')">${ic('trash',15)} Excluir imóvel</button>
     <div class="btnrow" style="margin-top:10px">
-      <button class="btn gray" onclick="goTab('imoveis')">‹ Voltar</button>
+      <button class="btn gray" onclick="goTab('imoveis')">${ic('back',16)} Voltar</button>
       <button class="btn green" onclick="abrirTipos()">＋ Incluir imóvel</button>
     </div>`;
   im.fotosPublicas.forEach((has,i)=>{
@@ -1902,7 +2103,7 @@ function abrirExtratoImovel(id){
   const im = DB.imoveis.find(x=>x.id===id); if(!im) return;
   document.getElementById('mainNav').classList.add('hidden');
   const ini = im.dataInclusao || isoDate(new Date(im.createdAt||Date.now()));
-  document.getElementById('appHeader').innerHTML = `<button class="step-back" onclick="abrirDetalhe('${im.id}')">‹ Imóvel</button><h2>Extrato do imóvel</h2><div class="mono" style="color:var(--primary);font-weight:700;font-size:12px;margin-top:2px">${(im.codigo||'').toUpperCase()} · desde ${fmtDataBR(ini)}</div>`;
+  document.getElementById('appHeader').innerHTML = `<h2>Extrato do imóvel</h2><div class="mono" style="color:var(--primary);font-weight:700;font-size:12px;margin-top:2px">${(im.codigo||'').toUpperCase()} · desde ${fmtDataBR(ini)}</div>`;
 
   // lançamentos deste imóvel a partir da data de inclusão
   const recs = DB.financeiro.receitas.filter(e=>e.imovelId===id && (e.data||'')>=ini).map(e=>({...e,_t:'rec'}));
@@ -1936,6 +2137,7 @@ function abrirExtratoImovel(id){
       <div style="width:64px;flex-shrink:0;font-size:11px;font-weight:600" class="mono">${fmtDataBR(e.data)}</div>
       <div style="flex:1;min-width:0">
         <div style="font-size:12.5px;font-weight:700">${esc(e.categoria||(rec?'Receita':'Despesa'))}</div>
+        ${rec&&e.fontePagadora?`<div style="font-size:10.5px;color:var(--muted)">Fonte: ${esc(e.fontePagadora)}</div>`:''}
         ${e.descricao?`<div style="font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(e.descricao)}</div>`:''}
       </div>
       <div style="text-align:right;white-space:nowrap">
@@ -1951,7 +2153,7 @@ function abrirExtratoImovel(id){
       <span>Saldo final</span><b style="color:${saldoFinal>=0?'var(--success)':'var(--danger)'}">${fmtBRL(saldoFinal)}</b></div>
   </div>
   <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5">Lançamentos em ordem de data desde a inclusão do imóvel (${fmtDataBR(ini)}). Receitas em verde, despesas em vermelho; o saldo acumula lançamento a lançamento.</div>
-  <button class="btn gray" style="margin-top:12px" onclick="abrirDetalhe('${im.id}')">‹ Voltar ao imóvel</button>`;
+  <button class="btn gray" style="margin-top:12px" onclick="abrirDetalhe('${im.id}')">${ic('back',16)} Voltar ao imóvel</button>`;
   document.getElementById('mainContent').innerHTML = h;
 }
 async function doExcluir(id){
@@ -2168,7 +2370,7 @@ function selecionarImovelVisita(id){
 }
 function renderVisitaForm(){
   document.getElementById('mainNav').classList.add('hidden');
-  document.getElementById('appHeader').innerHTML = `<button class="step-back" onclick="goTab('agenda')">‹ Agenda</button><h2>${V._novo?'Nova visita':'Editar visita'}</h2>`;
+  document.getElementById('appHeader').innerHTML = `<h2>${V._novo?'Nova visita':'Editar visita'}</h2>`;
   const im = DB.imoveis.find(x=>x.id===V.imovelId);
   document.getElementById('mainContent').innerHTML = `
     <div class="section-title">Imóvel da visita</div>
@@ -2344,7 +2546,8 @@ function renderFinanceiro(){
       <div class="ptile-icon" style="width:38px;height:38px;flex-shrink:0;background:${rec?'var(--pgreen)':'var(--pblue)'}">${rec?'💚':iconeCat(e.categoria)}</div>
       <div style="flex:1;min-width:0">
         <b style="font-size:14px">${esc(e.categoria||(rec?'Receita':'Outros'))}</b>
-        ${e.descricao?`<div style="font-size:11px;color:var(--muted);margin-top:2px;white-space:pre-wrap">📝 ${esc(e.descricao)}</div>`:''}
+        ${rec&&e.fontePagadora?`<div style="font-size:11px;color:var(--muted);margin-top:2px">Fonte pagadora: <b style="color:var(--text);font-weight:700">${esc(e.fontePagadora)}</b></div>`:''}
+        ${e.descricao?`<div style="font-size:11px;color:var(--muted);margin-top:2px;white-space:pre-wrap">${ic('doc',12)} ${esc(e.descricao)}</div>`:''}
         <div style="font-size:11px;color:var(--muted);margin-top:2px">${fmtDataBR(e.data)}${e.origem==='agenda'?' · agenda':''} · toque para editar</div></div>
       <b style="color:${rec?'var(--success)':'var(--danger)'};white-space:nowrap">${rec?'+':'-'} ${fmtBRL(e.valor)}</b>
       <button style="background:none;color:var(--muted)" onclick="event.stopPropagation();${rec?`excluirReceita('${e.id}')`:`excluirDespesa('${e.id}')`}">${ic('trash',15)}</button></div>`;
@@ -2414,7 +2617,8 @@ function realizadoHTML(){
       <div class="ptile-icon" style="width:38px;height:38px;flex-shrink:0;background:${rec?'var(--pgreen)':'var(--pblue)'}">${rec?'💚':iconeCat(e.categoria)}</div>
       <div style="flex:1;min-width:0">
         <b style="font-size:14px">${esc(e.categoria||(rec?'Receita':'Despesa'))}</b>
-        ${e.descricao?`<div style="font-size:11px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📝 ${esc(e.descricao)}</div>`:''}
+        ${rec&&e.fontePagadora?`<div style="font-size:11px;color:var(--muted);margin-top:2px">Fonte pagadora: <b style="color:var(--text);font-weight:700">${esc(e.fontePagadora)}</b></div>`:''}
+        ${e.descricao?`<div style="font-size:11px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ic('doc',12)} ${esc(e.descricao)}</div>`:''}
         <div style="font-size:11px;color:var(--muted);margin-top:2px">realizada em <b style="color:var(--text)">${fmtDataBR(e.dataRealizada)}</b> · lançada ${fmtDataBR(e.data)}</div></div>
       <b style="color:${rec?'var(--success)':'var(--danger)'};white-space:nowrap">${rec?'+':'-'} ${fmtBRL(e.valor)}</b></div>`;
   }).join('');
@@ -2568,6 +2772,9 @@ function recForm(ex){
   return `
     <label>Categoria da receita</label>
     <input id="nrCat" placeholder="Digite a categoria (ex.: Comissão, Aluguel…)" value="${esc(ex?.categoria||'')}">
+    <label>Fonte pagadora</label>
+    <input id="nrFonte" maxlength="30" placeholder="Quem paga (cliente, imobiliária, comprador…)" value="${esc(ex?.fontePagadora||'')}">
+    <div class="hint">Até 30 caracteres.</div>
     <label>Valor</label><input id="nrVal" inputmode="numeric" placeholder="99.999,99" value="${ex?fmtMoedaSemRS(ex.valor):''}" oninput="maskMoeda(this)">
     <div class="row2">
       <div class="field" style="margin:0"><label>Data</label><input id="nrData" type="date" value="${ex?esc(ex.data):isoDate(new Date())}"></div>
@@ -2590,9 +2797,10 @@ function salvarReceitaManual(editId){
   if(valor<=0){ toast('Informe um valor.'); return; }
   const categoria = (document.getElementById('nrCat').value||'').trim();
   if(!categoria){ toast('Digite a categoria da receita.'); return; }
+  const fontePagadora = (document.getElementById('nrFonte')?.value||'').trim().slice(0,30);
   const imovelId = document.getElementById('nrImovel')?.value || '';
   const imovelCodigo = imovelId ? (DB.imoveis.find(im=>im.id===imovelId)?.codigo||'').toUpperCase() : '';
-  const dados = { categoria, valor,
+  const dados = { categoria, fontePagadora, valor,
     data:document.getElementById('nrData').value||isoDate(new Date()),
     dataRealizada:document.getElementById('nrDataReal')?.value||'',
     imovelId, imovelCodigo,
@@ -2625,6 +2833,44 @@ function renderConfig(){
       <div style="min-width:0"><div class="ptile-title">Dados do corretor</div><div class="ptile-sub" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${resumo}</div></div>
       <div class="ptile-chev">›</div>
     </button>
+    <div class="stitle">Acessibilidade</div>
+    <div class="card">
+      <div style="font-size:13.5px;font-weight:800;margin-bottom:2px">Tamanho da tela (zoom)</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Aumente para enxergar com mais facilidade. Vale para o app inteiro e fica salvo.</div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="btn gray" style="flex:1;font-size:20px;font-weight:800;padding:12px" onclick="mudarZoom(-0.1)">A −</button>
+        <div style="min-width:70px;text-align:center"><b id="zoomPct" style="font-size:19px">${Math.round(getZoom()*100)}%</b></div>
+        <button class="btn" style="flex:1;font-size:20px;font-weight:800;padding:12px" onclick="mudarZoom(0.1)">A +</button>
+      </div>
+      <button class="btn gray sm" style="width:auto;margin-top:12px" onclick="resetZoom()">${ic('back',15)} Voltar ao padrão (100%)</button>
+    </div>
+    <div class="stitle">Plano</div>
+    ${(function(){
+      const pro=isPro(), lic=DB.license||{}, dias=diasRestantesPro();
+      const pausado = !pro && lic.expiresAt && lic.expiresAt>=todayISO();
+      return `<div class="card">
+        ${ pro ? `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="background:var(--accent);color:#fff;font-size:11px;font-weight:800;padding:3px 10px;border-radius:100px">PRO ATIVO</span><span style="font-size:12.5px;color:var(--muted)">Válido até ${fmtDataBR(lic.expiresAt)}${dias!=null?` · ${dias} dia(s)`:''}</span></div>
+           <button class="btn" style="margin-top:12px" onclick="openProModal()">Renovar (novo código)</button>
+           <button class="btn gray" style="margin-top:8px" onclick="deactivatePro()">Desativar Pro</button>`
+        : pausado ? `<div style="font-size:13px">Pro <b>pausado</b> — válido até ${fmtDataBR(lic.expiresAt)}.</div>
+           <button class="btn" style="margin-top:12px" onclick="reativarPro()">Reativar Pro</button>
+           <button class="btn gray" style="margin-top:8px" onclick="openProModal()">Renovar (novo código)</button>`
+        : `<div style="font-size:13px;font-weight:700">Versão gratuita</div>
+           <div style="font-size:12px;color:var(--muted);margin-top:2px">Ative o Pro com um código de liberação.</div>
+           <button class="btn" style="margin-top:12px" onclick="openProModal()">Ativar Pro</button>` }
+        <div style="font-size:11px;color:var(--muted);margin-top:10px">ID deste aparelho: <b class="mono">AP-${myDevId()}</b></div>
+      </div>`;
+    })()}
+    <div class="stitle">Becape e proteção de dados</div>
+    <div class="card">
+      <div style="font-size:12.5px;color:var(--muted);line-height:1.6;margin-bottom:10px">
+        Seus dados ficam só neste aparelho. Faça o becape para não perder nada ao trocar de celular ou limpar o app.
+        ${(function(){ const d=diasDesdeBackup(); if(d==null) return '<br><b style="color:var(--danger)">Você ainda não fez nenhum becape.</b>'; return d>=7?`<br><b style="color:var(--danger)">Último becape há ${d} dia(s) — recomendo exportar de novo.</b>`:`<br>Último becape há ${d} dia(s).`; })()}
+      </div>
+      <button class="btn" onclick="exportarBackup()">${ic('save',16)} Exportar backup</button>
+      <button class="btn gray" style="margin-top:8px" onclick="var i=document.getElementById('impBackup'); if(i) i.click();">${ic('doc',16)} Importar backup</button>
+      <input type="file" id="impBackup" accept="application/json,.json" style="display:none" onchange="importarBackup(this)">
+    </div>
     <div class="stitle">Segurança</div>
     <div class="card" style="font-size:12.5px;color:var(--muted);line-height:1.6">
       🔒 O acesso por senha está <b>desativado</b> nesta versão e será adicionado numa fase futura. Por enquanto os dados ficam salvos apenas neste aparelho, sem senha.
@@ -2634,7 +2880,7 @@ function renderConfig(){
     <div class="stitle">Sobre</div>
     <div class="card" style="font-size:12.5px;color:var(--muted);line-height:1.6">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-        <b style="color:var(--text)">Corretor PWA</b>
+        <b style="color:var(--text)">Corretor de Imóveis</b>
         <span class="mono" style="color:var(--primary);font-weight:700;background:var(--pblue);padding:3px 10px;border-radius:100px">v${APP_VERSION}</span>
       </div>
       Dados salvos localmente neste aparelho.<br>
@@ -2646,7 +2892,7 @@ function renderConfig(){
 function renderDadosCorretor(){
   const c = DB.corretor || {nome:'',creci:'',validadeCreci:''};
   document.getElementById('mainNav').classList.add('hidden');
-  document.getElementById('appHeader').innerHTML = `<button class="step-back" onclick="goTab('config')">‹ Ajustes</button><h2>Dados do corretor</h2>`;
+  document.getElementById('appHeader').innerHTML = `<h2>Dados do corretor</h2>`;
   document.getElementById('mainContent').innerHTML = `
     <div class="card">
       <div style="display:flex;justify-content:center;margin:4px 0 12px">
@@ -2690,8 +2936,8 @@ function escolherOrigemCorFoto(kind){
   const titulo = kind==='foto' ? 'Foto do corretor' : 'Carteira CRECI';
   showSheet(titulo, `<div style="font-size:13px;color:var(--muted);margin-bottom:6px">Como você quer adicionar?</div>`,
     `<button class="btn gray" onclick="closeSheet()">Cancelar</button>
-     <button class="btn gray" onclick="var el=document.getElementById('${kind==='foto'?'corFotoGal':'corCreciGal'}');el.click();closeSheet()">🖼 Galeria</button>
-     <button class="btn" onclick="capturarCorField();closeSheet();abrirCameraModal('${kind==='foto'?'user':'environment'}',function(d){storeCorFoto('${kind}',d)},function(){document.getElementById('${kind==='foto'?'corFotoCam':'corCreciCam'}').click()})">📷 Câmera</button>`);
+     <button class="btn gray" onclick="var el=document.getElementById('${kind==='foto'?'corFotoGal':'corCreciGal'}');el.click();closeSheet()">${ic('image',16)} Galeria</button>
+     <button class="btn" onclick="capturarCorField();var el=document.getElementById('${kind==='foto'?'corFotoCam':'corCreciCam'}');el.click();closeSheet()">${ic('camera',16)} Câmera</button>`);
 }
 function capturarCorField(){ DB.corretor.nome = val('corNome')||DB.corretor.nome; DB.corretor.creci = val('corCreci')||DB.corretor.creci; DB.corretor.validadeCreci = val('corValidade')||DB.corretor.validadeCreci; DB.corretor.email = (document.getElementById('corEmail')?document.getElementById('corEmail').value:DB.corretor.email)||''; }
 async function storeCorFoto(kind, dataUrl){
