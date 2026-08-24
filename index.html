@@ -312,7 +312,7 @@ header.topbar.home{padding:0;background:transparent;box-shadow:none}
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.13.0';
+const APP_VERSION = '1.15.0';
 // Ajudante para inserir ícones do kit (traço) em qualquer lugar
 function ic(name, size, style){ size=size||18; return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"${style?` style="${style}"`:''}><use href="#i-${name}"/></svg>`; }
 // Logo da marca (usado na splash e nas telas de senha)
@@ -484,6 +484,7 @@ function showSheet(title, bodyHTML, footHTML){
     </div></div>`;
 }
 function closeSheet(){ document.getElementById('modals').innerHTML=''; }
+function dispararInput(id){ try{ closeSheet(); }catch(e){} var el=document.getElementById(id); if(el){ try{ el.value=''; }catch(e){} el.click(); } }
 function confirmar(o){
   document.getElementById('modals2').innerHTML = `
   <div class="modal ov" onclick="if(event.target===this)closeConfirm()">
@@ -1274,8 +1275,8 @@ async function storePropFoto(dataUrl){ pFotoCache = dataUrl; await idbPut(keyPro
 function escolherOrigemPropFoto(){
   showSheet('Foto do proprietário', `<div style="font-size:13px;color:var(--muted);margin-bottom:6px">Como você quer adicionar a foto?</div>`,
     `<button class="btn gray" onclick="closeSheet()">Cancelar</button>
-     <button class="btn gray" onclick="var el=document.getElementById('propFotoGal');el.click();closeSheet()">${ic('image',16)} Galeria</button>
-     <button class="btn" onclick="var el=document.getElementById('propFotoCam');el.click();closeSheet()">${ic('camera',16)} Câmera</button>`);
+     <button class="btn gray" onclick="dispararInput('propFotoGal')">${ic('image',16)} Galeria</button>
+     <button class="btn" onclick="dispararInput('propFotoCam')">${ic('camera',16)} Câmera</button>`);
 }
 async function removerPropFoto(){
   await idbDel(keyPropFoto(P.id)).catch(()=>{});
@@ -1329,6 +1330,7 @@ function blankDraft(tipo){
     condominio:'0', comissao:'',
     valorSolicitado:'', valorMinimo:'', valorNegociado:'',
     vagas:'', coberta:true, disposicao:'Lado a lado', portao:false,
+    portariaVigia:false, terrenoCondominio:'', terrenoAcesso:'', terrenoRuas:'', terrenoSarjeta:false, terrenoIluminacao:false,
     // extras do apartamento (Item C)
     piscinaAquecida:false, sauna:false, churrasqueira:false, parquinho:false, academia:false, obsApto:'',
     agua:'Individual', aguaFonte:'Sabesp', aguaSituacao:'Instalado', energia:'Instalado', internet:'Instalado',
@@ -1366,6 +1368,9 @@ async function editarImovel(id){
   W.vendaExclusiva = EX.exclusiva ? 'Sim' : 'Não'; W.dataInicial = EX.dataInicial||''; W.dataFinal = EX.dataFinal||'';
   W.condominio = (im.condominio && im.condominio.valor) ? String(im.condominio.valor) : ''; W.comissao = im.comissao||'';
   W.vagas = GA.vagas||''; W.coberta = GA.coberta||''; W.disposicao = GA.disposicao||''; W.portao = GA.portao||'';
+  W.portariaVigia = !!GA.portariaVigia;
+  const LO = im.loteamento||{};
+  W.terrenoCondominio = LO.condominio||''; W.terrenoAcesso = LO.acesso||''; W.terrenoRuas = LO.ruas||''; W.terrenoSarjeta = !!LO.sarjeta; W.terrenoIluminacao = !!LO.iluminacao;
   W.agua = AG.tipo||''; W.aguaFonte = AG.fonte||''; W.aguaSituacao = AG.situacao||'';
   W.energia = EN.situacao||''; W.internet = IN.situacao||'';
   // reconstrói os campos de valor (planos) a partir de im.valores — zero vira "0,00"
@@ -1378,17 +1383,18 @@ async function editarImovel(id){
   renderWizard();
 }
 function sairWizardSemSalvar(){
-  confirmar({icon:'🚪', title:'Sair sem salvar?', msg:'As informações preenchidas neste cadastro serão perdidas.',
-    noLabel:'Continuar editando', yesLabel:'Sair', yes:'descartarDraftEVoltar()'});
+  const editando = W && DB.imoveis.some(x=>x.id===W.id);
+  confirmar({icon:'🚪', title: editando?'Descartar alterações?':'Sair sem salvar?',
+    msg: editando?'As alterações feitas neste imóvel serão descartadas.':'As informações preenchidas neste cadastro serão perdidas.',
+    noLabel:'Continuar editando', yesLabel: editando?'Descartar':'Sair', yes:'descartarDraftEVoltar()'});
 }
 async function descartarDraftEVoltar(){
   const jaSalvo = DB.imoveis.some(x=>x.id===W.id);
-  if(!jaSalvo){
-    for(let i=0;i<6;i++) idbDel(keyFotoPub(W.id,i)).catch(()=>{});
-    for(let i=0;i<3;i++) idbDel(keyFotoAdd(W.id,i)).catch(()=>{});
-    idbDel(keyVideo(W.id)).catch(()=>{});
-    idbDel(keyContrato(W.id)).catch(()=>{});
-  }
+  if(jaSalvo){ W = null; goTab('imoveis'); return; }   // edição de imóvel existente → volta direto à lista de imóveis
+  for(let i=0;i<6;i++) idbDel(keyFotoPub(W.id,i)).catch(()=>{});
+  for(let i=0;i<3;i++) idbDel(keyFotoAdd(W.id,i)).catch(()=>{});
+  idbDel(keyVideo(W.id)).catch(()=>{});
+  idbDel(keyContrato(W.id)).catch(()=>{});
   W = null;
   abrirTipos();
 }
@@ -1568,7 +1574,15 @@ function stepPaneHTML(i){
     </div>`;
   }
 
-  if(i===3) return `
+  if(i===3){
+    const ehTerreno = W.tipo==='terreno', ehApto = W.tipo==='apartamento';
+    if(ehTerreno) return `
+    <div class="section-title">Acesso e portão</div>
+    <fieldset><legend>Tipo do terreno</legend><div class="chip-group">${chip('terrenoCondominio','Condomínio','Condomínio')}${chip('terrenoCondominio','Aberto (sem portaria)','Aberto (sem portaria)')}</div></fieldset>
+    <div class="toggle-row"><div class="lbl">Portão eletrônico<span class="d">Abertura automática</span></div>${toggle('portao')}</div>
+    <fieldset style="margin-top:6px"><legend>Acesso</legend><div class="chip-group">${chip('terrenoAcesso','Portaria c/ vigia','Portaria c/ vigia')}${chip('terrenoAcesso','Controle remoto','Controle remoto')}${chip('terrenoAcesso','Aberto','Aberto')}</div></fieldset>
+    <fieldset><legend>Ruas internas</legend><div class="chip-group">${chip('terrenoRuas','Terra (cascalhada)','Terra (cascalhada)')}${chip('terrenoRuas','Asfaltada','Asfaltada')}</div></fieldset>`;
+    return `
     <div class="section-title">Garagem e portão</div>
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
       <input type="number" min="0" max="99" value="${esc(W.vagas)}" oninput="W.vagas=this.value.slice(0,2)" style="width:64px;text-align:center;flex:none">
@@ -1576,15 +1590,22 @@ function stepPaneHTML(i){
     </div>
     <div class="toggle-row"><div class="lbl">Garagem coberta<span class="d">A cobertura protege os veículos</span></div>${toggle('coberta')}</div>
     <fieldset style="margin-top:14px"><legend>Disposição dos carros</legend><div class="chip-group">${chip('disposicao','Lado a lado','Lado a lado')}${chip('disposicao','Em fila','Em fila')}</div></fieldset>
-    <div class="toggle-row"><div class="lbl">Portão eletrônico<span class="d">Abertura automática</span></div>${toggle('portao')}</div>`;
+    <div class="toggle-row"><div class="lbl">Portão eletrônico<span class="d">Abertura automática</span></div>${toggle('portao')}</div>
+    ${ehApto?`<div class="toggle-row"><div class="lbl">Portaria com vigia<span class="d">Portaria com vigilante</span></div>${toggle('portariaVigia')}</div>`:''}`;
+  }
 
-  if(i===4) return `
+  if(i===4){
+    const ehTerreno = W.tipo==='terreno', ehApto = W.tipo==='apartamento';
+    return `
     <div class="section-title">Água, energia e internet</div>
     <fieldset><legend>Abastecimento de água</legend><div class="chip-group">${chip('agua','Coletivo','Coletivo / rateio')}${chip('agua','Individual','Individual')}</div></fieldset>
-    ${W.agua==='Individual'?`<fieldset><legend>Fonte</legend><div class="chip-group">${chip('aguaFonte','Sabesp','Sabesp')}${chip('aguaFonte','Poço artesiano','Poço artesiano')}${chip('aguaFonte','Poço caipira','Poço caipira')}</div></fieldset>`:''}
+    ${W.agua==='Individual'?`<fieldset><legend>Fonte</legend><div class="chip-group">${chip('aguaFonte','Sabesp','Sabesp')}${chip('aguaFonte','Poço artesiano','Poço artesiano')}${ehApto?'':chip('aguaFonte','Poço caipira','Poço caipira')}</div></fieldset>`:''}
     <fieldset><legend>Situação da água</legend><div class="chip-group">${chip('aguaSituacao','Instalado','Instalado')}${chip('aguaSituacao','A instalar','A instalar')}</div></fieldset>
     <fieldset><legend>Energia elétrica</legend><div class="chip-group">${chip('energia','Instalado','Instalado')}${chip('energia','A instalar','A instalar')}</div></fieldset>
+    ${ehTerreno?`<div class="toggle-row"><div class="lbl">Ruas com sarjetas<span class="d">Guias e sarjetas nas ruas</span></div>${toggle('terrenoSarjeta')}</div>
+    <div class="toggle-row"><div class="lbl">Iluminação nas ruas<span class="d">Iluminação pública</span></div>${toggle('terrenoIluminacao')}</div>`:''}
     <fieldset><legend>Internet</legend><div class="chip-group">${chip('internet','Instalado','Instalado')}${chip('internet','A instalar','A instalar')}</div></fieldset>`;
+  }
 
   if(i===5) return `
     <div class="section-title">Fotos principais públicas</div>
@@ -1662,13 +1683,21 @@ function stepPaneHTML(i){
       ${W.tipo==='apartamento'?`<div class="review-item"><span class="k">Lazer</span><span class="v">${[W.piscinaAquecida&&'Piscina aq.',W.sauna&&'Sauna',W.churrasqueira&&'Churrasq.',W.parquinho&&'Parquinho',W.academia&&'Academia'].filter(Boolean).join(', ')||'—'}</span></div>${W.obsApto?`<div class="review-item"><span class="k">Observações</span><span class="v">${esc(W.obsApto)}</span></div>`:''}`:''}
       <div class="review-item"><span class="k">Venda exclusiva</span><span class="v">${W.vendaExclusiva==='Sim'?('Sim'+((W.dataInicial||W.dataFinal)?` (${fmtDataBR(W.dataInicial)} → ${fmtDataBR(W.dataFinal)})`:'')):'Não'}</span></div>
       <div class="review-item"><span class="k">Condomínio</span><span class="v">${condoVal>0?fmtBRL(condoVal):'Sem condomínio'}</span></div></div>
-    <div class="review-block"><div class="review-block-title">Garagem</div>
+    ${W.tipo==='terreno'?`<div class="review-block"><div class="review-block-title">Acesso</div>
+      <div class="review-item"><span class="k">Terreno</span><span class="v">${esc(W.terrenoCondominio)||'—'}</span></div>
+      <div class="review-item"><span class="k">Portão eletrônico</span><span class="v">${W.portao?'Sim':'Não'}</span></div>
+      <div class="review-item"><span class="k">Acesso</span><span class="v">${esc(W.terrenoAcesso)||'—'}</span></div>
+      <div class="review-item"><span class="k">Ruas internas</span><span class="v">${esc(W.terrenoRuas)||'—'}</span></div></div>`
+    :`<div class="review-block"><div class="review-block-title">Garagem</div>
       <div class="review-item"><span class="k">Vagas</span><span class="v">${W.vagas||0} · ${W.coberta?'Coberta':'Descoberta'}</span></div>
       <div class="review-item"><span class="k">Disposição</span><span class="v">${esc(W.disposicao)}</span></div>
-      <div class="review-item"><span class="k">Portão eletrônico</span><span class="v">${W.portao?'Sim':'Não'}</span></div></div>
+      <div class="review-item"><span class="k">Portão eletrônico</span><span class="v">${W.portao?'Sim':'Não'}</span></div>
+      ${W.tipo==='apartamento'?`<div class="review-item"><span class="k">Portaria c/ vigia</span><span class="v">${W.portariaVigia?'Sim':'Não'}</span></div>`:''}</div>`}
     <div class="review-block"><div class="review-block-title">Infraestrutura</div>
       <div class="review-item"><span class="k">Água</span><span class="v">${esc(aguaTxt)}</span></div>
       <div class="review-item"><span class="k">Energia</span><span class="v">${esc(W.energia)}</span></div>
+      ${W.tipo==='terreno'?`<div class="review-item"><span class="k">Sarjetas</span><span class="v">${W.terrenoSarjeta?'Sim':'Não'}</span></div>
+      <div class="review-item"><span class="k">Iluminação nas ruas</span><span class="v">${W.terrenoIluminacao?'Sim':'Não'}</span></div>`:''}
       <div class="review-item"><span class="k">Internet</span><span class="v">${esc(W.internet)}</span></div></div>
     <div class="review-block"><div class="review-block-title">Mídia e documentos</div>
       <div class="review-item"><span class="k">Fotos públicas</span><span class="v">${pubCount}/6</span></div>
@@ -1698,8 +1727,8 @@ function fotoSlotHTML(kind, i, existingKey, allowPublic, isPublic){
     : (existingKey ? `<span data-needload="${existingKey}">carregando…</span>` : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7H8l1-2h6l1 2h2.5A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5v-9Z" stroke="currentColor" stroke-width="1.4"/><circle cx="12" cy="12.5" r="3" stroke="currentColor" stroke-width="1.4"/></svg><span>Foto ${i+1}</span>`);
   return `<div class="photo-slot ${existingKey?'filled':''}" onclick="${existingKey?`editarFoto('${kind}',${i})`:`escolherOrigemFoto('${kind}',${i})`}">
     ${inner}
-    <input type="file" id="inpCam_${kind}${i}" accept="image/*" capture="environment" class="filein" onchange="onFotoSelected('${kind}',${i},this)">
-    <input type="file" id="inpGal_${kind}${i}" accept="image/*" class="filein" onchange="onFotoSelected('${kind}',${i},this)">
+    <input type="file" id="inpCam_${kind}${i}" accept="image/*" capture="environment" class="filein" onclick="event.stopPropagation()" onchange="onFotoSelected('${kind}',${i},this)">
+    <input type="file" id="inpGal_${kind}${i}" accept="image/*" class="filein" onclick="event.stopPropagation()" onchange="onFotoSelected('${kind}',${i},this)">
   </div>`;
 }
 // Toque numa foto já preenchida: pergunta se quer substituir (gravar sobre a anterior).
@@ -1715,8 +1744,8 @@ function escolherOrigemFoto(kind, i){
   const nome = nomeFotoArq(kind, i);
   showSheet('Adicionar foto', `<div style="font-size:13px;color:var(--muted);margin-bottom:6px">Foto <b>${esc(nome)}</b> — como você quer adicionar?</div>`,
     `<button class="btn gray" onclick="closeSheet()">Cancelar</button>
-     <button class="btn gray" onclick="var el=document.getElementById('inpGal_${kind}${i}');el.click();closeSheet()">${ic('image',16)} Galeria</button>
-     <button class="btn" onclick="var el=document.getElementById('inpCam_${kind}${i}');el.click();closeSheet()">${ic('camera',16)} Câmera</button>`);
+     <button class="btn gray" onclick="dispararInput('inpGal_${kind}${i}')">${ic('image',16)} Galeria</button>
+     <button class="btn" onclick="dispararInput('inpCam_${kind}${i}')">${ic('camera',16)} Câmera</button>`);
 }
 // ── Câmera nativa do aparelho (mesmo método do VetFlowCare) ──
 // Abre a câmera do próprio celular pelo seletor nativo com "capture".
@@ -1836,8 +1865,8 @@ async function onVideoSelected(input){
 function escolherOrigemVideo(){
   showSheet('Adicionar vídeo', `<div style="font-size:13px;color:var(--muted);margin-bottom:6px">Vídeo <b>${esc(nomeVideoArq())}</b> — como você quer adicionar? (máx. 45s)</div>`,
     `<button class="btn gray" onclick="closeSheet()">Cancelar</button>
-     <button class="btn gray" onclick="var el=document.getElementById('videoGal');el.click();closeSheet()">${ic('image',16)} Galeria</button>
-     <button class="btn" onclick="var el=document.getElementById('videoCam');el.click();closeSheet()">${ic('camera',16)} Câmera</button>`);
+     <button class="btn gray" onclick="dispararInput('videoGal')">${ic('image',16)} Galeria</button>
+     <button class="btn" onclick="dispararInput('videoCam')">${ic('camera',16)} Câmera</button>`);
 }
 function editarVideo(){
   confirmar({icon:'🎬', title:'Substituir o vídeo?',
@@ -1898,8 +1927,8 @@ function certidaoSlotHTML(tipo, label){
 function escolherOrigemCertidao(tipo){
   showSheet('Anexar '+(CERTIDAO_LABEL[tipo]||'certidão'), `<div style="font-size:13px;color:var(--muted);margin-bottom:6px">Como você quer anexar?</div>`,
     `<button class="btn gray" onclick="closeSheet()">Cancelar</button>
-     <button class="btn gray" onclick="var el=document.getElementById('certGal_${tipo}');el.click();closeSheet()">${ic('image',16)} Galeria / PDF</button>
-     <button class="btn" onclick="var el=document.getElementById('certCam_${tipo}');el.click();closeSheet()">${ic('camera',16)} Câmera</button>`);
+     <button class="btn gray" onclick="dispararInput('certGal_${tipo}')">${ic('image',16)} Galeria / PDF</button>
+     <button class="btn" onclick="dispararInput('certCam_${tipo}')">${ic('camera',16)} Câmera</button>`);
 }
 function editarCertidao(tipo){
   confirmar({icon:'📄', title:'Substituir o anexo?', msg:`Deseja trocar o anexo de <b>${esc(CERTIDAO_LABEL[tipo]||'')}</b>?`,
@@ -1972,7 +2001,8 @@ async function gravarImovel(){
     condominio:{ valor: parseFloat(W.condominio)||0 },
     comissao: W.comissao||'',
     valores:{ solicitado: parseMoeda(W.valorSolicitado||''), minimo: parseMoeda(W.valorMinimo||''), negociado: parseMoeda(W.valorNegociado||'') },
-    garagem:{ vagas:W.vagas, coberta:W.coberta, disposicao:W.disposicao, portao:W.portao },
+    garagem:{ vagas:W.vagas, coberta:W.coberta, disposicao:W.disposicao, portao:W.portao, portariaVigia:W.portariaVigia },
+    loteamento:{ condominio:W.terrenoCondominio, acesso:W.terrenoAcesso, ruas:W.terrenoRuas, sarjeta:W.terrenoSarjeta, iluminacao:W.terrenoIluminacao },
     agua:{ tipo:W.agua, fonte:W.aguaFonte, situacao:W.aguaSituacao },
     energia:{ situacao:W.energia }, internet:{ situacao:W.internet },
     fotosPublicas: W.fotosPublicas, fotosAdicionais: W.fotosAdicionais, contrato: W.contrato, video: W.video,
@@ -2167,25 +2197,80 @@ async function doExcluir(id){
   toast('Imóvel excluído.');
   goTab('imoveis');
 }
-function abrirCompartilhar(id){
+let _shareData = null;
+async function dataURLtoFile(dataURL, filename){
+  const res = await fetch(dataURL); const blob = await res.blob();
+  return new File([blob], filename, { type: blob.type || 'application/octet-stream' });
+}
+async function abrirCompartilhar(id){
   const im = DB.imoveis.find(x=>x.id===id); if(!im) return;
   const texto = montarTextoImovel(im);
+  const nFotos = (im.fotosPublicas||[]).filter(Boolean).length;
+  const temVideo = !!(im.video && im.video.compartilhar);
+  const videoExisteNaoCompart = !!(im.video && !im.video.compartilhar);
+  _shareData = { texto, files: [], pronto:false };
   showSheet('Compartilhar imóvel', `
-    <div style="font-size:13px;color:var(--muted);margin-bottom:10px">O texto abaixo é gerado a partir do cadastro. As fotos públicas precisam ser anexadas manualmente por enquanto.</div>
-    <textarea rows="7" readonly style="font-size:12.5px">${esc(texto)}</textarea>`,
+    <div style="font-size:13px;color:var(--muted);margin-bottom:10px">
+      Serão compartilhados: <b>${nFotos} foto(s)</b>${temVideo?' + <b>vídeo</b>':''} + a descrição.
+      ${videoExisteNaoCompart?'<br><span style="font-size:11.5px">O vídeo existe, mas está marcado para <b>não</b> compartilhar (etapa Vídeo do cadastro).</span>':''}
+      ${(nFotos||temVideo)?'':'<br><span style="font-size:11.5px">Sem fotos/vídeo marcados — será compartilhado só o texto.</span>'}
+    </div>
+    <textarea rows="6" readonly style="font-size:12.5px">${esc(texto)}</textarea>`,
     `<button class="btn gray" onclick="closeSheet()">Fechar</button>
-     <button class="btn green" onclick="window.open('https://wa.me/?text=${encodeURIComponent(texto)}','_blank')">WhatsApp</button>
-     <button class="btn" onclick="window.open('mailto:?subject=${encodeURIComponent('Imóvel disponível: '+im.localizacao.endereco)}&body=${encodeURIComponent(texto)}','_blank')">E-mail</button>`);
+     ${(nFotos||temVideo)?`<button class="btn green" onclick="fazerCompartilhamento()">${ic('share',16)} Compartilhar fotos${temVideo?' + vídeo':''}</button>`:''}
+     <button class="btn" onclick="window.open('https://wa.me/?text=${encodeURIComponent(texto)}','_blank')">Só texto</button>`);
+  // Pré-carrega as mídias (para o compartilhamento nativo funcionar no iPhone, sem quebrar o gesto do usuário)
+  try{
+    const cod = (im.codigo||im.id||'imovel');
+    const files = [];
+    for(let i=0;i<6;i++){
+      if(im.fotosPublicas && im.fotosPublicas[i]){
+        try{ const du = await idbGet(keyFotoPub(id,i)); if(du) files.push(await dataURLtoFile(du, cod+'_'+(i+1)+'.jpg')); }catch(e){}
+      }
+    }
+    if(temVideo){
+      try{ const dv = await idbGet(keyVideo(id)); if(dv) files.push(await dataURLtoFile(dv, cod+'_video.mp4')); }catch(e){}
+    }
+    if(_shareData) { _shareData.files = files; _shareData.pronto = true; }
+  }catch(e){ if(_shareData) _shareData.pronto = true; }
+}
+async function fazerCompartilhamento(){
+  const d = _shareData; if(!d){ closeSheet(); return; }
+  const files = d.files || [];
+  // 1) compartilhamento nativo COM arquivos (chamado de forma síncrona p/ preservar o gesto no iPhone)
+  if(files.length && navigator.canShare){
+    let ok = false; try{ ok = navigator.canShare({ files }); }catch(e){ ok = false; }
+    if(ok){
+      try{ await navigator.share({ files, text: d.texto, title:'Imóvel disponível' }); closeSheet(); return; }
+      catch(e){ if(e && e.name==='AbortError'){ return; } }
+    }
+  }
+  // 2) sem suporte a arquivos → compartilhamento nativo só com texto
+  if(navigator.share){
+    try{ await navigator.share({ text: d.texto, title:'Imóvel disponível' }); closeSheet(); return; }
+    catch(e){ if(e && e.name==='AbortError'){ return; } }
+  }
+  // 3) último recurso → WhatsApp por texto
+  window.open('https://wa.me/?text='+encodeURIComponent(d.texto),'_blank');
 }
 function montarTextoImovel(im){
   const c = im.caracteristicas, l = im.localizacao, g = im.garagem;
   const cor = DB.corretor || {};
   const exc = im.exclusividade || {};
-  let txt = `🏡 ${tipoLabel(im.tipo)} à venda\n${l.endereco}, ${l.numero} — ${l.cidade}/${l.estado}\n\n`+
-    `Terreno: ${c.terreno||'-'} m² · Construção: ${c.construcao||'-'} m²\n`+
-    `Tipo: ${c.tipoCasa} · Condição: ${c.condicao}\n`+
-    `Garagem: ${g.vagas||0} vaga(s) ${g.coberta?'coberta':'descoberta'}\n`+
-    `Condomínio: ${(im.condominio?.valor||0)>0?fmtBRL(im.condominio.valor):'sem condomínio'}`;
+  let txt = `🏡 ${tipoLabel(im.tipo)} à venda\n${l.endereco}, ${l.numero} — ${l.cidade}/${l.estado}\n\n`;
+  if(im.tipo==='terreno'){
+    const lo = im.loteamento||{};
+    txt += `Terreno: ${c.terreno||'-'} m²\n`;
+    if(lo.condominio) txt += `${lo.condominio}\n`;
+    if(lo.acesso) txt += `Acesso: ${lo.acesso}\n`;
+    if(lo.ruas) txt += `Ruas internas: ${lo.ruas}\n`;
+    txt += `Condomínio: ${(im.condominio?.valor||0)>0?fmtBRL(im.condominio.valor):'sem condomínio'}`;
+  } else {
+    txt += `Terreno: ${c.terreno||'-'} m² · Construção: ${c.construcao||'-'} m²\n`+
+      `Tipo: ${c.tipoCasa} · Condição: ${c.condicao}\n`+
+      `Garagem: ${g.vagas||0} vaga(s) ${g.coberta?'coberta':'descoberta'}${im.tipo==='apartamento'&&g.portariaVigia?' · Portaria c/ vigia':''}\n`+
+      `Condomínio: ${(im.condominio?.valor||0)>0?fmtBRL(im.condominio.valor):'sem condomínio'}`;
+  }
   if(exc.exclusiva) txt += `\nVenda exclusiva${(exc.dataInicial||exc.dataFinal)?` (${fmtDataBR(exc.dataInicial)} a ${fmtDataBR(exc.dataFinal)})`:''}`;
   if(cor.nome || cor.creci || cor.email){
     txt += `\n\n————————\n`;
@@ -2936,8 +3021,8 @@ function escolherOrigemCorFoto(kind){
   const titulo = kind==='foto' ? 'Foto do corretor' : 'Carteira CRECI';
   showSheet(titulo, `<div style="font-size:13px;color:var(--muted);margin-bottom:6px">Como você quer adicionar?</div>`,
     `<button class="btn gray" onclick="closeSheet()">Cancelar</button>
-     <button class="btn gray" onclick="var el=document.getElementById('${kind==='foto'?'corFotoGal':'corCreciGal'}');el.click();closeSheet()">${ic('image',16)} Galeria</button>
-     <button class="btn" onclick="capturarCorField();var el=document.getElementById('${kind==='foto'?'corFotoCam':'corCreciCam'}');el.click();closeSheet()">${ic('camera',16)} Câmera</button>`);
+     <button class="btn gray" onclick="dispararInput('${kind==='foto'?'corFotoGal':'corCreciGal'}')">${ic('image',16)} Galeria</button>
+     <button class="btn" onclick="capturarCorField();dispararInput('${kind==='foto'?'corFotoCam':'corCreciCam'}')">${ic('camera',16)} Câmera</button>`);
 }
 function capturarCorField(){ DB.corretor.nome = val('corNome')||DB.corretor.nome; DB.corretor.creci = val('corCreci')||DB.corretor.creci; DB.corretor.validadeCreci = val('corValidade')||DB.corretor.validadeCreci; DB.corretor.email = (document.getElementById('corEmail')?document.getElementById('corEmail').value:DB.corretor.email)||''; }
 async function storeCorFoto(kind, dataUrl){
