@@ -33,10 +33,9 @@
      de novo ("Instalar aplicativo" ou "Adicionar à tela inicial").
 
 🔄 EM ATUALIZAÇÕES FUTURAS
-  Sempre que subir uma nova versão do app, troque o número em
-  CACHE_VERSION no topo do sw.js (de 'v1' para 'v2', etc). É essa
-  mudança que faz o celular perceber que existe uma versão nova
-  pra instalar — sem isso, ele pode continuar preso na versão
-  antiga mesmo depois do commit no GitHub.
+  Não precisa mexer em nada no sw.js. Ele já busca sempre a versão
+  mais nova do index.html quando o celular tem internet (só usa a
+  cópia salva quando está offline). Basta subir os arquivos que
+  eu mandar, igual já funciona com o VetFlowCare.
 
 Dúvidas, é só chamar. 🏠

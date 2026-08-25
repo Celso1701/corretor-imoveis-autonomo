@@ -1,5 +1,26 @@
 # Corretor Imóveis Autônomo — Histórico de versões
 
+## v1.17.0 — Financeiro em aberto na tela Início
+- **Nova seção "Financeiro em aberto"** na tela Início, separada das visitas e logo acima de **Próximas visitas**. Mostra os títulos que ainda **não têm "Data realizada"** preenchida (mesma regra de "em aberto" da tela Financeiro), em dois grupos:
+  - **⚠️ Atrasados** — tudo que já venceu (a pagar vencido e a receber não recebido), considerando a data de hoje. **Mostra todos**, sem limite, do mais antigo para o mais recente, com o aviso "venceu há X dias".
+  - **📅 Próximos 3 dias** — a pagar e a receber de **hoje até hoje + 3 dias**, com "vence hoje", "vence amanhã" e "vence em X dias".
+- **Cores iguais às do Financeiro:** receita em verde com `+ R$` e selo **A RECEBER**; despesa em vermelho com `- R$` e selo **A PAGAR**. Cada grupo traz o subtotal **A receber / A pagar**.
+- **Toque no título** abre a mesma tela de edição do Financeiro — dá para preencher a "Data realizada" ali mesmo, e o item sai da lista na hora (o app volta para a tela Início, sem trocar de aba).
+- Lançamentos **já realizados** e os que vencem **depois de 3 dias** não aparecem. Se não houver nada em aberto, a seção some por completo e a tela Início fica como antes.
+
+## v1.16.0 — Câmera pelo método do VetFlowCare + ícone no <head>
+- **Câmera corrigida de vez:** Câmera/Galeria em todas as telas (fotos do imóvel, proprietário, vídeo, certidões e foto/CRECI do corretor) passam a usar o mesmo método do VetFlowCare — o botão cria o seletor e abre na hora, **sem fechar a folha durante o toque**. Era o fechamento no meio do gesto que impedia a câmera de abrir no celular.
+- **Ícone:** adicionadas as tags `<link rel="icon">` e `<link rel="apple-touch-icon">` no `<head>`, que faltavam — ajudam o Android e o iPhone a exibir o ícone do app.
+
+## v1.15.0 — Câmera corrigida + campos por tipo (Apartamento e Terreno)
+- **Câmera:** corrigido o "nada acontece" ao tocar em Câmera. O seletor de câmera/galeria agora abre de forma confiável em todas as telas (fotos do imóvel, foto do proprietário, vídeo, certidões e foto/CRECI do corretor). Correção: a folha fecha **antes** de acionar o seletor e o clique não "reabre" o slot da foto.
+- **Apartamento:** novo botão **Portaria com vigia** (sim/não) após o portão eletrônico; **Poço caipira** removido das fontes de água (não se aplica a apartamento).
+- **Terreno:** removidos os campos de garagem (vagas, coberta, disposição). Incluídos **Tipo do terreno** (Condomínio / Aberto sem portaria), **Acesso** (Portaria c/ vigia / Controle remoto / Aberto), **Ruas internas** (Terra cascalhada / Asfaltada), **Ruas com sarjetas** (sim/não) e **Iluminação nas ruas** (sim/não). A revisão e o texto de compartilhamento se ajustam ao tipo terreno.
+
+## v1.14.0 — Compartilhar com fotos e vídeo + Desistir na edição
+- **Compartilhar imóvel** agora envia as **fotos públicas preenchidas** (as vazias são ignoradas) e o **vídeo** — quando marcado para incluir no compartilhamento — junto com a descrição, pelo compartilhamento nativo do celular (WhatsApp, e-mail, etc.). Botão **"Só texto"** como alternativa. As mídias são pré-carregadas para funcionar também no iPhone.
+- **Cadastro de imóvel:** ao **editar** um imóvel já existente e tocar em **Desistir/Descartar**, o app volta **direto para a lista de imóveis**.
+
 ## v1.13.0 — Zoom (acessibilidade), Becape e versão Pro
 - **Acessibilidade — Zoom da tela:** em Ajustes, botões **A −** / **A +** ampliam o app inteiro (80%–170%), com "Voltar ao padrão". Fica salvo e vale para todas as telas.
 - **Becape e proteção de dados:** em Ajustes, **Exportar backup** (arquivo único com os dados **e** as fotos/contratos/certidões) e **Importar backup** (restaura tudo ao trocar de celular). Aviso de "há X dias sem backup".

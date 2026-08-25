@@ -328,7 +328,7 @@ header.topbar.home{padding:0;background:transparent;box-shadow:none}
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.16.0';
+const APP_VERSION = '1.17.0';
 // Ajudante para inserir ícones do kit (traço) em qualquer lugar
 function ic(name, size, style){ size=size||18; return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"${style?` style="${style}"`:''}><use href="#i-${name}"/></svg>`; }
 // Logo da marca (usado na splash e nas telas de senha)
@@ -1333,6 +1333,7 @@ function renderInicio(){
       <button class="qtile" onclick="goTab('agenda')"><div class="qbox qb3">${ic('calendar',24)}</div><div class="ql">Agenda</div><div class="qm">${visitasHoje} visita${visitasHoje===1?'':'s'} hoje</div></button>
       <button class="qtile" onclick="goTab('financeiro')"><div class="qbox qb4">${ic('wallet',24)}</div><div class="ql">Financeiro</div><div class="qm">Ver resumo</div></button>
     </div>
+    ${financeiroAbertoHTML()}
     <div class="sec">Próximas visitas</div>
     ${proximasVisitasHTML()}`;
 }
@@ -1427,6 +1428,86 @@ function quandoLabel(dataISO){
   if(diff===1) return 'Amanhã';
   if(diff===-1) return 'Ontem';
   return fmtDataBR(dataISO).slice(0,5);
+}
+// ── Financeiro em aberto na tela Início ──────────────────────────────────────
+// "Em aberto" segue exatamente a mesma regra da tela Financeiro: é todo
+// lançamento (receita ou despesa) que ainda NÃO tem "Data realizada" preenchida.
+//  • Atrasados  → data anterior a hoje (a pagar vencido / a receber não recebido).
+//                 Mostra TODOS, sem limite.
+//  • A vencer   → de hoje até hoje + 3 dias (janela dos próximos 3 dias).
+// As cores são as mesmas do Financeiro: receita verde (+), despesa vermelha (-).
+function diasAteData(iso){
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const [a,m,d] = (iso||'').split('-').map(Number);
+  if(!a) return null;
+  const dt = new Date(a,m-1,d); dt.setHours(0,0,0,0);
+  return Math.round((dt-hoje)/86400000);
+}
+function titulosEmAberto(){
+  const hoje = isoDate(new Date());
+  const lim = new Date(); lim.setHours(0,0,0,0); lim.setDate(lim.getDate()+3);
+  const limISO = isoDate(lim);
+  const fin = DB.financeiro || {};
+  const abertos = [
+    ...(fin.receitas||[]).filter(e=>!e.dataRealizada && e.data).map(e=>({...e,_tipo:'rec'})),
+    ...(fin.despesas||[]).filter(e=>!e.dataRealizada && e.data).map(e=>({...e,_tipo:'desp'}))
+  ];
+  const porData = (a,b)=>(a.data||'').localeCompare(b.data||'');
+  return {
+    atrasados: abertos.filter(e=>e.data <  hoje).sort(porData),
+    proximos:  abertos.filter(e=>e.data >= hoje && e.data <= limISO).sort(porData)
+  };
+}
+function totaisTitulos(lista){
+  return {
+    receber: lista.filter(e=>e._tipo==='rec').reduce((s,e)=>s+(e.valor||0),0),
+    pagar:   lista.filter(e=>e._tipo==='desp').reduce((s,e)=>s+(e.valor||0),0)
+  };
+}
+function cabecalhoTitulosHTML(titulo, qtd, cor, bg, borda, lista){
+  const t = totaisTitulos(lista);
+  return `<div style="background:${bg};border:1px solid ${borda};border-radius:14px;padding:9px 12px;margin:0 0 8px">
+    <div style="font-size:11.5px;font-weight:800;color:${cor};text-transform:uppercase;letter-spacing:.03em">${titulo} · ${qtd}</div>
+    <div style="font-size:11.5px;color:var(--muted);margin-top:3px">
+      A receber <b style="color:var(--success)">${fmtBRL(t.receber)}</b> · A pagar <b style="color:var(--danger)">${fmtBRL(t.pagar)}</b></div>
+  </div>`;
+}
+function linhaTituloAbertoHTML(e, atrasado){
+  const rec = e._tipo==='rec';
+  const d = diasAteData(e.data);
+  let quando;
+  if(atrasado){ const n = Math.abs(d); quando = n===1 ? 'venceu ontem' : `venceu há ${n} dias`; }
+  else if(d===0) quando = 'vence hoje';
+  else if(d===1) quando = 'vence amanhã';
+  else quando = `vence em ${d} dias`;
+  const sub = rec && e.fontePagadora
+    ? `<div style="font-size:11px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Fonte pagadora: <b style="color:var(--text);font-weight:700">${esc(e.fontePagadora)}</b></div>`
+    : (e.descricao ? `<div style="font-size:11px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ic('doc',12)} ${esc(e.descricao)}</div>` : '');
+  return `<div class="card" style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:11px 12px" onclick="${rec?`editarReceita('${e.id}')`:`editarDespesa('${e.id}')`}">
+    <div class="ptile-icon" style="width:36px;height:36px;flex-shrink:0;background:${rec?'var(--pgreen)':'var(--pblue)'}">${rec?'💚':iconeCat(e.categoria)}</div>
+    <div style="flex:1;min-width:0">
+      <b style="font-size:13.5px">${esc(e.categoria||(rec?'Receita':'Outros'))}</b>
+      <span style="font-size:10px;font-weight:800;color:${rec?'var(--success)':'var(--danger)'};background:${rec?'var(--pgreen)':'var(--pred)'};padding:2px 7px;border-radius:100px;margin-left:6px;white-space:nowrap">${rec?'A RECEBER':'A PAGAR'}</span>
+      ${sub}
+      <div style="font-size:11px;margin-top:3px;color:${atrasado?'var(--danger)':'var(--muted)'};font-weight:${atrasado?'700':'400'}">${fmtDataBR(e.data)} · ${quando}</div>
+    </div>
+    <b style="color:${rec?'var(--success)':'var(--danger)'};white-space:nowrap;font-size:13.5px">${rec?'+':'-'} ${fmtBRL(e.valor)}</b>
+  </div>`;
+}
+function financeiroAbertoHTML(){
+  const { atrasados, proximos } = titulosEmAberto();
+  if(!atrasados.length && !proximos.length) return '';
+  let h = `<div class="sec">Financeiro em aberto</div>`;
+  if(atrasados.length){
+    h += cabecalhoTitulosHTML('⚠️ Atrasados', atrasados.length, '#B42318', 'var(--pred)', '#F6C6C2', atrasados);
+    h += atrasados.map(e=>linhaTituloAbertoHTML(e, true)).join('');
+  }
+  if(proximos.length){
+    h += cabecalhoTitulosHTML('📅 Próximos 3 dias', proximos.length, '#B45309', '#FFF6E6', '#FCE2B0', proximos);
+    h += proximos.map(e=>linhaTituloAbertoHTML(e, false)).join('');
+  }
+  h += `<button class="btn sm gray" style="margin-top:2px" onclick="goTab('financeiro')">${ic('wallet',15)} Abrir Financeiro</button>`;
+  return h;
 }
 function proximasVisitasHTML(){
   const lista = (DB.agendamentos||[]).slice().filter(a=>a.data)
@@ -3209,6 +3290,12 @@ function despForm(ex){
     ${selectImovelHTML('ndImovel', ex?.imovelId)}
     <label>Descrição</label><input id="ndDesc" placeholder="Opcional" value="${esc(ex?.descricao||'')}">`;
 }
+// Redesenha a tela certa depois de salvar/excluir um lançamento: se o usuário
+// estiver no Início (seção "Financeiro em aberto"), atualiza o Início; se estiver
+// no Financeiro, atualiza o Financeiro.
+function atualizarAposLancamento(){
+  if(currentTab==='inicio') renderInicio(); else renderFinanceiro();
+}
 function novaDespesaManual(){
   showSheet('🧾 Nova despesa', despForm(null),
     `<button class="btn gray" onclick="closeSheet()">Cancelar</button><button class="btn" onclick="salvarDespesaManual('')">Salvar</button>`);
@@ -3237,7 +3324,7 @@ function salvarDespesaManual(editId){
   const commit = ()=>{
     if(editId){ const ex = DB.financeiro.despesas.find(d=>d.id===editId); if(ex) Object.assign(ex, dados); }
     else { DB.financeiro.despesas.push({ id:uid(), origem:'manual', createdAt:Date.now(), ...dados }); }
-    save(); closeSheet(); toast(editId?'✏️ Despesa regravada!':'🧾 Despesa registrada!'); renderFinanceiro();
+    save(); closeSheet(); toast(editId?'✏️ Despesa regravada!':'🧾 Despesa registrada!'); atualizarAposLancamento();
   };
   if(editId){ _pendingCommit = commit; confirmar({icon:'✏️', title:'Regravar o lançamento?', msg:`Confirmar as alterações da despesa de <b>${fmtBRL(valor)}</b>?`, noLabel:'Voltar', yesLabel:'Regravar', yes:'_runPendingCommit()'}); }
   else { commit(); }
@@ -3251,7 +3338,7 @@ function excluirDespesa(id){
 }
 function doExcluirDespesa(id){
   DB.financeiro.despesas = DB.financeiro.despesas.filter(d=>d.id!==id);
-  save(); toast('🗑️ Despesa excluída'); renderFinanceiro();
+  save(); toast('🗑️ Despesa excluída'); atualizarAposLancamento();
 }
 
 // ── Receitas (categoria sempre digitável) ──
@@ -3295,7 +3382,7 @@ function salvarReceitaManual(editId){
   const commit = ()=>{
     if(editId){ const ex=DB.financeiro.receitas.find(d=>d.id===editId); if(ex) Object.assign(ex,dados); }
     else { DB.financeiro.receitas.push({ id:uid(), origem:'manual', createdAt:Date.now(), ...dados }); }
-    save(); closeSheet(); toast(editId?'✏️ Receita regravada!':'💚 Receita registrada!'); renderFinanceiro();
+    save(); closeSheet(); toast(editId?'✏️ Receita regravada!':'💚 Receita registrada!'); atualizarAposLancamento();
   };
   if(editId){ _pendingCommit = commit; confirmar({icon:'✏️', title:'Regravar o lançamento?', msg:`Confirmar as alterações da receita de <b>${fmtBRL(valor)}</b>?`, noLabel:'Voltar', yesLabel:'Regravar', yes:'_runPendingCommit()'}); }
   else { commit(); }
@@ -3307,7 +3394,7 @@ function excluirReceita(id){
 }
 function doExcluirReceita(id){
   DB.financeiro.receitas = DB.financeiro.receitas.filter(d=>d.id!==id);
-  save(); toast('🗑️ Receita excluída'); renderFinanceiro();
+  save(); toast('🗑️ Receita excluída'); atualizarAposLancamento();
 }
 
 function renderConfig(){
