@@ -1,41 +1,59 @@
-// Service Worker — Corretor PWA
-// Cacheia o "app shell" (o próprio index.html é um arquivo único) para
-// permitir abrir o app offline. Dados ficam em localStorage/IndexedDB,
-// que já funcionam offline por padrão — isto aqui cobre só o carregamento
-// do arquivo em si.
-const CACHE_NAME = 'corretor-pwa-v1.16.0';
-const APP_SHELL = ['./', './index.html', './manifest.json', './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png'];
+// Service Worker — Corretor de Imóveis
+// Mesmo padrão do VetFlowCare: "network-first" (sempre busca a versão mais nova
+// quando há internet; o cache só responde quando o aparelho está OFFLINE) e
+// apaga sozinho os caches antigos ao ativar. Isso evita o problema clássico de
+// PWA de ficar preso numa versão antiga (index.html, manifest.json ou ícones
+// desatualizados) mesmo depois de você atualizar os arquivos no GitHub.
+//
+// IMPORTANTE: sempre que publicar uma atualização (novo index.html, manifest.json
+// ou ícones), MUDE o número da versão abaixo (ex: 'v2' → 'v3'). É essa mudança de
+// texto que faz o navegador perceber que o sw.js é diferente e instalar a nova
+// versão — sem isso, ele pode continuar usando o service worker antigo.
+const CACHE_VERSION = 'v1';
+const CACHE_NAME = 'corretor-imoveis-' + CACHE_VERSION;
+
+// Arquivos essenciais para o app abrir mesmo sem internet.
+const PRECACHE_URLS = [
+  './',
+  './index.html',
+  './manifest.json',
+  './icon-192.png',
+  './icon-512.png',
+  './icon-512-maskable.png',
+  './logo.jpg'
+];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL))
-  );
   self.skipWaiting();
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS)).catch(() => {})
+  );
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    )
+    caches.keys().then((names) =>
+      Promise.all(
+        names
+          .filter((name) => name !== CACHE_NAME)
+          .map((name) => caches.delete(name))
+      )
+    ).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
+// Network-first: tenta buscar a versão mais nova na internet; se conseguir,
+// atualiza o cache. Se não houver internet, usa o que estiver salvo no cache.
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const network = fetch(event.request)
-        .then((res) => {
-          if (res && res.status === 200) {
-            const clone = res.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-          }
-          return res;
-        })
-        .catch(() => cached);
-      return cached || network;
-    })
+    fetch(event.request)
+      .then((response) => {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy)).catch(() => {});
+        return response;
+      })
+      .catch(() => caches.match(event.request).then((cached) => cached || caches.match('./index.html')))
   );
 });

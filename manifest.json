@@ -1,18 +1,20 @@
 {
-  "name": "Corretor Imóveis Autônomo",
-  "short_name": "Corretor",
-  "version": "1.16.0",
-  "description": "Aplicativo para corretor de imóveis autônomo cadastrar e organizar imóveis para venda.",
+  "id": "br.com.corretordeimoveis.app",
+  "name": "Corretor de Imóveis — Gestão de Imóveis",
+  "short_name": "Corretor de Imóveis",
+  "description": "Gestão completa para corretores de imóveis: cadastro de imóveis, proprietários, agenda de visitas e financeiro. Funciona offline.",
+  "lang": "pt-BR",
+  "dir": "ltr",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#1D4ED8",
   "theme_color": "#1D4ED8",
-  "lang": "pt-BR",
+  "background_color": "#1D4ED8",
+  "categories": ["business", "productivity", "real estate"],
   "icons": [
-    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

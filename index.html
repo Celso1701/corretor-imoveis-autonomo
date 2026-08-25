@@ -9,8 +9,8 @@
 <meta name="apple-mobile-web-app-title" content="Corretor de Imóveis">
 <title>Corretor de Imóveis — Gestão de Imóveis</title>
 <link rel="manifest" href="manifest.json">
-<link rel="icon" type="image/png" href="icons/icon-192.png">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
 <style>
@@ -189,6 +189,19 @@ nav button.on .nic{background:var(--pblue)}
 .day.active{background:var(--primary);border-color:var(--primary);color:#fff;box-shadow:0 10px 18px -8px rgba(93,95,239,.55)}
 .day.active .dw{color:rgba(255,255,255,.85)}
 .day.active .dd{background:#fff}
+.cal-card{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:14px;box-shadow:var(--shadow);margin-top:16px}
+.cal-head{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:10px}
+.cal-head .nav{width:32px;height:32px;flex-shrink:0;border-radius:50%;background:var(--pblue);color:var(--primary);font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.cal-head .lbl{flex:1;text-align:center;font-size:14.5px;font-weight:800;cursor:pointer;padding:6px 4px;border-radius:10px}
+.cal-head .lbl:active{background:var(--pblue)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal-dow{text-align:center;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;padding-bottom:4px}
+.cal-day{position:relative;aspect-ratio:1;border-radius:12px;background:var(--bg);border:1.5px solid transparent;font-size:12.5px;font-weight:700;color:var(--text);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.cal-day.today{border-color:var(--primary);color:var(--dark)}
+.cal-day.sel{background:var(--primary);border-color:var(--primary);color:#fff;box-shadow:0 10px 18px -8px rgba(93,95,239,.55)}
+.cal-day .dots{display:flex;gap:2px;height:5px}
+.cal-day .dots i{width:4px;height:4px;border-radius:50%;background:var(--primary)}
+.cal-day.sel .dots i{background:#fff}
 .pills{display:flex;gap:8px;margin-top:16px;overflow-x:auto;padding-bottom:2px}
 .pill{flex-shrink:0;padding:9px 15px;border-radius:100px;background:var(--surface);border:1px solid var(--line);font-size:12.5px;font-weight:700;color:var(--muted);cursor:pointer}
 .quick{display:flex;gap:16px;margin:18px 0 2px;overflow-x:auto;padding-bottom:2px}
@@ -214,7 +227,8 @@ header.topbar.home{padding:0;background:transparent;box-shadow:none}
 .hhero .top{display:flex;justify-content:space-between;align-items:flex-start;margin-top:4px}
 .hhero h1{font-size:24px;font-weight:800;line-height:1.12;letter-spacing:-.3px}
 .hhero .sub{font-size:13.5px;opacity:.92;margin-top:3px}
-.hbell{width:42px;height:42px;border-radius:13px;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;color:#fff;flex:none}
+.hbell{width:42px;height:42px;border-radius:13px;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;color:#fff;flex:none;position:relative;transition:background .2s}
+.bellbadge{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 4px;border-radius:50%;background:#fff;color:var(--danger);font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 2px var(--danger)}
 .hsearch{margin-top:14px;background:#fff;border-radius:14px;display:flex;align-items:center;gap:10px;padding:13px 15px;color:#98a3ba;font-size:14.5px;font-weight:600;box-shadow:0 6px 18px rgba(30,50,100,.14);cursor:pointer}
 .sec{font-size:12.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:16px 2px 10px}
 .creci-ok{display:flex;align-items:center;gap:11px;background:var(--pgreen);border:1.5px solid #BBF7D0;border-radius:14px;padding:12px 14px}
@@ -488,14 +502,25 @@ function showSheet(title, bodyHTML, footHTML){
 function closeSheet(){ document.getElementById('modals').innerHTML=''; }
 function dispararInput(id){ try{ closeSheet(); }catch(e){} var el=document.getElementById(id); if(el){ try{ el.value=''; }catch(e){} el.click(); } }
 // ── Seletor de arquivo no método do VetFlowCare ──
-// Cria o input na hora e clica, SEM fechar a folha durante o gesto
-// (fechar/alterar o DOM no meio do toque cancela a câmera no celular).
-// A folha é fechada só depois, quando o arquivo já foi escolhido.
+// O input precisa estar REALMENTE no DOM (não só criado em memória) para o
+// seletor nativo de câmera abrir de forma confiável no WebView do celular
+// (Android/TWA e iOS). Por isso ele é anexado ao body, escondido fora da tela,
+// e só é removido depois que o arquivo já foi escolhido.
+// SEM fechar a folha durante o gesto (fechar/alterar o DOM no meio do toque
+// cancela a câmera no celular) — a folha é fechada só no callback, já com o arquivo em mãos.
 function pegarArquivo(accept, captureVal, cb){
   var inp = document.createElement('input');
   inp.type = 'file'; inp.accept = accept;
   if(captureVal){ inp.setAttribute('capture', captureVal); }
-  inp.onchange = function(e){ var f = e.target.files && e.target.files[0]; if(f && cb){ cb(f); } };
+  inp.style.position = 'fixed';
+  inp.style.left = '-9999px';
+  inp.style.top = '0';
+  document.body.appendChild(inp);
+  inp.onchange = function(e){
+    var f = e.target.files && e.target.files[0];
+    if(inp.parentNode) inp.parentNode.removeChild(inp);
+    if(f && cb){ cb(f); }
+  };
   inp.click();
 }
 function confirmar(o){
@@ -767,7 +792,9 @@ function corCheck(code){
 /* Convite (fase de testes) — mesmo cálculo usado na Central de Envio, se ligar o portão */
 function inviteChecksum(seed){ let h=7; const s=(seed||'')+'CONVITECORRETOR'; for(let i=0;i<s.length;i++) h=(h*31 + s.charCodeAt(i))%99991; return String(1000 + (h%9000)); }
 function inviteCheck(code){ const m=/^COR-([A-Z0-9]{4})-(\d{4})$/.exec((code||'').toUpperCase().trim()); return !!m && inviteChecksum(m[1])===m[2]; }
-function isPro(){ const l = DB && DB.license; if(!l || !l.pro) return false; if(l.expiresAt && l.expiresAt < todayISO()) return false; return true; }
+function isProReal(){ const l = DB && DB.license; if(!l || !l.pro) return false; if(l.expiresAt && l.expiresAt < todayISO()) return false; return true; }
+// isPro libera tudo se: Pro real ativo (código pago) OU teste grátis de 30 dias ainda ativo (mesmo padrão do VetFlowCare)
+function isPro(){ if(isProReal()) return true; if(trialAtivo()) return true; return false; }
 function diasRestantesPro(){ const l = DB && DB.license; if(!l || !l.expiresAt) return null; const a = new Date(l.expiresAt+'T00:00:00'); return Math.ceil((a.getTime()-Date.now())/86400000); }
 function usedCodes(){ try{ return JSON.parse(localStorage.getItem('cor_used_codes')||'[]'); }catch(e){ return []; } }
 function maskProCode(el){
@@ -816,7 +843,7 @@ function activatePro(){
   }
   if(usedCodes().indexOf(code) >= 0){ toast('Este código já foi usado neste aparelho. Peça um novo para renovar.'); return; }
   const meses = r.meses;
-  const base = isPro() ? DB.license.expiresAt : todayISO();
+  const base = isProReal() ? DB.license.expiresAt : todayISO();
   DB.license = { pro:true, code:code, plan:meses, activatedAt:todayISO(), expiresAt: addMonths(base, meses) };
   const u = usedCodes(); u.push(code); try{ localStorage.setItem('cor_used_codes', JSON.stringify(u)); }catch(e){}
   save(); closeSheet(); if(currentTab==='config') renderConfig();
@@ -833,6 +860,179 @@ function deactivatePro(){
     noLabel:'Manter Pro', yesLabel:'Sim, desativar', yes:'doDeactivatePro()' });
 }
 function doDeactivatePro(){ if(DB.license) DB.license.pro = false; save(); if(currentTab==='config') renderConfig(); toast('Pro desativado.'); }
+
+// ═══ TESTE GRÁTIS DE 30 DIAS (mesmo padrão do VetFlowCare) ═══
+const TRIAL_DIAS = 30;
+const TRIAL_AVISO_DIAS = 5; // avisa quando faltar 5 dias ou menos
+function addDays(iso, n){ const d = new Date((iso||todayISO())+'T00:00:00'); d.setDate(d.getDate()+(n||0)); return d.toISOString().slice(0,10); }
+// Marca "este aparelho já usou o trial" em várias chaves + espelho no IndexedDB (sobrevive a reinstalação)
+const TRIAL_MARKS = ['cor_trial_used', 'cor_tu2', 'cortrial'];
+const TRIAL_IDB_KEY = '__cor_trial_flag__';
+function marcarTrialUsado(){
+  try{ TRIAL_MARKS.forEach(k => localStorage.setItem(k, '1')); }catch(e){}
+  try{ idbPut(TRIAL_IDB_KEY, {used:1, at:new Date().toISOString()}); }catch(e){}
+}
+function trialJaUsado(){
+  for(const k of TRIAL_MARKS){ try{ if(localStorage.getItem(k)) return true; }catch(e){} }
+  return false;
+}
+async function trialJaUsadoForte(){
+  const ls = trialJaUsado();
+  let idb = false;
+  try{ const v = await idbGet(TRIAL_IDB_KEY); idb = !!(v && v.used); }catch(e){}
+  if(ls && !idb){ try{ idbPut(TRIAL_IDB_KEY, {used:1, at:new Date().toISOString()}); }catch(e){} }
+  if(idb && !ls){ try{ TRIAL_MARKS.forEach(k => localStorage.setItem(k,'1')); }catch(e){} }
+  return ls || idb;
+}
+// Inicia o trial de 30 dias (chamado uma única vez, no primeiro uso do aparelho)
+function iniciarTrial(){
+  const hoje = todayISO();
+  DB.trial = { active:true, startedAt:hoje, expiresAt:addDays(hoje, TRIAL_DIAS) };
+  marcarTrialUsado();
+  try{ save(); }catch(e){}
+}
+function trialAtivo(){ const T=DB.trial; if(!T||!T.active||!T.expiresAt) return false; return todayISO() <= T.expiresAt; }
+function trialExpirado(){ const T=DB.trial; return !!(T && T.startedAt && T.expiresAt && todayISO() > T.expiresAt); }
+function trialDiasRestantes(){
+  const T=DB.trial; if(!T||!T.expiresAt) return 0;
+  const hoje=new Date(todayISO()+'T00:00:00'), fim=new Date(T.expiresAt+'T00:00:00');
+  const dias=Math.ceil((fim-hoje)/86400000); return dias>0?dias:0;
+}
+
+// ═══ INSTALAÇÃO DO APP (PWA) — mesmo padrão do VetFlowCare ═══
+let _bipEvt = null;
+window.addEventListener('beforeinstallprompt', function(e){ e.preventDefault(); _bipEvt = e; });
+function promptInstall(){
+  if(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches){
+    toast('🎉 O app já está instalado neste aparelho!');
+    return;
+  }
+  if(_bipEvt){
+    _bipEvt.prompt();
+    _bipEvt.userChoice.then(function(){ _bipEvt = null; });
+    return;
+  }
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  showSheet('📲 Instalar o Corretor de Imóveis', isIOS ? `
+    <div style="font-size:14px;line-height:2">
+    No iPhone/iPad:<br>
+    1. Toque no botão <b>Compartilhar</b> (□↑) na barra do Safari<br>
+    2. Role e toque em <b>"Adicionar à Tela de Início"</b><br>
+    3. Confirme em <b>Adicionar</b> — pronto! 🏠</div>` : `
+    <div style="font-size:14px;line-height:2">
+    No Android (Chrome):<br>
+    1. Toque no menu <b>⋮</b> no canto superior direito<br>
+    2. Toque em <b>"Instalar aplicativo"</b> (ou "Adicionar à tela inicial")<br>
+    3. Confirme — o ícone aparece como um app de verdade! 🏠<br><br>
+    <span style="color:var(--muted);font-size:12px">💡 Se aparecer só "Adicionar à tela inicial", instale por ele mesmo — funciona igual.</span></div>`,
+    `<button class="btn" onclick="closeSheet()">Entendi</button>`);
+}
+// ═══ PERMISSÕES (câmera / notificações) — explica antes de pedir ═══
+function ativarNotifPerms(){
+  localStorage.setItem('cor_perms_shown','1');
+  closeSheet();
+  try{ if('Notification' in window) Notification.requestPermission(); }catch(e){}
+}
+function pularNotifPerms(){ localStorage.setItem('cor_perms_shown','1'); closeSheet(); }
+
+// ═══ TUTORIAL GUIADO — mesmo padrão do VetFlowCare, adaptado ao Corretor de Imóveis ═══
+const TUT_STEPS = [
+  {emo:'🏠', title:'Bem-vindo(a) ao Corretor de Imóveis!',
+   body:`Sua carteira de imóveis completa no bolso.<br><br>
+   ✅ Funciona <b>offline</b> — os dados ficam só neste aparelho<br>
+   ✅ <b>Instale na tela inicial</b> para abrir como um app de verdade<br>
+   ✅ Proteja tudo fazendo <b>backups</b> regulares<br><br>
+   Este guia mostra rapidinho cada parte do app. Pode pular e rever quando quiser em <b>Ajustes</b>.`,
+   action:{label:'📲 Instalar o app agora', fn:'promptInstall()'}},
+  {emo:'🎁', title:'Teste grátis por 30 dias!',
+   body:`<div style="background:var(--pblue);border:1.5px solid var(--primary);border-radius:12px;padding:12px 14px;margin-bottom:10px">
+   <b style="color:var(--primary);font-size:14px">Use TODO o app sem limites por 30 dias, sem precisar de código!</b></div>
+   Quando o teste acabar, você pode assinar o <b>Plano Pro</b> em <b>Ajustes → Plano</b>, pelo WhatsApp.`,
+   action:{label:'Ver detalhes do Plano Pro', fn:'finishTutorial(true);openProModal()'}},
+  {emo:'🔑', title:'Início — seu painel do dia',
+   body:`Ao abrir, você vê:<br><br>
+   • O <b>sino 🔔</b> no topo — muda de cor e mostra um número quando há visitas vencidas ou marcadas para hoje<br>
+   • O status da sua <b>carteira CRECI</b> (avisa quando estiver perto de vencer)<br>
+   • Atalhos para <b>Imóveis, Proprietários, Agenda e Financeiro</b><br>
+   • Suas <b>próximas visitas</b>`},
+  {emo:'🏘️', title:'Cadastrar um imóvel',
+   body:`Toque em <b>➕ Cadastrar imóvel</b> na tela inicial:<br><br>
+   • Escolha o tipo: casa, apartamento, chácara ou terreno<br>
+   • Preencha localização, valores e características em poucos passos<br>
+   • Envie fotos pela <b>📷 câmera</b> ou pela galeria<br>
+   • Um código único é gerado automaticamente para cada imóvel`,
+   action:{label:'🏘️ Cadastrar meu primeiro imóvel', fn:'finishTutorial(true);abrirTipos()'}},
+  {emo:'👤', title:'Proprietários',
+   body:`Em <b>Proprietários</b>, cadastre quem é dono de cada imóvel:<br><br>
+   • Nome, telefone e documentos<br>
+   • Vincule um ou mais imóveis a cada proprietário<br>
+   • O telefone vira botão de <b>WhatsApp</b> direto no perfil`,
+   action:{label:'👤 Ir para Proprietários', fn:'finishTutorial(true);goTab(\'proprietarios\')'}},
+  {emo:'📅', title:'Agenda — visitas de qualquer mês',
+   body:`Em <b>Agenda</b>, um calendário completo:<br><br>
+   • Navegue mês a mês com <b>‹ ›</b> ou toque no nome do mês para <b>digitar direto</b> o mês que quiser — vigente, futuro ou passado<br>
+   • Toque num dia para ver ou marcar visitas<br>
+   • Cada visita tem <b>WhatsApp</b>, <b>Rota (GPS)</b> até o imóvel, edição e uma <b>avaliação do interesse</b> do comprador de 0 a 10<br>
+   • Use a busca para achar uma visita por cliente, código ou endereço`,
+   action:{label:'📅 Ir para a Agenda', fn:'finishTutorial(true);goTab(\'agenda\')'}},
+  {emo:'🔔', title:'Avisos — nunca perca um compromisso',
+   body:`O sino 🔔 na tela inicial avisa sobre visitas <b>vencidas</b> ou <b>de hoje</b>, com um número mostrando quantas.<br><br>
+   Toque nele para ver a lista completa. Em <b>Ajustes → 🔔 Avisos</b> você escolhe exatamente quais avisos quer receber e com quantos dias de antecedência.`},
+  {emo:'💰', title:'Financeiro',
+   body:`Acompanhe receitas e despesas — inclusive as despesas de deslocamento (transporte, refeição, gasolina) lançadas direto em cada visita da agenda.`},
+  {emo:'💾', title:'Backup — proteja seus dados',
+   body:`Seus dados ficam <b>só neste aparelho</b>. Em <b>Ajustes → Becape</b>, exporte um backup completo de vez em quando — assim você não perde nada ao trocar de celular.`},
+  {emo:'🔒', title:'Sobre as permissões do app',
+   body:`O Corretor de Imóveis respeita sua privacidade. Ele só usa:<br><br>
+   • <b>📷 Câmera</b> — só quando VOCÊ toca para fotografar um imóvel ou documento<br>
+   • <b>🔔 Notificações</b> — para lembrar de visitas vencendo, se você permitir<br><br>
+   Nada é enviado para fora do aparelho — os dados ficam <b>salvos localmente</b>. Você pode desligar quando quiser em <b>Ajustes</b>.`,
+   action:{label:'Entendi, ativar avisos', fn:'ativarNotifPerms()'}},
+  {emo:'🎉', title:'Tudo pronto!',
+   body:`Você já conhece o essencial do Corretor de Imóveis. 🏠<br><br>
+   Reveja este guia quando quiser em <b>Ajustes → Ver tutorial</b>.<br><br>
+   Aproveite os <b>30 dias grátis</b> do Plano Pro!`}
+];
+function openTutorial(step){
+  step = Math.min(step||0, TUT_STEPS.length - 1);
+  localStorage.setItem('cor_tut_step', step);
+  const s = TUT_STEPS[step];
+  const last = step === TUT_STEPS.length - 1;
+  const dots = TUT_STEPS.map((_,i)=>
+    `<span style="width:8px;height:8px;border-radius:50%;display:inline-block;margin:0 3px;background:${i===step?'var(--primary)':'var(--border)'}"></span>`).join('');
+  showSheet(`${s.emo} ${s.title}`, `
+    <div style="font-size:14px;line-height:1.7;color:var(--text)">${s.body}</div>
+    ${s.action?`<button class="btn" style="margin-top:14px" onclick="${s.action.fn}">${s.action.label}</button>`:''}
+    <div style="text-align:center;margin-top:16px">${dots}</div>
+    <div style="text-align:center;color:var(--muted);font-size:11px;margin-top:6px">${step+1} de ${TUT_STEPS.length}</div>`,
+    `${step>0?`<button class="btn gray" onclick="openTutorial(${step-1})">‹ Anterior</button>`:`<button class="btn gray" onclick="finishTutorial()">Pular</button>`}
+     <button class="btn" onclick="${last?'finishTutorial()':`openTutorial(${step+1})`}">${last?'✓ Começar!':'Próximo ›'}</button>`);
+}
+function finishTutorial(skipNext){
+  localStorage.setItem('cor_tut_done','1');
+  localStorage.removeItem('cor_tut_step');
+  closeSheet();
+  if(!skipNext && !localStorage.getItem('cor_perms_shown')){
+    setTimeout(()=>{ if(!document.querySelector('.modal')) showPermsOnboarding(); }, 600);
+  }
+}
+// Tela que explica as permissões antes de pedir (câmera é só sob toque do usuário; não exige permissão de sistema)
+function showPermsOnboarding(){
+  showSheet('👋 Sobre as permissões', `
+    <div style="font-size:13px;color:var(--muted);margin-bottom:14px">O Corretor de Imóveis respeita sua privacidade. Ele só usa estes recursos com o seu consentimento:</div>
+    <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:14px">
+      <div style="font-size:26px;flex-shrink:0">🔔</div>
+      <div><b style="font-size:14px">Notificações</b>
+      <div style="font-size:12.5px;color:var(--muted);margin-top:2px">Para lembrar você de visitas que estão vencendo. Pode desligar quando quiser em Ajustes.</div></div>
+    </div>
+    <div style="display:flex;gap:12px;align-items:flex-start">
+      <div style="font-size:26px;flex-shrink:0">📷</div>
+      <div><b style="font-size:14px">Câmera</b>
+      <div style="font-size:12.5px;color:var(--muted);margin-top:2px">Só quando VOCÊ toca em "Câmera" — para fotografar imóveis e documentos. Nada sai do aparelho.</div></div>
+    </div>`,
+    `<button class="btn primary" style="width:100%" onclick="ativarNotifPerms()">Entendi, ativar avisos</button>
+     <button class="btn gray" style="width:100%;margin-top:8px" onclick="pularNotifPerms()">Agora não</button>`);
+}
 
 function boot(){
   // Sem senha: carrega o banco em texto puro do localStorage (ou cria vazio).
@@ -853,6 +1053,19 @@ function boot(){
     if(DB.contadores.prop===undefined) DB.contadores.prop=0;
     if(!DB.devId || !/^[A-Z0-9]{4}$/.test(DB.devId)) DB.devId = makeDevId();
     if(!DB.license) DB.license = { pro:false };
+    // ── Avisos/Alertas (sino) — configuráveis em Ajustes, mesmo padrão do VetFlowCare ──
+    if(!DB.settings) DB.settings = {};
+    if(DB.settings.avisoAtrasado===undefined) DB.settings.avisoAtrasado = true;
+    if(DB.settings.avisoHoje===undefined) DB.settings.avisoHoje = true;
+    if(DB.settings.aviso7===undefined) DB.settings.aviso7 = true;
+    if(DB.settings.aviso3===undefined) DB.settings.aviso3 = true;
+    if(DB.settings.aviso1===undefined) DB.settings.aviso1 = true;
+    // ── Teste grátis de 30 dias: começa sozinho na primeira vez que o app roda neste
+    // aparelho (instalação nova OU quem já usava e nunca teve trial nem Pro) ──
+    if(!isProReal() && !DB.trial && !trialJaUsado()){
+      iniciarTrial();
+      toast('🎁 Você tem 30 dias grátis com tudo liberado!');
+    }
   }catch(e){ DB = defaultDB(); }
   enterApp();
 }
@@ -965,6 +1178,10 @@ function enterApp(){
   document.getElementById('appHeader').classList.remove('hidden');
   document.getElementById('mainNav').classList.remove('hidden');
   goTab('inicio');
+  try{ scheduleLocalCheck(); }catch(e){}
+  if(!localStorage.getItem('cor_tut_done')){
+    setTimeout(()=>openTutorial(parseInt(localStorage.getItem('cor_tut_step')||'0')), 500);
+  }
 }
 let currentTab = 'inicio';
 function goTab(tab){
@@ -1014,22 +1231,95 @@ function avisoCreciHTML(){
       <div style="font-size:11.5px;opacity:.9;margin-top:2px">Toque para atualizar em Ajustes › Perfil do corretor.</div></div>
   </div>`;
 }
+// ═══ SINO DE AVISOS (Agenda/Alertas) — mesmo padrão do VetFlowCare ═══
+// Quais dias de antecedência estão ativos nos Ajustes (7/3/1). Sempre pelo menos 1 dia.
+function activeAlertDays(){
+  const s = DB.settings||{}; const d=[];
+  if(s.aviso7) d.push(7); if(s.aviso3) d.push(3); if(s.aviso1) d.push(1);
+  return d.length ? d : [1];
+}
+function diasAte(iso){
+  const hoje = new Date(isoDate(new Date())+'T00:00:00');
+  const alvo = new Date((iso||'')+'T00:00:00');
+  return Math.round((alvo-hoje)/86400000);
+}
+// Junta os compromissos (visitas) relevantes para avisos: vencidos, de hoje e os
+// próximos dentro da antecedência configurada — cada grupo respeita seu toggle em Ajustes.
+function compromissosAviso(){
+  const s = DB.settings||{};
+  const dias = activeAlertDays();
+  return (DB.agendamentos||[]).filter(a=>a.data).map(a=>({a, d:diasAte(a.data)}))
+    .filter(({d})=>{
+      if(d<0) return !!s.avisoAtrasado;
+      if(d===0) return !!s.avisoHoje;
+      return dias.includes(d);
+    })
+    .sort((x,y)=>x.d-y.d);
+}
+// Conta só o que exige atenção AGORA (vencido ou de hoje) — é o número do sino.
+function contarAvisosPendentes(){
+  return compromissosAviso().filter(({d})=>d<=0).length;
+}
+function abrirAvisos(){
+  const itens = compromissosAviso();
+  if(!itens.length){
+    showSheet('🔔 Avisos', `<div class="empty"><div class="big">${ic('calendar',40)}</div>Nenhum aviso no momento.<br><span style="font-size:12px">Compromissos vencidos, de hoje ou próximos aparecem aqui.</span></div>`,
+      `<button class="btn gray" onclick="closeSheet()">Fechar</button><button class="btn" onclick="closeSheet();goTab('config')">Ajustar avisos</button>`);
+    return;
+  }
+  const linhas = itens.map(({a,d})=>{
+    const im = DB.imoveis.find(x=>x.id===a.imovelId);
+    const cod = (im?.codigo||'—').toUpperCase();
+    const tag = d<0 ? `<span style="background:var(--danger);color:#fff;font-size:10px;font-weight:800;padding:3px 8px;border-radius:100px">VENCIDO HÁ ${Math.abs(d)}D</span>`
+      : d===0 ? `<span style="background:var(--warning);color:#fff;font-size:10px;font-weight:800;padding:3px 8px;border-radius:100px">HOJE</span>`
+      : `<span style="background:var(--pblue);color:var(--primary);font-size:10px;font-weight:800;padding:3px 8px;border-radius:100px">EM ${d}D</span>`;
+    return `<div class="card" style="cursor:pointer;margin-bottom:10px" onclick="closeSheet();editarAgendamento('${a.id}')">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">${tag}<span style="font-size:11px;color:var(--muted)">${fmtDataBR(a.data)} · ${a.hora||'--:--'}</span></div>
+      <div style="font-weight:800;font-size:14px;margin-top:6px">${esc(a.compradorNome||'Sem nome')}</div>
+      <div style="font-size:11.5px;color:var(--muted);margin-top:2px">${cod!=='—'?cod+' · ':''}${im?esc(im.localizacao?.endereco||''):'Imóvel removido'}</div>
+    </div>`;
+  }).join('');
+  showSheet('🔔 Avisos', linhas, `<button class="btn gray" onclick="closeSheet()">Fechar</button><button class="btn" onclick="closeSheet();goTab('config')">Ajustar avisos</button>`);
+}
+// Notificação nativa do aparelho (só dispara se a permissão já foi concedida)
+function notify(title, body){
+  if('Notification' in window && Notification.permission==='granted'){
+    try{ new Notification(title, {body, icon:'icon192.png', badge:'icon192.png'}); }catch(e){}
+  }
+}
+// Roda no máximo 1x por dia: notifica os compromissos vencidos/hoje/próximos (conforme Ajustes)
+function scheduleLocalCheck(){
+  const key = 'cor_lastcheck';
+  if(localStorage.getItem(key) === todayISO()) return;
+  localStorage.setItem(key, todayISO());
+  compromissosAviso().forEach(({a,d})=>{
+    const quando = d<0 ? `venceu há ${Math.abs(d)} dia(s)` : d===0 ? 'é hoje' : `é em ${d} dia(s)`;
+    notify('🔔 Compromisso da agenda', `Visita com ${a.compradorNome||'cliente'} ${quando}${a.hora?' às '+a.hora:''}.`);
+  });
+}
+// switch de configuração de aviso, usado em Ajustes (mesmo padrão do VetFlowCare)
+function swAviso(key, label, desc){
+  return `<div class="toggle-row"><div class="lbl">${esc(label)}${desc?`<span class="d">${esc(desc)}</span>`:''}</div>
+    <div class="switch ${DB.settings[key]?'on':''}" onclick="DB.settings.${key}=!DB.settings.${key};save();renderConfig()"></div></div>`;
+}
 function renderInicio(){
   const nImo = DB.imoveis.length, nProp = DB.proprietarios.length;
   const nome = (DB.corretor?.nome||'').trim().split(' ')[0] || 'corretor(a)';
   const hojeISO = isoDate(new Date());
   const visitasHoje = (DB.agendamentos||[]).filter(a=>a.data===hojeISO).length;
+  const nAvisos = contarAvisosPendentes();
   document.getElementById('appHeader').innerHTML = `
     <div class="hhero">
       <div class="eyebrow">Início</div>
       <div class="top">
         <div><h1>Olá, ${esc(nome)} 👋</h1><div class="sub">Bom te ver por aqui!</div></div>
-        <button class="hbell" onclick="goTab('config')">${ic('bell',22)}</button>
+        <button class="hbell" style="${nAvisos>0?'background:var(--danger)':''}" onclick="abrirAvisos()" aria-label="Avisos">${ic('bell',22)}${nAvisos>0?`<span class="bellbadge">${nAvisos>99?'99+':nAvisos}</span>`:''}</button>
       </div>
       <div class="hsearch" onclick="imoBuscaModo='nome';goTab('imoveis')">${ic('search',20)}<span>Buscar imóvel, proprietário, cidade…</span></div>
     </div>`;
   document.getElementById('mainContent').innerHTML = `
     ${creciChipHTML()}
+    ${trialBannerHTML()}
     <button class="hero-btn" onclick="abrirTipos()">
       <span class="pl">${ic('plus',26)}</span>
       <span class="ht">Cadastrar imóvel<small>Casa, apartamento, chácara ou terreno</small></span>
@@ -1044,6 +1334,30 @@ function renderInicio(){
     </div>
     <div class="sec">Próximas visitas</div>
     ${proximasVisitasHTML()}`;
+}
+// Aviso do teste grátis (mesmo padrão do VetFlowCare): só aparece quando faltam
+// TRIAL_AVISO_DIAS dias ou menos, ou quando o teste já acabou e o Pro não está ativo.
+function trialBannerHTML(){
+  if(isProReal()) return '';
+  if(trialAtivo()){
+    const dias = trialDiasRestantes();
+    if(dias > TRIAL_AVISO_DIAS) return '';
+    return `<div class="card" style="border:1.5px solid var(--warning);background:#FFF6E6;margin-bottom:14px;cursor:pointer" onclick="openProModal('Seu teste grátis está acabando! Assine o Pro para continuar com tudo liberado.')">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:24px">⏳</span>
+        <div style="flex:1"><b style="font-size:13.5px">Teste grátis acabando — faltam ${dias} ${dias===1?'dia':'dias'}</b>
+        <div style="font-size:11.5px;color:var(--muted);margin-top:2px">Toque para assinar o Plano Pro e não perder o acesso.</div></div>
+      </div></div>`;
+  }
+  if(trialExpirado()){
+    return `<div class="card" style="border:1.5px solid var(--danger);background:#FEECEC;margin-bottom:14px;cursor:pointer" onclick="openProModal('Seu teste grátis de 30 dias terminou.')">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:24px">🔒</span>
+        <div style="flex:1"><b style="font-size:13.5px;color:#B42318">Teste grátis encerrado</b>
+        <div style="font-size:11.5px;color:var(--muted);margin-top:2px">Seus dados estão salvos. Assine o Pro para continuar com tudo liberado.</div></div>
+      </div></div>`;
+  }
+  return '';
 }
 function creciChipHTML(){
   const dias = diasParaValidadeCreci();
@@ -2301,6 +2615,7 @@ function montarTextoImovel(im){
 let agSelDate = null; // 'YYYY-MM-DD' selecionado na tira de dias
 let agBuscaQ = '';    // busca da agenda
 let agVerSemana = false; // visão semana (hoje..+7) na agenda
+let agCalMonth = new Date(); // mês exibido na grade do calendário — navega livremente p/ passado e futuro
 function isoDate(d){ return d.toISOString().slice(0,10); }
 function ehFimDeSemana(iso){ if(!iso) return false; const d=new Date(iso+'T00:00:00'); const g=d.getDay(); return g===0||g===6; }
 function ehHoje(iso){ return iso===isoDate(new Date()); }
@@ -2311,18 +2626,56 @@ function estiloLinhaData(iso){
   if(ehHoje(iso)) s+='border-top:3px solid var(--primary);border-bottom:3px solid var(--primary);';
   return s;
 }
+// ── Calendário mensal (mesmo padrão do VetFlowCare) ──
+// Navega mês a mês (‹ ›) sem limite de passado/futuro, e permite digitar/escolher
+// direto o mês desejado (toque no nome do mês) — resolve o problema de não
+// conseguir acessar dias/meses anteriores na agenda.
+function agCalShift(n){ agCalMonth = new Date(agCalMonth.getFullYear(), agCalMonth.getMonth()+n, 1); renderAgenda(); }
+function abrirSeletorMes(){
+  const y = agCalMonth.getFullYear(), m = agCalMonth.getMonth();
+  const val = `${y}-${String(m+1).padStart(2,'0')}`;
+  showSheet('Ir para o mês', `
+    <label>Mês / ano</label>
+    <input type="month" id="agMesInput" value="${val}">
+    <div style="font-size:12px;color:var(--muted);margin-top:8px">Digite ou escolha qualquer mês — vigente, futuro ou passado — para visualizar, agendar ou conferir compromissos.</div>`,
+    `<button class="btn gray" onclick="closeSheet()">Cancelar</button><button class="btn" onclick="irParaMes()">Ir para o mês</button>`);
+}
+function irParaMes(){
+  const v = val('agMesInput');
+  if(!v){ toast('Escolha um mês.'); return; }
+  const [y,m] = v.split('-').map(Number);
+  agCalMonth = new Date(y, m-1, 1);
+  agSelDate = null;
+  agVerSemana = false;
+  closeSheet();
+  renderAgenda();
+}
+function agCalGridHTML(){
+  const y = agCalMonth.getFullYear(), m = agCalMonth.getMonth();
+  const first = new Date(y,m,1).getDay();
+  const diasNoMes = new Date(y,m+1,0).getDate();
+  const hojeIso = isoDate(new Date());
+  const dow = ['D','S','T','Q','Q','S','S'];
+  let grid = dow.map(d=>`<div class="cal-dow">${d}</div>`).join('');
+  for(let i=0;i<first;i++) grid += '<div></div>';
+  for(let d=1; d<=diasNoMes; d++){
+    const iso = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday = iso===hojeIso, isSel = iso===agSelDate;
+    const has = DB.agendamentos.some(a=>a.data===iso);
+    grid += `<button type="button" class="cal-day ${isToday?'today':''} ${isSel?'sel':''}" onclick="agSelDate='${iso}';agVerSemana=false;renderAgenda()">${d}<div class="dots">${has?'<i></i>':''}</div></button>`;
+  }
+  return `<div class="cal-card">
+    <div class="cal-head">
+      <button type="button" class="nav" onclick="agCalShift(-1)" aria-label="Mês anterior">‹</button>
+      <div class="lbl" onclick="abrirSeletorMes()">${MESES[m]} ${y} <span style="font-size:10px;opacity:.6">▾</span></div>
+      <button type="button" class="nav" onclick="agCalShift(1)" aria-label="Próximo mês">›</button>
+    </div>
+    <div class="cal-grid">${grid}</div>
+  </div>`;
+}
 function renderAgenda(){
   if(!agSelDate) agSelDate = isoDate(new Date());
-  const dias=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
   const hoje=new Date(); hoje.setHours(0,0,0,0);
-  let strip='';
-  for(let i=0;i<14;i++){
-    const d=new Date(hoje); d.setDate(hoje.getDate()+i);
-    const iso=isoDate(d);
-    const has = DB.agendamentos.some(a=>a.data===iso);
-    strip += `<div class="day ${iso===agSelDate?'active':''} ${has?'has':''}" onclick="agSelDate='${iso}';renderAgenda()">
-      <div class="dw">${dias[d.getDay()]}</div><div class="dn">${d.getDate()}</div><div class="dd"></div></div>`;
-  }
   let doDia = DB.agendamentos.filter(a=>a.data===agSelDate).sort((a,b)=>(a.hora||'').localeCompare(b.hora||''));
   // lista da semana: de hoje até +7 dias, ordem crescente por data e hora
   const semIni = isoDate(hoje); const semFimD = new Date(hoje); semFimD.setDate(semFimD.getDate()+7); const semFim = isoDate(semFimD);
@@ -2349,12 +2702,12 @@ function renderAgenda(){
       <div class="srow"><span class="t">Resultados da busca</span><span class="a">${resultadosBusca.length} visita(s)</span></div>
       ${resultadosBusca.length===0?`<div class="empty"><div class="big">${ic('search',40)}</div>Nenhuma visita encontrada.</div>`:resultadosBusca.map(a=>agCardHTML(a,true)).join('')}
     ` : `
-    <div class="weekstrip">${strip}</div>
+    ${agCalGridHTML()}
     <div class="pills">
       <div class="pill" style="background:var(--primary);border-color:var(--primary);color:#fff" onclick="novaVisita()">＋ Visita</div>
     </div>
     <div class="quick">
-      <div class="q" onclick="agVerSemana=false;agSelDate='${isoDate(hoje)}';renderAgenda()"><div class="c"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="4" y="5" width="16" height="16" rx="3" stroke="currentColor" stroke-width="1.7"/><path d="M4 9h16M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></div><div class="l">Hoje</div></div>
+      <div class="q" onclick="agVerSemana=false;agCalMonth=new Date();agSelDate='${isoDate(hoje)}';renderAgenda()"><div class="c"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="4" y="5" width="16" height="16" rx="3" stroke="currentColor" stroke-width="1.7"/><path d="M4 9h16M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></div><div class="l">Hoje</div></div>
       <div class="q" onclick="agVerSemana=true;renderAgenda()"><div class="c" ${agVerSemana?'style="background:var(--primary);color:#fff"':''}><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="10" r="6.5" stroke="currentColor" stroke-width="1.7"/><path d="M12 6.5V10l2.2 1.3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></div><div class="l">Semana</div></div>
       <div class="q" onclick="goTab('imoveis')"><div class="c"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 21s7-5.4 7-11a7 7 0 1 0-14 0c0 5.6 7 11 7 11Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.4" stroke="currentColor" stroke-width="1.6"/></svg></div><div class="l">Imóveis</div></div>
     </div>
@@ -2944,21 +3297,57 @@ function renderConfig(){
     </div>
     <div class="stitle">Plano</div>
     ${(function(){
-      const pro=isPro(), lic=DB.license||{}, dias=diasRestantesPro();
-      const pausado = !pro && lic.expiresAt && lic.expiresAt>=todayISO();
-      return `<div class="card">
-        ${ pro ? `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="background:var(--accent);color:#fff;font-size:11px;font-weight:800;padding:3px 10px;border-radius:100px">PRO ATIVO</span><span style="font-size:12.5px;color:var(--muted)">Válido até ${fmtDataBR(lic.expiresAt)}${dias!=null?` · ${dias} dia(s)`:''}</span></div>
+      const proReal=isProReal(), lic=DB.license||{}, dias=diasRestantesPro();
+      const pausado = !proReal && lic.expiresAt && lic.expiresAt>=todayISO();
+      const emTrial = !proReal && !pausado && trialAtivo();
+      const trialDias = emTrial ? trialDiasRestantes() : 0;
+      const acabando = emTrial && trialDias<=TRIAL_AVISO_DIAS;
+      const trialAcabou = !proReal && !pausado && !emTrial && trialExpirado();
+      let corpo;
+      if(proReal){
+        corpo = `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="background:var(--accent);color:#fff;font-size:11px;font-weight:800;padding:3px 10px;border-radius:100px">PRO ATIVO</span><span style="font-size:12.5px;color:var(--muted)">Válido até ${fmtDataBR(lic.expiresAt)}${dias!=null?` · ${dias} dia(s)`:''}</span></div>
            <button class="btn" style="margin-top:12px" onclick="openProModal()">Renovar (novo código)</button>
-           <button class="btn gray" style="margin-top:8px" onclick="deactivatePro()">Desativar Pro</button>`
-        : pausado ? `<div style="font-size:13px">Pro <b>pausado</b> — válido até ${fmtDataBR(lic.expiresAt)}.</div>
+           <button class="btn gray" style="margin-top:8px" onclick="deactivatePro()">Desativar Pro</button>`;
+      } else if(pausado){
+        corpo = `<div style="font-size:13px">Pro <b>pausado</b> — válido até ${fmtDataBR(lic.expiresAt)}.</div>
            <button class="btn" style="margin-top:12px" onclick="reativarPro()">Reativar Pro</button>
-           <button class="btn gray" style="margin-top:8px" onclick="openProModal()">Renovar (novo código)</button>`
-        : `<div style="font-size:13px;font-weight:700">Versão gratuita</div>
+           <button class="btn gray" style="margin-top:8px" onclick="openProModal()">Renovar (novo código)</button>`;
+      } else if(emTrial){
+        corpo = `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="background:${acabando?'var(--warning)':'var(--primary)'};color:#fff;font-size:11px;font-weight:800;padding:3px 10px;border-radius:100px">${acabando?'⏳ ACABANDO':'🎁 TESTE GRÁTIS'}</span><span style="font-size:12.5px;color:var(--muted)">Faltam ${trialDias} ${trialDias===1?'dia':'dias'}</span></div>
+           <div style="font-size:12px;color:var(--muted);margin-top:6px">Todas as funções do Pro liberadas durante o teste.</div>
+           <button class="btn" style="margin-top:12px" onclick="openProModal()">Assinar o Plano Pro</button>`;
+      } else if(trialAcabou){
+        corpo = `<div style="font-size:13px"><b style="color:var(--danger)">Teste grátis encerrado.</b> Seus dados continuam salvos neste aparelho.</div>
+           <button class="btn" style="margin-top:12px" onclick="openProModal()">Assinar o Plano Pro</button>`;
+      } else {
+        corpo = `<div style="font-size:13px;font-weight:700">Versão gratuita</div>
            <div style="font-size:12px;color:var(--muted);margin-top:2px">Ative o Pro com um código de liberação.</div>
-           <button class="btn" style="margin-top:12px" onclick="openProModal()">Ativar Pro</button>` }
+           <button class="btn" style="margin-top:12px" onclick="openProModal()">Ativar Pro</button>`;
+      }
+      return `<div class="card">${corpo}
         <div style="font-size:11px;color:var(--muted);margin-top:10px">ID deste aparelho: <b class="mono">AP-${myDevId()}</b></div>
       </div>`;
     })()}
+    <div class="stitle">🔔 Avisos</div>
+    <div class="card">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:4px">O sino no Início avisa sobre compromissos. Escolha quais avisos você quer receber:</div>
+      ${swAviso('avisoAtrasado','Compromissos vencidos','Visitas com data que já passou')}
+      ${swAviso('avisoHoje','Compromissos de hoje','Visitas marcadas para hoje')}
+    </div>
+    <div class="card" style="margin-top:10px">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Avisar com quantos dias de antecedência (visitas futuras):</div>
+      ${swAviso('aviso7','7 dias antes','')}
+      ${swAviso('aviso3','3 dias antes','')}
+      ${swAviso('aviso1','1 dia antes','')}
+    </div>
+    <div class="stitle">Ajuda</div>
+    <div class="card">
+      <button class="btn" onclick="promptInstall()">📲 Instalar o app neste celular</button>
+      <div style="font-size:11px;color:var(--muted);margin:6px 0 12px">Coloca o Corretor de Imóveis como aplicativo de verdade: ícone próprio, tela cheia, sem barra do navegador.</div>
+      <button class="btn gray" onclick="openTutorial(0)">📖 Ver tutorial do app</button>
+      <button class="btn gray" style="margin-top:8px" onclick="showPermsOnboarding()">🔒 Sobre as permissões (câmera e avisos)</button>
+      <button class="btn gray" style="margin-top:8px" onclick="window.open('https://wa.me/${PRO_WHATS}?text=' + encodeURIComponent('Oi! Preciso de ajuda com o Corretor de Imóveis.'))">💬 Suporte e dúvidas (WhatsApp)</button>
+    </div>
     <div class="stitle">Becape e proteção de dados</div>
     <div class="card">
       <div style="font-size:12.5px;color:var(--muted);line-height:1.6;margin-bottom:10px">
@@ -3098,10 +3487,37 @@ async function doResetTudo(){
   location.reload();
 }
 
-// ═══ Service Worker (offline básico) ═══
+// ═══ Service Worker — mesmo padrão do VetFlowCare ═══
+// "network-first" (sempre busca a versão mais nova quando há internet — o cache só
+// responde OFFLINE) + limpeza de service workers de outros apps no mesmo domínio +
+// checagem de atualização de hora em hora + aviso quando sair versão nova.
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
-    navigator.serviceWorker.register('sw.js').catch(()=>{});
+    (function(){
+      const base = location.pathname.replace(/[^/]*$/, '');
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        regs.forEach(r => {
+          try{
+            const sp = new URL(r.scope).pathname;
+            if(base.indexOf(sp) !== 0 && sp.indexOf(base) !== 0){
+              r.unregister();
+              console.log('⚠ Service worker de outro app removido:', r.scope);
+            }
+          }catch(e){}
+        });
+      }).catch(()=>{});
+    })();
+    navigator.serviceWorker.register('sw.js', {scope: './'}).then(reg => {
+      reg.update();
+      setInterval(() => reg.update(), 60*60*1000);
+      reg.addEventListener('updatefound', () => {
+        const nw = reg.installing;
+        nw && nw.addEventListener('statechange', () => {
+          if(nw.state === 'installed' && navigator.serviceWorker.controller)
+            toast('🔄 Nova versão disponível! Feche e reabra o app.');
+        });
+      });
+    }).catch(()=>{});
   });
 }
 </script>

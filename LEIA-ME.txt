@@ -1,0 +1,42 @@
+═══════════════════════════════════════════════════════
+ Corretor de Imóveis — Pacote de Correções
+═══════════════════════════════════════════════════════
+
+📦 CONTEÚDO DESTE ZIP
+  index.html     → app corrigido (câmera, agenda, plano Pro + teste
+                    grátis 30 dias, sino de avisos, tutorial, ícone)
+  manifest.json  → manifesto do PWA, com os ícones apontando pra
+                    raiz do site (sem pasta "icons/")
+  sw.js          → service worker NOVO — "network-first" (sempre
+                    busca a versão mais nova quando há internet, só
+                    usa o cache se estiver offline) e apaga sozinho
+                    os caches antigos ao ativar
+
+⚠️ NÃO ESTÁ NESTE ZIP (vocês já têm, suba os mesmos de antes):
+  icon-192.png
+  icon-512.png
+  icon-512-maskable.png
+  logo.jpg
+  → IMPORTANTE: eles precisam estar soltos na RAIZ do repositório,
+    junto com o index.html — não dentro de uma pasta "icons/".
+    Esse era um dos motivos do ícone não aparecer no celular.
+
+🚀 COMO ATUALIZAR NO GITHUB
+  1. Suba estes 3 arquivos (index.html, manifest.json, sw.js) na
+     raiz do repositório, substituindo os antigos.
+  2. Confirme que os 4 arquivos de imagem acima também estão soltos
+     na raiz (não em pasta).
+  3. Commit → aguarde o GitHub Pages publicar (1-2 min).
+  4. No celular: abra o site pelo navegador (não pelo atalho antigo)
+     com internet, deixe carregar, feche completamente o app/aba.
+  5. Só então desinstale o atalho antigo da tela inicial e adicione
+     de novo ("Instalar aplicativo" ou "Adicionar à tela inicial").
+
+🔄 EM ATUALIZAÇÕES FUTURAS
+  Sempre que subir uma nova versão do app, troque o número em
+  CACHE_VERSION no topo do sw.js (de 'v1' para 'v2', etc). É essa
+  mudança que faz o celular perceber que existe uma versão nova
+  pra instalar — sem isso, ele pode continuar preso na versão
+  antiga mesmo depois do commit no GitHub.
+
+Dúvidas, é só chamar. 🏠
