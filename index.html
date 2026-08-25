@@ -1320,6 +1320,7 @@ function renderInicio(){
   document.getElementById('mainContent').innerHTML = `
     ${creciChipHTML()}
     ${trialBannerHTML()}
+    ${proRenewBannerHTML()}
     <button class="hero-btn" onclick="abrirTipos()">
       <span class="pl">${ic('plus',26)}</span>
       <span class="ht">Cadastrar imóvel<small>Casa, apartamento, chácara ou terreno</small></span>
@@ -1358,6 +1359,41 @@ function trialBannerHTML(){
       </div></div>`;
   }
   return '';
+}
+// Aviso de renovação do Pro pago (plano real, não teste grátis): só aparece na tela
+// Início faltando exatamente 7, 3 ou 1 dia(s) para o vencimento — não fica insistindo
+// nos outros dias. "Deixe para depois" esconde só aquele aviso específico (some até o
+// próximo marco de 3 ou 1 dia); o dia atual não volta a perguntar de novo.
+function proRenewDismissKey(dias){
+  const lic = DB.license||{};
+  return 'cor_pro_renew_dismiss_' + (lic.expiresAt||'') + '_' + dias;
+}
+function proRenewBannerHTML(){
+  if(!isProReal()) return '';
+  const dias = diasRestantesPro();
+  if(dias==null || [7,3,1].indexOf(dias)<0) return '';
+  try{ if(localStorage.getItem(proRenewDismissKey(dias))==='1') return ''; }catch(e){}
+  return `<div class="card" style="border:1.5px solid var(--warning);background:#FFF6E6;margin-bottom:14px;cursor:pointer" onclick="abrirAvisoRenovacaoPro(${dias})">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="font-size:24px">⏳</span>
+      <div style="flex:1"><b style="font-size:13.5px">Seu plano Pro vence em ${dias} dia${dias===1?'':'s'}</b>
+      <div style="font-size:11.5px;color:var(--muted);margin-top:2px">Toque para renovar e não perder o acesso.</div></div>
+    </div></div>`;
+}
+function abrirAvisoRenovacaoPro(dias){
+  const lic = DB.license||{};
+  showSheet('⏳ Seu plano Pro está acabando', `
+    <div style="font-size:14px;line-height:1.7">Faltam <b>${dias} dia${dias===1?'':'s'}</b> para o fim do seu plano Pro${lic.expiresAt?` (válido até ${fmtDataBR(lic.expiresAt)})`:''}.</div>
+    <div style="font-size:12.5px;color:var(--muted);margin-top:8px">Renove agora pelo WhatsApp para não perder o acesso aos recursos Pro.</div>
+  `, `
+    <button class="btn gray" onclick="fecharAvisoRenovacaoPro(${dias})">Deixe para depois</button>
+    <button class="btn" style="background:#25D366" onclick="fecharAvisoRenovacaoPro(${dias});abrirWhatsPro()">${ic('chat',16)} Desejo renovar agora</button>
+  `);
+}
+function fecharAvisoRenovacaoPro(dias){
+  try{ localStorage.setItem(proRenewDismissKey(dias), '1'); }catch(e){}
+  closeSheet();
+  if(currentTab==='inicio') renderInicio();
 }
 function creciChipHTML(){
   const dias = diasParaValidadeCreci();
@@ -3305,9 +3341,13 @@ function renderConfig(){
       const trialAcabou = !proReal && !pausado && !emTrial && trialExpirado();
       let corpo;
       if(proReal){
-        corpo = `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="background:var(--accent);color:#fff;font-size:11px;font-weight:800;padding:3px 10px;border-radius:100px">PRO ATIVO</span><span style="font-size:12.5px;color:var(--muted)">Válido até ${fmtDataBR(lic.expiresAt)}${dias!=null?` · ${dias} dia(s)`:''}</span></div>
-           <button class="btn" style="margin-top:12px" onclick="openProModal()">Renovar (novo código)</button>
-           <button class="btn gray" style="margin-top:8px" onclick="deactivatePro()">Desativar Pro</button>`;
+        const acabando = dias!=null && dias<=7;
+        corpo = `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="background:var(--accent);color:#fff;font-size:11px;font-weight:800;padding:3px 10px;border-radius:100px">PRO ATIVO</span><span style="font-size:12.5px;color:var(--muted)">Válido até ${fmtDataBR(lic.expiresAt)}</span></div>
+           <div style="text-align:center;margin-top:12px;padding:14px 10px;background:${acabando?'#FFF6E6':'var(--pblue)'};border:1.5px solid ${acabando?'var(--warning)':'var(--border)'};border-radius:14px">
+             <div id="proCountdownNum" style="font-size:36px;font-weight:900;color:${acabando?'#B45309':'var(--primary)'};line-height:1">${dias!=null?dias:'—'}</div>
+             <div id="proCountdownLbl" style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-top:4px">${dias!=null?('dia'+(dias===1?'':'s')+' restante'+(dias===1?'':'s')):''}</div>
+           </div>
+           ${acabando?`<button class="btn" style="margin-top:12px;background:var(--warning);color:#3D2A00" onclick="abrirWhatsPro()">🔔 Renove seu plano</button>`:''}`;
       } else if(pausado){
         corpo = `<div style="font-size:13px">Pro <b>pausado</b> — válido até ${fmtDataBR(lic.expiresAt)}.</div>
            <button class="btn" style="margin-top:12px" onclick="reativarPro()">Reativar Pro</button>
@@ -3374,7 +3414,25 @@ function renderConfig(){
       Módulo ativo: <b>Vender › Casa, Apartamento, Chácara e Terreno</b>. O login por senha entra em fase futura.
     </div>`;
   if(c.temFoto) idbGet(keyCorretorFoto()).then(d=>{ if(d){ const el=document.getElementById('cfgCorThumb'); if(el){ el.style.overflow='hidden'; el.innerHTML=`<img src="${d}" style="width:100%;height:100%;object-fit:cover">`; } } }).catch(()=>{});
+  stopProCountdownTicker();
+  if(isProReal()) startProCountdownTicker();
 }
+// Mantém a contagem de dias do Pro sempre atualizada em Ajustes, sem precisar sair e voltar da tela.
+let _proCountdownTimer = null;
+function startProCountdownTicker(){
+  stopProCountdownTicker();
+  _proCountdownTimer = setInterval(()=>{
+    if(currentTab!=='config'){ stopProCountdownTicker(); return; }
+    const num = document.getElementById('proCountdownNum');
+    if(!num){ stopProCountdownTicker(); return; }
+    const d = diasRestantesPro();
+    if(d==null){ renderConfig(); return; }
+    num.textContent = d;
+    const lbl = document.getElementById('proCountdownLbl');
+    if(lbl) lbl.textContent = 'dia'+(d===1?'':'s')+' restante'+(d===1?'':'s');
+  }, 30000);
+}
+function stopProCountdownTicker(){ if(_proCountdownTimer){ clearInterval(_proCountdownTimer); _proCountdownTimer=null; } }
 // ── Aba: Dados do corretor (dentro de Ajustes) ──
 function renderDadosCorretor(){
   const c = DB.corretor || {nome:'',creci:'',validadeCreci:''};
