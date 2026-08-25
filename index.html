@@ -756,8 +756,8 @@ async function doRestaurarBackup(){
 /* ============ VERSÃO PRO (senha-contra-senha, vinculada ao aparelho) ============ */
 const PRO_WHATS = '5515998293087';
 const PRO_PLANS = {1:'1 mês', 6:'6 meses', 12:'12 meses'};
-/* PLACEHOLDER — Celso vai definir os valores reais. Basta trocar aqui. */
-const PRECOS_PRO = {1:'R$ 19,90', 6:'R$ 99,90', 12:'R$ 179,90'};
+/* Preço promocional por tempo limitado — só o plano de 1 mês está à venda por enquanto. */
+const PRECOS_PRO = {1:'R$ 90,00', 6:'R$ 99,90', 12:'R$ 179,90'};
 const PLAN_BY_IDX = {1:1, 2:6, 3:12};     /* dígito do código -> meses */
 const IDX_BY_PLAN = {1:1, 6:2, 12:3};     /* meses -> dígito do código */
 /* Portão de convite (fase de testes): DESLIGADO por padrão. */
@@ -807,24 +807,24 @@ function maskProCode(el){
   el.value = out;
 }
 function copiarDevId(){ const d='AP-'+myDevId(); if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(d).then(function(){ toast('ID copiado!'); }).catch(function(){ toast(d); }); } else { toast(d); } }
-function abrirWhatsPro(){ const dev='AP-'+myDevId(); const msg='Oi! Quero assinar o Corretor de Imóveis Pro. Meu ID do aparelho é '+dev+'. Podemos combinar?'; window.open('https://wa.me/'+PRO_WHATS+'?text='+encodeURIComponent(msg),'_blank'); }
+function abrirWhatsPro(){ const dev='AP-'+myDevId(); const msg='Oi! Quero assinar o aplicativo Corretor de Imóveis Pro.\nMeu ID do aparelho é '+dev; window.open('https://wa.me/'+PRO_WHATS+'?text='+encodeURIComponent(msg),'_blank'); }
 function openProModal(reason){
   const dev = 'AP-' + myDevId();
   showSheet('Corretor de Imóveis Pro', `
     ${reason?`<div style="background:rgba(240,165,0,.12);border:1.5px solid #F0A500;border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:12px">${reason}</div>`:''}
     <div style="font-size:14px;font-weight:800;margin-bottom:8px">Planos</div>
     <div style="font-size:13.5px;line-height:1.9;color:var(--text)">
-      1 mês — <b>${PRECOS_PRO[1]}</b><br>
-      6 meses — <b>${PRECOS_PRO[6]}</b><br>
-      12 meses — <b>${PRECOS_PRO[12]}</b>
+      1 mês — <b>${PRECOS_PRO[1]}</b> <span style="display:inline-block;background:var(--accent);color:#fff;font-size:10px;font-weight:800;padding:2px 8px;border-radius:100px;vertical-align:middle">PROMOÇÃO POR TEMPO LIMITADO</span><br>
+      6 meses — <span style="color:var(--muted)">Em breve</span><br>
+      12 meses — <span style="color:var(--muted)">Em breve</span>
     </div>
-    <div style="background:var(--pblue);border:1.5px dashed var(--primary);border-radius:12px;padding:11px 13px;margin-top:12px">
-      <div style="font-size:10px;font-weight:800;color:var(--primary);text-transform:uppercase">ID deste aparelho</div>
-      <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
-        <b style="font-size:20px;letter-spacing:2px;font-family:monospace;flex:1">${dev}</b>
-        <button class="btn sm" onclick="copiarDevId()">Copiar</button>
+    <div style="background:var(--pblue);border:1.5px dashed var(--primary);border-radius:12px;padding:12px 14px;margin-top:12px">
+      <div style="font-size:10px;font-weight:800;color:var(--primary);text-transform:uppercase;letter-spacing:.3px">ID deste aparelho</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:6px">
+        <b style="font-size:18px;letter-spacing:1.5px;font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">${dev}</b>
+        <button class="btn sm" style="flex:0 0 auto;width:auto;white-space:nowrap" onclick="copiarDevId()">Copiar</button>
       </div>
-      <div style="font-size:11px;color:var(--muted);margin-top:4px">Seu código Pro é gerado para ESTE ID e só funciona neste aparelho.</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px">Seu código Pro é gerado para ESTE ID e só funciona neste aparelho.</div>
     </div>
     <button class="btn" style="background:#25D366;margin-top:12px" onclick="abrirWhatsPro()">${ic('chat',16)} Assinar pelo WhatsApp</button>
     <label style="display:block;margin-top:14px;font-size:12px;font-weight:700;color:var(--muted)">Já tem um código? Digite aqui</label>
@@ -3487,37 +3487,10 @@ async function doResetTudo(){
   location.reload();
 }
 
-// ═══ Service Worker — mesmo padrão do VetFlowCare ═══
-// "network-first" (sempre busca a versão mais nova quando há internet — o cache só
-// responde OFFLINE) + limpeza de service workers de outros apps no mesmo domínio +
-// checagem de atualização de hora em hora + aviso quando sair versão nova.
+// ═══ Service Worker (offline básico) ═══
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
-    (function(){
-      const base = location.pathname.replace(/[^/]*$/, '');
-      navigator.serviceWorker.getRegistrations().then(regs => {
-        regs.forEach(r => {
-          try{
-            const sp = new URL(r.scope).pathname;
-            if(base.indexOf(sp) !== 0 && sp.indexOf(base) !== 0){
-              r.unregister();
-              console.log('⚠ Service worker de outro app removido:', r.scope);
-            }
-          }catch(e){}
-        });
-      }).catch(()=>{});
-    })();
-    navigator.serviceWorker.register('sw.js', {scope: './'}).then(reg => {
-      reg.update();
-      setInterval(() => reg.update(), 60*60*1000);
-      reg.addEventListener('updatefound', () => {
-        const nw = reg.installing;
-        nw && nw.addEventListener('statechange', () => {
-          if(nw.state === 'installed' && navigator.serviceWorker.controller)
-            toast('🔄 Nova versão disponível! Feche e reabra o app.');
-        });
-      });
-    }).catch(()=>{});
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
   });
 }
 </script>
