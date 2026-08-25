@@ -9,6 +9,8 @@
 <meta name="apple-mobile-web-app-title" content="Corretor de Imóveis">
 <title>Corretor de Imóveis — Gestão de Imóveis</title>
 <link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
 <style>
@@ -312,7 +314,7 @@ header.topbar.home{padding:0;background:transparent;box-shadow:none}
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.15.0';
+const APP_VERSION = '1.16.0';
 // Ajudante para inserir ícones do kit (traço) em qualquer lugar
 function ic(name, size, style){ size=size||18; return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"${style?` style="${style}"`:''}><use href="#i-${name}"/></svg>`; }
 // Logo da marca (usado na splash e nas telas de senha)
@@ -485,6 +487,17 @@ function showSheet(title, bodyHTML, footHTML){
 }
 function closeSheet(){ document.getElementById('modals').innerHTML=''; }
 function dispararInput(id){ try{ closeSheet(); }catch(e){} var el=document.getElementById(id); if(el){ try{ el.value=''; }catch(e){} el.click(); } }
+// ── Seletor de arquivo no método do VetFlowCare ──
+// Cria o input na hora e clica, SEM fechar a folha durante o gesto
+// (fechar/alterar o DOM no meio do toque cancela a câmera no celular).
+// A folha é fechada só depois, quando o arquivo já foi escolhido.
+function pegarArquivo(accept, captureVal, cb){
+  var inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = accept;
+  if(captureVal){ inp.setAttribute('capture', captureVal); }
+  inp.onchange = function(e){ var f = e.target.files && e.target.files[0]; if(f && cb){ cb(f); } };
+  inp.click();
+}
 function confirmar(o){
   document.getElementById('modals2').innerHTML = `
   <div class="modal ov" onclick="if(event.target===this)closeConfirm()">
@@ -1266,7 +1279,7 @@ async function doExcluirProprietario(id){
   goTab('proprietarios');
 }
 async function onPropFoto(input){
-  const file = input.files[0]; if(!file) return;
+  const file = (input && input.files) ? input.files[0] : input; if(!file) return;
   const reader = new FileReader();
   reader.onload = (ev)=>{ downscaleImage(ev.target.result, 1280, 0.82, function(d){ storePropFoto(d); }); };
   reader.readAsDataURL(file);
@@ -1275,8 +1288,8 @@ async function storePropFoto(dataUrl){ pFotoCache = dataUrl; await idbPut(keyPro
 function escolherOrigemPropFoto(){
   showSheet('Foto do proprietário', `<div style="font-size:13px;color:var(--muted);margin-bottom:6px">Como você quer adicionar a foto?</div>`,
     `<button class="btn gray" onclick="closeSheet()">Cancelar</button>
-     <button class="btn gray" onclick="dispararInput('propFotoGal')">${ic('image',16)} Galeria</button>
-     <button class="btn" onclick="dispararInput('propFotoCam')">${ic('camera',16)} Câmera</button>`);
+     <button class="btn gray" onclick="pegarArquivo('image/*',null,function(f){closeSheet();onPropFoto(f);})">${ic('image',16)} Galeria</button>
+     <button class="btn" onclick="pegarArquivo('image/*','user',function(f){closeSheet();onPropFoto(f);})">${ic('camera',16)} Câmera</button>`);
 }
 async function removerPropFoto(){
   await idbDel(keyPropFoto(P.id)).catch(()=>{});
@@ -1744,8 +1757,8 @@ function escolherOrigemFoto(kind, i){
   const nome = nomeFotoArq(kind, i);
   showSheet('Adicionar foto', `<div style="font-size:13px;color:var(--muted);margin-bottom:6px">Foto <b>${esc(nome)}</b> — como você quer adicionar?</div>`,
     `<button class="btn gray" onclick="closeSheet()">Cancelar</button>
-     <button class="btn gray" onclick="dispararInput('inpGal_${kind}${i}')">${ic('image',16)} Galeria</button>
-     <button class="btn" onclick="dispararInput('inpCam_${kind}${i}')">${ic('camera',16)} Câmera</button>`);
+     <button class="btn gray" onclick="pegarArquivo('image/*',null,function(f){closeSheet();onFotoSelected('${kind}',${i},f);})">${ic('image',16)} Galeria</button>
+     <button class="btn" onclick="pegarArquivo('image/*','environment',function(f){closeSheet();onFotoSelected('${kind}',${i},f);})">${ic('camera',16)} Câmera</button>`);
 }
 // ── Câmera nativa do aparelho (mesmo método do VetFlowCare) ──
 // Abre a câmera do próprio celular pelo seletor nativo com "capture".
@@ -1807,7 +1820,7 @@ async function hydratarFotos(){
   if(changed) renderWizard();
 }
 async function onFotoSelected(kind, i, input){
-  const file = input.files[0]; if(!file) return;
+  const file = (input && input.files) ? input.files[0] : input; if(!file) return;
   const reader = new FileReader();
   reader.onload = (ev)=>{ downscaleImage(ev.target.result, 1280, 0.82, function(d){ storeFotoDataUrl(kind, i, d); input.value=''; }); };
   reader.readAsDataURL(file);
@@ -1836,7 +1849,7 @@ function toggleFotoPublica(i){
   renderWizard();
 }
 async function onVideoSelected(input){
-  const file = input.files[0]; if(!file){ return; }
+  const file = (input && input.files) ? input.files[0] : input; if(!file){ return; }
   // Verifica a duração antes de aceitar — limite de 45 segundos.
   const url = URL.createObjectURL(file);
   const v = document.createElement('video');
@@ -1865,8 +1878,8 @@ async function onVideoSelected(input){
 function escolherOrigemVideo(){
   showSheet('Adicionar vídeo', `<div style="font-size:13px;color:var(--muted);margin-bottom:6px">Vídeo <b>${esc(nomeVideoArq())}</b> — como você quer adicionar? (máx. 45s)</div>`,
     `<button class="btn gray" onclick="closeSheet()">Cancelar</button>
-     <button class="btn gray" onclick="dispararInput('videoGal')">${ic('image',16)} Galeria</button>
-     <button class="btn" onclick="dispararInput('videoCam')">${ic('camera',16)} Câmera</button>`);
+     <button class="btn gray" onclick="pegarArquivo('video/*',null,function(f){closeSheet();onVideoSelected(f);})">${ic('image',16)} Galeria</button>
+     <button class="btn" onclick="pegarArquivo('video/*','environment',function(f){closeSheet();onVideoSelected(f);})">${ic('camera',16)} Câmera</button>`);
 }
 function editarVideo(){
   confirmar({icon:'🎬', title:'Substituir o vídeo?',
@@ -1879,7 +1892,7 @@ async function removerVideo(){
   renderWizard();
 }
 async function onContratoSelected(input){
-  const file = input.files[0]; if(!file) return;
+  const file = (input && input.files) ? input.files[0] : input; if(!file) return;
   const ehPdf = file.type==='application/pdf' || /\.pdf$/i.test(file.name||'');
   if(!ehPdf){ toast('Selecione um arquivo PDF.'); input.value=''; return; }
   const reader = new FileReader();
@@ -1927,15 +1940,15 @@ function certidaoSlotHTML(tipo, label){
 function escolherOrigemCertidao(tipo){
   showSheet('Anexar '+(CERTIDAO_LABEL[tipo]||'certidão'), `<div style="font-size:13px;color:var(--muted);margin-bottom:6px">Como você quer anexar?</div>`,
     `<button class="btn gray" onclick="closeSheet()">Cancelar</button>
-     <button class="btn gray" onclick="dispararInput('certGal_${tipo}')">${ic('image',16)} Galeria / PDF</button>
-     <button class="btn" onclick="dispararInput('certCam_${tipo}')">${ic('camera',16)} Câmera</button>`);
+     <button class="btn gray" onclick="pegarArquivo('image/*,application/pdf',null,function(f){closeSheet();onCertidaoSelected('${tipo}',f);})">${ic('image',16)} Galeria / PDF</button>
+     <button class="btn" onclick="pegarArquivo('image/*','environment',function(f){closeSheet();onCertidaoSelected('${tipo}',f);})">${ic('camera',16)} Câmera</button>`);
 }
 function editarCertidao(tipo){
   confirmar({icon:'📄', title:'Substituir o anexo?', msg:`Deseja trocar o anexo de <b>${esc(CERTIDAO_LABEL[tipo]||'')}</b>?`,
     noLabel:'Não', yesLabel:'Sim', yesBg:'var(--primary)', yes:`escolherOrigemCertidao('${tipo}')`});
 }
 async function onCertidaoSelected(tipo, input){
-  const file = input.files[0]; if(!file) return;
+  const file = (input && input.files) ? input.files[0] : input; if(!file) return;
   const isPdf = file.type==='application/pdf';
   const reader = new FileReader();
   reader.onload = (ev)=>{
@@ -3021,8 +3034,8 @@ function escolherOrigemCorFoto(kind){
   const titulo = kind==='foto' ? 'Foto do corretor' : 'Carteira CRECI';
   showSheet(titulo, `<div style="font-size:13px;color:var(--muted);margin-bottom:6px">Como você quer adicionar?</div>`,
     `<button class="btn gray" onclick="closeSheet()">Cancelar</button>
-     <button class="btn gray" onclick="dispararInput('${kind==='foto'?'corFotoGal':'corCreciGal'}')">${ic('image',16)} Galeria</button>
-     <button class="btn" onclick="capturarCorField();dispararInput('${kind==='foto'?'corFotoCam':'corCreciCam'}')">${ic('camera',16)} Câmera</button>`);
+     <button class="btn gray" onclick="pegarArquivo('image/*',null,function(f){closeSheet();onCorFoto('${kind}',f);})">${ic('image',16)} Galeria</button>
+     <button class="btn" onclick="capturarCorField();pegarArquivo('image/*','${kind==='foto'?'user':'environment'}',function(f){closeSheet();onCorFoto('${kind}',f);})">${ic('camera',16)} Câmera</button>`);
 }
 function capturarCorField(){ DB.corretor.nome = val('corNome')||DB.corretor.nome; DB.corretor.creci = val('corCreci')||DB.corretor.creci; DB.corretor.validadeCreci = val('corValidade')||DB.corretor.validadeCreci; DB.corretor.email = (document.getElementById('corEmail')?document.getElementById('corEmail').value:DB.corretor.email)||''; }
 async function storeCorFoto(kind, dataUrl){
@@ -3031,7 +3044,7 @@ async function storeCorFoto(kind, dataUrl){
   save(); renderDadosCorretor();
 }
 async function onCorFoto(kind, input){
-  const file = input.files[0]; if(!file) return;
+  const file = (input && input.files) ? input.files[0] : input; if(!file) return;
   capturarCorField();
   const reader = new FileReader();
   reader.onload = (ev)=>{ downscaleImage(ev.target.result, 1280, 0.82, function(d){ storeCorFoto(kind, d); }); };
