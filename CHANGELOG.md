@@ -1,5 +1,11 @@
 # Corretor Imóveis Autônomo — Histórico de versões
 
+## v1.21.0 — Validade do CRECI opcional e sem data vencida
+- Em **Ajustes → Dados do corretor**, o campo **Validade da carteira CRECI** deixou de ser obrigatório: dá para salvar em branco.
+- **Com o campo vazio**, aparece logo abaixo dele, em **vermelho e negrito**: *"Não será avisado — sem a validade preenchida, o app não lembra você do vencimento da carteira CRECI."* O aviso some assim que uma data válida é escolhida.
+- **Não aceita data anterior a hoje.** O calendário já abre bloqueando os dias passados e, se mesmo assim uma data vencida for digitada, o app avisa em vermelho e não deixa salvar.
+- Preenchida uma data futura, tudo segue como antes: aviso na tela inicial a 30, 15, 7 e 1 dia do vencimento.
+
 ## v1.20.0 — Medidas do lote no cadastro de terreno
 - Na etapa **Características do terreno**, logo abaixo de *Terreno / Área total*, entraram quatro campos de medida em **metros lineares**: **Frente**, **Fundos**, **Lado esquerdo** e **Lado direito**. São opcionais e aceitam casas decimais (ex.: 10,5).
 - Aparecem **somente no terreno** — casa, apartamento e chácara seguem sem eles.

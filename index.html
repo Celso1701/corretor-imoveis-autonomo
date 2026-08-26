@@ -328,7 +328,7 @@ header.topbar.home{padding:0;background:transparent;box-shadow:none}
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.20.0';
+const APP_VERSION = '1.21.0';
 // Ajudante para inserir ícones do kit (traço) em qualquer lugar
 function ic(name, size, style){ size=size||18; return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"${style?` style="${style}"`:''}><use href="#i-${name}"/></svg>`; }
 // Logo da marca (usado na splash e nas telas de senha)
@@ -3625,9 +3625,9 @@ function renderDadosCorretor(){
         <span style="font-size:11px;color:var(--muted);font-weight:600">Tirar foto ou escolher da galeria</span>
       </div>
 
-      <div class="field" style="margin-bottom:12px"><label>Validade da carteira CRECI *</label>
-        <input id="corValidade" type="date" value="${esc(c.validadeCreci)}">
-        <div class="hint">Campo obrigatório. Avisaremos na tela inicial quando faltar 30, 15, 7 e 1 dia.</div></div>
+      <div class="field" style="margin-bottom:12px"><label>Validade da carteira CRECI</label>
+        <input id="corValidade" type="date" min="${todayISO()}" value="${esc(c.validadeCreci)}" oninput="atualizarAvisoValidadeCreci()" onchange="atualizarAvisoValidadeCreci()">
+        <div id="corValidadeAviso">${avisoValidadeCreciHTML(c.validadeCreci)}</div></div>
 
       <div class="field" style="margin-bottom:12px"><label>E-mail</label>
         <input id="corEmail" type="email" maxlength="35" value="${esc(c.email||'')}" placeholder="seuemail@exemplo.com">
@@ -3653,7 +3653,7 @@ function escolherOrigemCorFoto(kind){
      <button class="btn gray" onclick="pegarArquivo('image/*',null,function(f){closeSheet();onCorFoto('${kind}',f);})">${ic('image',16)} Galeria</button>
      <button class="btn" onclick="capturarCorField();pegarArquivo('image/*','${kind==='foto'?'user':'environment'}',function(f){closeSheet();onCorFoto('${kind}',f);})">${ic('camera',16)} Câmera</button>`);
 }
-function capturarCorField(){ DB.corretor.nome = val('corNome')||DB.corretor.nome; DB.corretor.creci = val('corCreci')||DB.corretor.creci; DB.corretor.validadeCreci = val('corValidade')||DB.corretor.validadeCreci; DB.corretor.email = (document.getElementById('corEmail')?document.getElementById('corEmail').value:DB.corretor.email)||''; }
+function capturarCorField(){ DB.corretor.nome = val('corNome')||DB.corretor.nome; DB.corretor.creci = val('corCreci')||DB.corretor.creci; if(document.getElementById('corValidade')) DB.corretor.validadeCreci = val('corValidade'); DB.corretor.email = (document.getElementById('corEmail')?document.getElementById('corEmail').value:DB.corretor.email)||''; }
 async function storeCorFoto(kind, dataUrl){
   if(kind==='foto'){ await idbPut(keyCorretorFoto(), dataUrl); DB.corretor.temFoto=true; }
   else { await idbPut(keyCorretorCreci(), dataUrl); DB.corretor.temCreci=true; }
@@ -3666,9 +3666,21 @@ async function onCorFoto(kind, input){
   reader.onload = (ev)=>{ downscaleImage(ev.target.result, 1280, 0.82, function(d){ storeCorFoto(kind, d); }); };
   reader.readAsDataURL(file);
 }
+// Aviso abaixo do campo "Validade da carteira CRECI".
+// Vazio → aviso vermelho de que não haverá lembrete. Data passada → não é aceita.
+function avisoValidadeCreciHTML(v){
+  if(!v) return `<div style="font-size:12px;color:var(--danger);font-weight:800;margin-top:6px;line-height:1.4">Não será avisado — sem a validade preenchida, o app não lembra você do vencimento da carteira CRECI.</div>`;
+  if(v < todayISO()) return `<div style="font-size:12px;color:var(--danger);font-weight:800;margin-top:6px;line-height:1.4">Data já vencida. Informe a validade atual da carteira ou deixe o campo em branco.</div>`;
+  return `<div class="hint">Avisaremos na tela inicial quando faltar 30, 15, 7 e 1 dia.</div>`;
+}
+function atualizarAvisoValidadeCreci(){
+  const el = document.getElementById('corValidadeAviso');
+  if(el) el.innerHTML = avisoValidadeCreciHTML(val('corValidade'));
+}
 function salvarCorretor(){
   const validade = val('corValidade');
-  if(!validade){ toast('Informe a validade da carteira CRECI.'); return; }
+  // O campo pode ficar vazio (o corretor só não recebe o aviso de vencimento).
+  if(validade && validade < todayISO()){ toast('A validade do CRECI não pode ser anterior a hoje.'); return; }
   DB.corretor.nome = val('corNome');
   DB.corretor.creci = val('corCreci');
   DB.corretor.validadeCreci = validade;
