@@ -1,6 +1,6 @@
 {
   "id": "br.com.corretordeimoveis.app",
-  "version": "1.17.0",
+  "version": "1.18.0",
   "name": "Corretor de Imóveis — Gestão de Imóveis",
   "short_name": "Corretor de Imóveis",
   "description": "Gestão completa para corretores de imóveis: cadastro de imóveis, proprietários, agenda de visitas e financeiro. Funciona offline.",

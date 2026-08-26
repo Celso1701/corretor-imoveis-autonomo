@@ -328,7 +328,7 @@ header.topbar.home{padding:0;background:transparent;box-shadow:none}
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.17.0';
+const APP_VERSION = '1.18.0';
 // Ajudante para inserir ícones do kit (traço) em qualquer lugar
 function ic(name, size, style){ size=size||18; return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"${style?` style="${style}"`:''}><use href="#i-${name}"/></svg>`; }
 // Logo da marca (usado na splash e nas telas de senha)
@@ -1580,7 +1580,7 @@ function abrirTipos(){
     <div class="stitle">Detalhes</div>
     <button class="ptile" onclick="iniciarCadastro('casa')">
       <div class="ptile-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 11.5L12 4l8 7.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-      <div><div class="ptile-title">Casa</div><div class="ptile-sub">Cadastro completo — 9 etapas</div></div>
+      <div><div class="ptile-title">Casa</div><div class="ptile-sub">Cadastro completo — 8 etapas</div></div>
     </button>
     <button class="ptile" onclick="iniciarCadastro('apartamento')"><div class="ptile-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="6" y="3" width="12" height="18" rx="1.5" stroke="currentColor" stroke-width="1.8"/></svg></div><div><div class="ptile-title">Apartamento</div><div class="ptile-sub">Com áreas de lazer do condomínio</div></div></button>
     <button class="ptile" onclick="iniciarCadastro('chacara')"><div class="ptile-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 20l4-9 4 5 3-6 5 10H4Z" stroke="currentColor" stroke-width="1.5"/></svg></div><div><div class="ptile-title">Chácara / Sítio</div><div class="ptile-sub">Área rural</div></div></button>
@@ -1757,7 +1757,13 @@ function salvarProprietario(){
 }
 
 // ── Wizard de cadastro (CASA) ──
-const stepNames = ['Localização','Proprietário','Características','Garagem e portão','Água, energia, internet','Fotos','Vídeo','Certidões','Revisão'];
+const stepNames = ['Localização','Proprietário','Características','Garagem e infraestrutura','Fotos','Vídeo','Certidões','Revisão'];
+const TOTAL_STEPS = stepNames.length;   // 8 etapas (garagem/portão e água/energia/internet foram unidas)
+// No terreno não há garagem — a etapa 4 se chama "Acesso e infraestrutura".
+function stepNameAtual(){
+  if(wStep===3 && W && W.tipo==='terreno') return 'Acesso e infraestrutura';
+  return stepNames[wStep];
+}
 let W = null;       // rascunho do imóvel em edição
 let wStep = 0;
 let wCache = {};    // cache em memória: chave IDB -> dataURL (evita reler do IDB a cada render)
@@ -1846,16 +1852,17 @@ async function descartarDraftEVoltar(){
 function renderWizard(){
   document.getElementById('appHeader').innerHTML = `
     <div class="progress-wrap" style="padding:0">
-      <div class="progress-top"><span class="progress-label">ETAPA ${wStep+1} DE 9</span><span class="progress-name">${tipoLabel(W.tipo)} · ${stepNames[wStep]}</span></div>
-      <div class="progress-track"><div class="progress-fill" style="width:${((wStep+1)/9)*100}%"></div></div>
+      <div class="progress-top"><span class="progress-label">ETAPA ${wStep+1} DE ${TOTAL_STEPS}</span><span class="progress-name">${tipoLabel(W.tipo)} · ${stepNameAtual()}</span></div>
+      <div class="progress-track"><div class="progress-fill" style="width:${((wStep+1)/TOTAL_STEPS)*100}%"></div></div>
     </div>`;
+  const ultima = TOTAL_STEPS-1;
   document.getElementById('mainContent').innerHTML = `<div style="padding-bottom:76px">${stepPaneHTML(wStep)}</div>
     <div class="wizfooter"><div class="btnrow">
       <button class="btn gray" onclick="${wStep===0?'sairWizardSemSalvar()':'irStep(wStep-1)'}">Voltar</button>
-      <button class="btn ${wStep===8?'green':''}" onclick="${wStep===8?'salvarImovel()':'irStep(wStep+1)'}">${wStep===8?'Salvar imóvel':'Avançar'}</button>
+      <button class="btn ${wStep===ultima?'green':''}" onclick="${wStep===ultima?'salvarImovel()':'irStep(wStep+1)'}">${wStep===ultima?'Salvar imóvel':'Avançar'}</button>
     </div></div>`;
-  if(wStep===5) hydratarFotos();
-  if(wStep===7) hydratarCertidoes();
+  if(wStep===4) hydratarFotos();
+  if(wStep===6) hydratarCertidoes();
 }
 function validarStep(s){
   if(s===0 && !(W.endereco||'').trim()){ toast('Informe o endereço do imóvel.'); return false; }
@@ -1864,7 +1871,7 @@ function validarStep(s){
 }
 function irStep(i){
   if(i > wStep && !validarStep(wStep)) return;  // só valida ao avançar
-  wStep = Math.max(0, Math.min(i,8)); renderWizard(); window.scrollTo(0,0);
+  wStep = Math.max(0, Math.min(i,TOTAL_STEPS-1)); renderWizard(); window.scrollTo(0,0);
 }
 
 function chip(group,valv,label){ return `<div class="chip ${W[group]===valv?'selected':''}" onclick="setChip('${group}','${valv.replace(/'/g,"\\'")}')">${esc(label)}</div>`; }
@@ -2018,15 +2025,15 @@ function stepPaneHTML(i){
     </div>`;
   }
 
+  // Etapa 4 — garagem/acesso + água, energia e internet (telas unidas na v1.18.0)
   if(i===3){
     const ehTerreno = W.tipo==='terreno', ehApto = W.tipo==='apartamento';
-    if(ehTerreno) return `
+    const blocoGaragem = ehTerreno ? `
     <div class="section-title">Acesso e portão</div>
     <fieldset><legend>Tipo do terreno</legend><div class="chip-group">${chip('terrenoCondominio','Condomínio','Condomínio')}${chip('terrenoCondominio','Aberto (sem portaria)','Aberto (sem portaria)')}</div></fieldset>
     <div class="toggle-row"><div class="lbl">Portão eletrônico<span class="d">Abertura automática</span></div>${toggle('portao')}</div>
     <fieldset style="margin-top:6px"><legend>Acesso</legend><div class="chip-group">${chip('terrenoAcesso','Portaria c/ vigia','Portaria c/ vigia')}${chip('terrenoAcesso','Controle remoto','Controle remoto')}${chip('terrenoAcesso','Aberto','Aberto')}</div></fieldset>
-    <fieldset><legend>Ruas internas</legend><div class="chip-group">${chip('terrenoRuas','Terra (cascalhada)','Terra (cascalhada)')}${chip('terrenoRuas','Asfaltada','Asfaltada')}</div></fieldset>`;
-    return `
+    <fieldset><legend>Ruas internas</legend><div class="chip-group">${chip('terrenoRuas','Terra (cascalhada)','Terra (cascalhada)')}${chip('terrenoRuas','Asfaltada','Asfaltada')}</div></fieldset>` : `
     <div class="section-title">Garagem e portão</div>
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
       <input type="number" min="0" max="99" value="${esc(W.vagas)}" oninput="W.vagas=this.value.slice(0,2)" style="width:64px;text-align:center;flex:none">
@@ -2036,12 +2043,9 @@ function stepPaneHTML(i){
     <fieldset style="margin-top:14px"><legend>Disposição dos carros</legend><div class="chip-group">${chip('disposicao','Lado a lado','Lado a lado')}${chip('disposicao','Em fila','Em fila')}</div></fieldset>
     <div class="toggle-row"><div class="lbl">Portão eletrônico<span class="d">Abertura automática</span></div>${toggle('portao')}</div>
     ${ehApto?`<div class="toggle-row"><div class="lbl">Portaria com vigia<span class="d">Portaria com vigilante</span></div>${toggle('portariaVigia')}</div>`:''}`;
-  }
 
-  if(i===4){
-    const ehTerreno = W.tipo==='terreno', ehApto = W.tipo==='apartamento';
-    return `
-    <div class="section-title">Água, energia e internet</div>
+    const blocoInfra = `
+    <div class="section-title" style="margin-top:22px">Água, energia e internet</div>
     <fieldset><legend>Abastecimento de água</legend><div class="chip-group">${chip('agua','Coletivo','Coletivo / rateio')}${chip('agua','Individual','Individual')}</div></fieldset>
     ${W.agua==='Individual'?`<fieldset><legend>Fonte</legend><div class="chip-group">${chip('aguaFonte','Sabesp','Sabesp')}${chip('aguaFonte','Poço artesiano','Poço artesiano')}${ehApto?'':chip('aguaFonte','Poço caipira','Poço caipira')}</div></fieldset>`:''}
     <fieldset><legend>Situação da água</legend><div class="chip-group">${chip('aguaSituacao','Instalado','Instalado')}${chip('aguaSituacao','A instalar','A instalar')}</div></fieldset>
@@ -2049,9 +2053,11 @@ function stepPaneHTML(i){
     ${ehTerreno?`<div class="toggle-row"><div class="lbl">Ruas com sarjetas<span class="d">Guias e sarjetas nas ruas</span></div>${toggle('terrenoSarjeta')}</div>
     <div class="toggle-row"><div class="lbl">Iluminação nas ruas<span class="d">Iluminação pública</span></div>${toggle('terrenoIluminacao')}</div>`:''}
     <fieldset><legend>Internet</legend><div class="chip-group">${chip('internet','Instalado','Instalado')}${chip('internet','A instalar','A instalar')}</div></fieldset>`;
+
+    return blocoGaragem + blocoInfra;
   }
 
-  if(i===5) return `
+  if(i===4) return `
     <div class="section-title">Fotos principais públicas</div>
     <div class="public-note">📸 As 6 fotos abaixo são <b>fotos principais públicas</b> — usadas em anúncios, e-mail e WhatsApp.</div>
     <div class="photo-grid">${[0,1,2,3,4,5].map(i=>fotoSlotHTML('pub',i,W.fotosPublicas[i]?keyFotoPub(W.id,i):null,false)).join('')}</div>
@@ -2071,7 +2077,7 @@ function stepPaneHTML(i){
     </div>
     <input type="file" id="contratoInput" accept="application/pdf,.pdf" class="filein" onchange="onContratoSelected(this)">`;
 
-  if(i===6) return `
+  if(i===5) return `
     <div class="section-title">Vídeo do imóvel</div>
     <div class="public-note">Opcional. Limite de <b>45 segundos</b>. Pode ser incluído ou não no compartilhamento.</div>
     <div class="photo-slot ${W.video?'filled':''}" style="width:100%;aspect-ratio:16/10;margin-bottom:14px" onclick="${W.video?'editarVideo()':'escolherOrigemVideo()'}">
@@ -2083,7 +2089,7 @@ function stepPaneHTML(i){
     <div class="toggle-row"><div class="lbl">Incluir no compartilhamento<span class="d">Enviar junto com fotos por e-mail/WhatsApp</span></div>
       <div class="switch ${W.video?.compartilhar?'on':''}" onclick="if(W.video){W.video.compartilhar=!W.video.compartilhar;renderWizard()}"></div></div>`;
 
-  if(i===7) return `
+  if(i===6) return `
     <div class="section-title">Certidões e documentos</div>
     <div class="public-note">Opcional. Anexe por <b>galeria</b> ou <b>câmera</b>. Pode deixar em branco e anexar depois.</div>
     ${certidaoSlotHTML('iptu','IPTU')}
@@ -2091,7 +2097,7 @@ function stepPaneHTML(i){
     ${certidaoSlotHTML('cnd','CND Prefeitura')}
     ${certidaoSlotHTML('testamento','Testamento')}`;
 
-  if(i===8){
+  if(i===7){
     const pubCount = W.fotosPublicas.filter(Boolean).length;
     const addCount = W.fotosAdicionais.filter(Boolean).length;
     const condoVal = parseFloat(W.condominio)||0;

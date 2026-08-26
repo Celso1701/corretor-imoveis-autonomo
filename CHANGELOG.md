@@ -1,5 +1,11 @@
 # Corretor Imóveis Autônomo — Histórico de versões
 
+## v1.18.0 — Cadastro do imóvel com 8 etapas (telas unidas)
+- **"Garagem e portão" e "Água, energia e internet" viraram uma etapa só.** O cadastro do imóvel passou de **9 para 8 etapas**, com menos toques em "Avançar". Na nova etapa 4 os dois blocos aparecem um abaixo do outro, com os mesmos campos de antes.
+- **Nome da etapa conforme o tipo:** "Garagem e infraestrutura" para casa, apartamento e chácara; **"Acesso e infraestrutura"** para terreno (que não tem garagem).
+- **Numeração e barra de progresso** ajustadas em todo o assistente: Fotos passa a ser a 5ª etapa, Vídeo a 6ª, Certidões a 7ª e Revisão a 8ª. O tile "Casa" na tela de tipos agora diz **"Cadastro completo — 8 etapas"**.
+- **Nada muda nos dados:** os campos gravados (vagas, garagem coberta, disposição, portão, portaria com vigia, água/fonte/situação, energia, internet, sarjetas e iluminação) continuam iguais — imóveis já cadastrados abrem e regravam normalmente, e a revisão e o compartilhamento seguem sem alteração.
+
 ## v1.17.0 — Financeiro em aberto na tela Início
 - **Nova seção "Financeiro em aberto"** na tela Início, separada das visitas e logo acima de **Próximas visitas**. Mostra os títulos que ainda **não têm "Data realizada"** preenchida (mesma regra de "em aberto" da tela Financeiro), em dois grupos:
   - **⚠️ Atrasados** — tudo que já venceu (a pagar vencido e a receber não recebido), considerando a data de hoje. **Mostra todos**, sem limite, do mais antigo para o mais recente, com o aviso "venceu há X dias".
