@@ -328,7 +328,7 @@ header.topbar.home{padding:0;background:transparent;box-shadow:none}
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.21.0';
+const APP_VERSION = '1.22.0';
 // Ajudante para inserir ícones do kit (traço) em qualquer lugar
 function ic(name, size, style){ size=size||18; return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"${style?` style="${style}"`:''}><use href="#i-${name}"/></svg>`; }
 // Logo da marca (usado na splash e nas telas de senha)
@@ -2004,7 +2004,7 @@ function stepPaneHTML(i){
       <div class="field"><label>Terreno / Área total (m²)</label><input type="number" value="${esc(W.terreno)}" oninput="W.terreno=this.value"></div>
       ${ehTerreno?'':`<div class="field"><label>${ehApto?'Área útil (m²)':'Construção (m²)'}</label><input type="number" value="${esc(W.construcao)}" oninput="W.construcao=this.value"></div>`}
     </div>
-    ${ehTerreno?`
+    ${(ehTerreno||ehChacara)?`
     <div class="hint" style="margin-top:-6px;margin-bottom:8px">Medidas do lote, em metros lineares (opcional).</div>
     <div class="row2">
       <div class="field"><label>Frente (m)</label><input type="number" inputmode="decimal" step="0.01" min="0" value="${esc(W.medFrente||'')}" oninput="W.medFrente=this.value"></div>
@@ -2146,7 +2146,7 @@ function stepPaneHTML(i){
       <div class="review-item"><span class="k">E-mail</span><span class="v">${esc(W.email1||'—')}</span></div></div>
     <div class="review-block"><div class="review-block-title">Características</div>
       <div class="review-item"><span class="k">Terreno / Construção</span><span class="v">${W.terreno||0} m² / ${W.construcao||0} m²</span></div>
-      ${W.tipo==='terreno'&&medidasLoteTxt(W)?`<div class="review-item"><span class="k">Medidas do lote</span><span class="v">${esc(medidasLoteTxt(W))}</span></div>`:''}
+      ${(W.tipo==='terreno'||W.tipo==='chacara')&&medidasLoteTxt(W)?`<div class="review-item"><span class="k">Medidas do lote</span><span class="v">${esc(medidasLoteTxt(W))}</span></div>`:''}
       <div class="review-item"><span class="k">Condição</span><span class="v">${esc(W.condicao)}</span></div>
       <div class="review-item"><span class="k">Morador</span><span class="v">${esc(W.morador)}</span></div>
       <div class="review-item"><span class="k">${W.tipo==='terreno'?'Tipo do terreno':(W.tipo==='chacara'?'Tipo da chácara':(W.tipo==='apartamento'?'Tipo do apartamento':'Tipo da casa'))}</span><span class="v">${esc(W.tipoCasa==='Outro'&&W.outroTipo?W.outroTipo:W.tipoCasa)}</span></div>
@@ -2566,7 +2566,7 @@ function abrirDetalhe(id){
       <div class="review-item"><span class="k">E-mail</span><span class="v">${esc(im.proprietario.email1||'—')}</span></div></div>
     <div class="review-block"><div class="review-block-title">Características</div>
       <div class="review-item"><span class="k">Área</span><span class="v">${im.caracteristicas.terreno||0} m² / ${im.caracteristicas.construcao||0} m²</span></div>
-      ${im.tipo==='terreno'&&medidasLoteTxt(im.caracteristicas)?`<div class="review-item"><span class="k">Medidas do lote</span><span class="v">${esc(medidasLoteTxt(im.caracteristicas))}</span></div>`:''}
+      ${(im.tipo==='terreno'||im.tipo==='chacara')&&medidasLoteTxt(im.caracteristicas)?`<div class="review-item"><span class="k">Medidas do lote</span><span class="v">${esc(medidasLoteTxt(im.caracteristicas))}</span></div>`:''}
       <div class="review-item"><span class="k">Tipo</span><span class="v">${esc(im.caracteristicas.tipoCasa)}</span></div>
       ${im.tipo==='apartamento'?`<div class="review-item"><span class="k">Lazer</span><span class="v">${[im.caracteristicas.piscinaAquecida&&'Piscina aq.',im.caracteristicas.sauna&&'Sauna',im.caracteristicas.churrasqueira&&'Churrasq.',im.caracteristicas.parquinho&&'Parquinho',im.caracteristicas.academia&&'Academia'].filter(Boolean).join(', ')||'—'}</span></div>${im.caracteristicas.obsApto?`<div class="review-item"><span class="k">Observações</span><span class="v">${esc(im.caracteristicas.obsApto)}</span></div>`:''}`:''}
       <div class="review-item"><span class="k">Venda exclusiva</span><span class="v">${im.exclusividade?.exclusiva?('Sim'+((im.exclusividade.dataInicial||im.exclusividade.dataFinal)?` (${fmtDataBR(im.exclusividade.dataInicial)} → ${fmtDataBR(im.exclusividade.dataFinal)})`:'')):'Não'}</span></div>
@@ -2738,8 +2738,9 @@ function montarTextoImovel(im){
     if(lo.ruas) txt += `Ruas internas: ${lo.ruas}\n`;
     txt += `Condomínio: ${(im.condominio?.valor||0)>0?fmtBRL(im.condominio.valor):'sem condomínio'}`;
   } else {
-    txt += `Terreno: ${c.terreno||'-'} m² · Construção: ${c.construcao||'-'} m²\n`+
-      `Tipo: ${c.tipoCasa} · Condição: ${c.condicao}\n`+
+    txt += `Terreno: ${c.terreno||'-'} m² · Construção: ${c.construcao||'-'} m²\n`;
+    if(im.tipo==='chacara'){ const medc = medidasLoteTxt(c); if(medc) txt += `Medidas: ${medc}\n`; }
+    txt += `Tipo: ${c.tipoCasa} · Condição: ${c.condicao}\n`+
       `Garagem: ${g.vagas||0} vaga(s) ${g.coberta?'coberta':'descoberta'}${im.tipo==='apartamento'&&g.portariaVigia?' · Portaria c/ vigia':''}\n`+
       `Condomínio: ${(im.condominio?.valor||0)>0?fmtBRL(im.condominio.valor):'sem condomínio'}`;
   }
@@ -3074,7 +3075,6 @@ function renderFinanceiro(){
   let htop = `<div style="display:flex;gap:8px;margin-bottom:10px;overflow-x:auto;padding-bottom:2px">
     ${fchip(finExpView==='mes',`${ic('calendar',14)} Por mês`,"fluxoDiaSel='';finExpView='mes';renderFinanceiro()")}
     ${fchip(finExpView==='fluxo',`${ic('chart',14)} Fluxo diário`,"fluxoDiaSel='';finExpView='fluxo';renderFinanceiro()")}
-    ${fchip(finExpView==='semana',`${ic('calendar',14)} Semana`,"fluxoDiaSel='';finExpView='semana';fluxoPeriodo('semana')")}
     ${fchip(finExpView==='realizado',`${ic('check',14)} Realizado`,"fluxoDiaSel='';finExpView='realizado';renderFinanceiro()")}
     ${fchip(finExpView==='all',`${ic('doc',14)} Todas`,"fluxoDiaSel='';finExpView='all';renderFinanceiro()")}
   </div>`;
@@ -3225,6 +3225,20 @@ function realizadoHTML(){
   }).join('');
   return h;
 }
+// A data final nunca fica antes da inicial: ao mover a inicial para frente,
+// a final acompanha; e uma final anterior é recusada com aviso.
+function setFluxoIni(v){
+  if(!v) return;
+  fluxoIni = v;
+  if(fluxoFim < fluxoIni) fluxoFim = fluxoIni;
+  fluxoDiaSel=''; finExpView='fluxo'; renderFinanceiro();
+}
+function setFluxoFim(v){
+  if(!v) return;
+  if(v < fluxoIni){ toast('A data final não pode ser anterior à data inicial.'); renderFinanceiro(); return; }
+  fluxoFim = v;
+  fluxoDiaSel=''; finExpView='fluxo'; renderFinanceiro();
+}
 function fluxoDiarioHTML(modoSemana){
   const todas = [...DB.financeiro.receitas, ...DB.financeiro.despesas].map(e=>e.data).filter(Boolean).sort();
   const hojeIso = isoDate(new Date());
@@ -3233,8 +3247,11 @@ function fluxoDiarioHTML(modoSemana){
     fluxoIni = isoDate(hoje);
     const fim=new Date(hoje); fim.setDate(fim.getDate()+7); fluxoFim = isoDate(fim);
   } else {
-    if(!fluxoIni) fluxoIni = todas.length ? todas[0].slice(0,8)+'01' : hojeIso.slice(0,8)+'01';
+    // Padrão: começa em ontem (hoje − 1 dia) e vai até hoje. O corretor pode
+    // trocar as duas datas à vontade — a final é que nunca pode ficar antes da inicial.
+    if(!fluxoIni) fluxoIni = addDays(hojeIso,-1);
     if(!fluxoFim) fluxoFim = hojeIso;
+    if(fluxoFim < fluxoIni) fluxoFim = fluxoIni;
   }
   // despesas com "data realizada" preenchida NÃO entram nos relatórios
   const despAtivas = DB.financeiro.despesas.filter(e=>!e.dataRealizada);
@@ -3250,8 +3267,8 @@ function fluxoDiarioHTML(modoSemana){
       ${fchip(false,'📆 Hoje',"fluxoPeriodo('hoje')")}
     </div>`}
     <div class="row2">
-      <div class="field" style="margin:0"><label>Data inicial</label><input type="date" value="${fluxoIni}" max="${fluxoFim}" onchange="fluxoIni=this.value;finExpView='fluxo';renderFinanceiro()"></div>
-      <div class="field" style="margin:0"><label>Data final</label><input type="date" value="${fluxoFim}" min="${fluxoIni}" onchange="fluxoFim=this.value;finExpView='fluxo';renderFinanceiro()"></div>
+      <div class="field" style="margin:0"><label>Data inicial</label><input type="date" value="${fluxoIni}" onchange="setFluxoIni(this.value)"></div>
+      <div class="field" style="margin:0"><label>Data final</label><input type="date" value="${fluxoFim}" min="${fluxoIni}" onchange="setFluxoFim(this.value)"></div>
     </div>
   </div>`;
 

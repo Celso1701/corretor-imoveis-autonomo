@@ -1,5 +1,11 @@
 # Corretor Imóveis Autônomo — Histórico de versões
 
+## v1.22.0 — Medidas na chácara, Financeiro sem "Semana" e datas do fluxo diário
+- **Chácara/Sítio:** os quatro campos de medida do lote — **Frente, Fundos, Lado esquerdo e Lado direito**, em metros lineares — passam a aparecer também no cadastro da chácara, logo abaixo de *Terreno / Área total*, iguais aos do terreno. Aparecem na revisão, no detalhe e no compartilhamento; continuam ausentes em casa e apartamento.
+- **Financeiro:** o botão **Semana** foi removido. Os filtros ficam **Por mês · Fluxo diário · Realizado · Todas**.
+- **Fluxo diário — datas:** ao abrir, a **data inicial** vem com **ontem (hoje − 1 dia)** e a **data final** com **hoje**. As duas continuam livres para escolher no calendário, inclusive períodos passados.
+- **A data final nunca fica antes da inicial:** se você escolher uma data final anterior, o app avisa e mantém a anterior; se empurrar a data inicial para depois da final, a final acompanha automaticamente.
+
 ## v1.21.0 — Validade do CRECI opcional e sem data vencida
 - Em **Ajustes → Dados do corretor**, o campo **Validade da carteira CRECI** deixou de ser obrigatório: dá para salvar em branco.
 - **Com o campo vazio**, aparece logo abaixo dele, em **vermelho e negrito**: *"Não será avisado — sem a validade preenchida, o app não lembra você do vencimento da carteira CRECI."* O aviso some assim que uma data válida é escolhida.
