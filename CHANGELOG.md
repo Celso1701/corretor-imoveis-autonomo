@@ -1,5 +1,10 @@
 # Corretor Imóveis Autônomo — Histórico de versões
 
+## v1.20.0 — Medidas do lote no cadastro de terreno
+- Na etapa **Características do terreno**, logo abaixo de *Terreno / Área total*, entraram quatro campos de medida em **metros lineares**: **Frente**, **Fundos**, **Lado esquerdo** e **Lado direito**. São opcionais e aceitam casas decimais (ex.: 10,5).
+- Aparecem **somente no terreno** — casa, apartamento e chácara seguem sem eles.
+- As medidas preenchidas aparecem na **revisão**, no **detalhe do imóvel** e no **texto de compartilhamento**, numa linha só: *Frente 10 m · Fundos 10,5 m · Esq. 25 m · Dir. 25 m*. Se nenhuma for preenchida, a linha não aparece.
+
 ## v1.19.1 — Botão "Traçar rota" em destaque
 - Na tela de **detalhe do imóvel**, o botão **🧭 Traçar rota (Waze / Google Maps)** deixou de ser cinza e passou a ter **fundo azul claro, texto e borda azuis** — fica visível de imediato entre os cartões brancos, sem competir com os botões de ação principais.
 

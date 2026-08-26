@@ -328,7 +328,7 @@ header.topbar.home{padding:0;background:transparent;box-shadow:none}
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.19.1';
+const APP_VERSION = '1.20.0';
 // Ajudante para inserir ícones do kit (traço) em qualquer lugar
 function ic(name, size, style){ size=size||18; return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"${style?` style="${style}"`:''}><use href="#i-${name}"/></svg>`; }
 // Logo da marca (usado na splash e nas telas de senha)
@@ -1775,7 +1775,7 @@ function blankDraft(tipo){
     tipo: tipo, codigo: proximoCodigo(tipo), dataInclusao: isoDate(new Date()),
     tipoEndereco:'Rua', endereco:'', numero:'', complemento:'', bairro:'', cidade:'', estado:'', cep:'', certidoes:{},
     proprietarioId:'', nome:'', tel1:'', tel2:'', tel3:'', email1:'', email2:'',
-    terreno:'', construcao:'', condicao:'Usada', morador:'Não', tipoCasa:({casa:'Térrea',apartamento:'Padrão',chacara:'Lazer',terreno:'Plano'})[tipo]||'Térrea', outroTipo:'',
+    terreno:'', construcao:'', medFrente:'', medFundos:'', medEsquerdo:'', medDireito:'', condicao:'Usada', morador:'Não', tipoCasa:({casa:'Térrea',apartamento:'Padrão',chacara:'Lazer',terreno:'Plano'})[tipo]||'Térrea', outroTipo:'',
     vendaExclusiva:'Não', dataInicial:'', dataFinal:'',
     condominio:'0', comissao:'',
     valorSolicitado:'', valorMinimo:'', valorNegociado:'',
@@ -1812,7 +1812,8 @@ async function editarImovel(id){
   W.complemento = L.complemento||''; W.bairro = L.bairro||''; W.cidade = L.cidade||''; W.estado = L.estado||''; W.cep = L.cep||'';
   W.proprietarioId = PR.id||''; W.nome = PR.nome||''; W.tel1 = PR.tel1||''; W.tel2 = PR.tel2||''; W.tel3 = PR.tel3||''; W.email1 = PR.email1||''; W.email2 = PR.email2||'';
   const tipoCasaDefault = ({casa:'Térrea',apartamento:'Padrão',chacara:'Lazer',terreno:'Plano'})[W.tipo]||'Térrea';
-  W.terreno = cc.terreno||''; W.construcao = cc.construcao||''; W.condicao = cc.condicao||'Usada'; W.morador = cc.morador||'Não'; W.tipoCasa = cc.tipoCasa||tipoCasaDefault; W.outroTipo = cc.outroTipo||'';
+  W.terreno = cc.terreno||''; W.construcao = cc.construcao||'';
+  W.medFrente = cc.medFrente||''; W.medFundos = cc.medFundos||''; W.medEsquerdo = cc.medEsquerdo||''; W.medDireito = cc.medDireito||''; W.condicao = cc.condicao||'Usada'; W.morador = cc.morador||'Não'; W.tipoCasa = cc.tipoCasa||tipoCasaDefault; W.outroTipo = cc.outroTipo||'';
   W.piscinaAquecida=!!cc.piscinaAquecida; W.sauna=!!cc.sauna; W.churrasqueira=!!cc.churrasqueira;
   W.parquinho=!!cc.parquinho; W.academia=!!cc.academia; W.obsApto=cc.obsApto||'';
   W.vendaExclusiva = EX.exclusiva ? 'Sim' : 'Não'; W.dataInicial = EX.dataInicial||''; W.dataFinal = EX.dataFinal||'';
@@ -1934,6 +1935,14 @@ function aplicarProprietario(id){
   toast('Dados do proprietário preenchidos.');
 }
 
+// Resumo das medidas do lote (só terreno). Devolve '' se nenhuma foi preenchida.
+function medidasLoteTxt(c){
+  if(!c) return '';
+  const p = [['Frente',c.medFrente],['Fundos',c.medFundos],['Esq.',c.medEsquerdo],['Dir.',c.medDireito]]
+    .filter(x=>x[1]!==''&&x[1]!==null&&x[1]!==undefined&&parseFloat(x[1])>0)
+    .map(x=>`${x[0]} ${String(x[1]).replace('.',',')} m`);
+  return p.join(' · ');
+}
 function stepPaneHTML(i){
   if(i===0) return `
     <div class="section-title">Onde fica o imóvel?</div>
@@ -1995,6 +2004,16 @@ function stepPaneHTML(i){
       <div class="field"><label>Terreno / Área total (m²)</label><input type="number" value="${esc(W.terreno)}" oninput="W.terreno=this.value"></div>
       ${ehTerreno?'':`<div class="field"><label>${ehApto?'Área útil (m²)':'Construção (m²)'}</label><input type="number" value="${esc(W.construcao)}" oninput="W.construcao=this.value"></div>`}
     </div>
+    ${ehTerreno?`
+    <div class="hint" style="margin-top:-6px;margin-bottom:8px">Medidas do lote, em metros lineares (opcional).</div>
+    <div class="row2">
+      <div class="field"><label>Frente (m)</label><input type="number" inputmode="decimal" step="0.01" min="0" value="${esc(W.medFrente||'')}" oninput="W.medFrente=this.value"></div>
+      <div class="field"><label>Fundos (m)</label><input type="number" inputmode="decimal" step="0.01" min="0" value="${esc(W.medFundos||'')}" oninput="W.medFundos=this.value"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Lado esquerdo (m)</label><input type="number" inputmode="decimal" step="0.01" min="0" value="${esc(W.medEsquerdo||'')}" oninput="W.medEsquerdo=this.value"></div>
+      <div class="field"><label>Lado direito (m)</label><input type="number" inputmode="decimal" step="0.01" min="0" value="${esc(W.medDireito||'')}" oninput="W.medDireito=this.value"></div>
+    </div>`:''}
     <div class="row2">
       <fieldset><legend>Condição do imóvel</legend><div class="chip-group">${chip('condicao','Nova','Nova')}${chip('condicao','Usada','Usada')}</div></fieldset>
       ${ehTerreno?'':`<fieldset><legend>Tem morador?</legend><div class="chip-group">${chip('morador','Sim','Sim')}${chip('morador','Não','Não')}</div></fieldset>`}
@@ -2127,6 +2146,7 @@ function stepPaneHTML(i){
       <div class="review-item"><span class="k">E-mail</span><span class="v">${esc(W.email1||'—')}</span></div></div>
     <div class="review-block"><div class="review-block-title">Características</div>
       <div class="review-item"><span class="k">Terreno / Construção</span><span class="v">${W.terreno||0} m² / ${W.construcao||0} m²</span></div>
+      ${W.tipo==='terreno'&&medidasLoteTxt(W)?`<div class="review-item"><span class="k">Medidas do lote</span><span class="v">${esc(medidasLoteTxt(W))}</span></div>`:''}
       <div class="review-item"><span class="k">Condição</span><span class="v">${esc(W.condicao)}</span></div>
       <div class="review-item"><span class="k">Morador</span><span class="v">${esc(W.morador)}</span></div>
       <div class="review-item"><span class="k">${W.tipo==='terreno'?'Tipo do terreno':(W.tipo==='chacara'?'Tipo da chácara':(W.tipo==='apartamento'?'Tipo do apartamento':'Tipo da casa'))}</span><span class="v">${esc(W.tipoCasa==='Outro'&&W.outroTipo?W.outroTipo:W.tipoCasa)}</span></div>
@@ -2445,7 +2465,7 @@ async function gravarImovel(){
     id: W.id, tipo: W.tipo||'casa', codigo: W.codigo, dataInclusao: W.dataInclusao||isoDate(new Date(W.createdAt||Date.now())), createdAt: W.createdAt, updatedAt: Date.now(),
     localizacao:{ tipoEndereco:W.tipoEndereco, endereco:W.endereco, numero:W.numero, complemento:W.complemento, bairro:W.bairro, cidade:W.cidade, estado:W.estado, cep:W.cep },
     proprietario:{ id:W.proprietarioId||'', nome:W.nome, tel1:W.tel1, tel2:W.tel2, tel3:W.tel3, email1:W.email1, email2:W.email2 },
-    caracteristicas:{ terreno:W.terreno, construcao:W.construcao, condicao:W.condicao, morador:W.morador, tipoCasa:W.tipoCasa, outroTipo:W.outroTipo,
+    caracteristicas:{ terreno:W.terreno, construcao:W.construcao, medFrente:W.medFrente||'', medFundos:W.medFundos||'', medEsquerdo:W.medEsquerdo||'', medDireito:W.medDireito||'', condicao:W.condicao, morador:W.morador, tipoCasa:W.tipoCasa, outroTipo:W.outroTipo,
       piscinaAquecida:!!W.piscinaAquecida, sauna:!!W.sauna, churrasqueira:!!W.churrasqueira, parquinho:!!W.parquinho, academia:!!W.academia, obsApto:W.obsApto||'' },
     exclusividade:{ exclusiva: W.vendaExclusiva==='Sim', dataInicial:W.dataInicial, dataFinal:W.dataFinal },
     condominio:{ valor: parseFloat(W.condominio)||0 },
@@ -2546,6 +2566,7 @@ function abrirDetalhe(id){
       <div class="review-item"><span class="k">E-mail</span><span class="v">${esc(im.proprietario.email1||'—')}</span></div></div>
     <div class="review-block"><div class="review-block-title">Características</div>
       <div class="review-item"><span class="k">Área</span><span class="v">${im.caracteristicas.terreno||0} m² / ${im.caracteristicas.construcao||0} m²</span></div>
+      ${im.tipo==='terreno'&&medidasLoteTxt(im.caracteristicas)?`<div class="review-item"><span class="k">Medidas do lote</span><span class="v">${esc(medidasLoteTxt(im.caracteristicas))}</span></div>`:''}
       <div class="review-item"><span class="k">Tipo</span><span class="v">${esc(im.caracteristicas.tipoCasa)}</span></div>
       ${im.tipo==='apartamento'?`<div class="review-item"><span class="k">Lazer</span><span class="v">${[im.caracteristicas.piscinaAquecida&&'Piscina aq.',im.caracteristicas.sauna&&'Sauna',im.caracteristicas.churrasqueira&&'Churrasq.',im.caracteristicas.parquinho&&'Parquinho',im.caracteristicas.academia&&'Academia'].filter(Boolean).join(', ')||'—'}</span></div>${im.caracteristicas.obsApto?`<div class="review-item"><span class="k">Observações</span><span class="v">${esc(im.caracteristicas.obsApto)}</span></div>`:''}`:''}
       <div class="review-item"><span class="k">Venda exclusiva</span><span class="v">${im.exclusividade?.exclusiva?('Sim'+((im.exclusividade.dataInicial||im.exclusividade.dataFinal)?` (${fmtDataBR(im.exclusividade.dataInicial)} → ${fmtDataBR(im.exclusividade.dataFinal)})`:'')):'Não'}</span></div>
@@ -2711,6 +2732,7 @@ function montarTextoImovel(im){
   if(im.tipo==='terreno'){
     const lo = im.loteamento||{};
     txt += `Terreno: ${c.terreno||'-'} m²\n`;
+    const med = medidasLoteTxt(c); if(med) txt += `Medidas: ${med}\n`;
     if(lo.condominio) txt += `${lo.condominio}\n`;
     if(lo.acesso) txt += `Acesso: ${lo.acesso}\n`;
     if(lo.ruas) txt += `Ruas internas: ${lo.ruas}\n`;
