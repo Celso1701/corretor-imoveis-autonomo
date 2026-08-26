@@ -328,7 +328,7 @@ header.topbar.home{padding:0;background:transparent;box-shadow:none}
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.18.0';
+const APP_VERSION = '1.19.1';
 // Ajudante para inserir ícones do kit (traço) em qualquer lugar
 function ic(name, size, style){ size=size||18; return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"${style?` style="${style}"`:''}><use href="#i-${name}"/></svg>`; }
 // Logo da marca (usado na splash e nas telas de senha)
@@ -1193,7 +1193,7 @@ function goTab(tab){
   else if(tab==='imoveis') renderHeader(false), renderListaImoveis();
   else if(tab==='agenda') renderHeader(false), renderAgenda();
   else if(tab==='proprietarios') renderHeader(false), renderListaProprietarios();
-  else if(tab==='financeiro') renderHeader(false), renderFinanceiro();
+  else if(tab==='financeiro'){ fluxoDiaSel=''; renderHeader(false); renderFinanceiro(); }
   else if(tab==='config') renderHeader(false), renderConfig();
 }
 function renderHeader(withSearch){
@@ -2539,7 +2539,7 @@ function abrirDetalhe(id){
       <div class="review-item"><span class="k">Bairro</span><span class="v">${esc(im.localizacao.bairro||'—')}</span></div>
       <div class="review-item"><span class="k">Cidade / UF</span><span class="v">${esc(im.localizacao.cidade)} / ${esc(im.localizacao.estado)}</span></div>
       <div class="review-item"><span class="k">CEP</span><span class="v">${esc(im.localizacao.cep||'—')}</span></div></div>
-    <button class="btn gray" style="margin-bottom:14px" onclick="abrirRota('${esc(enderecoFull).replace(/'/g,"\\'")}')">🧭 Traçar rota (Waze / Google Maps)</button>
+    <button class="btn" style="margin-bottom:14px;background:var(--pblue);color:var(--primary);border:1.5px solid var(--primary)" onclick="abrirRota('${esc(enderecoFull).replace(/'/g,"\\'")}')">🧭 Traçar rota (Waze / Google Maps)</button>
     <div class="review-block"><div class="review-block-title">Proprietário</div>
       <div class="review-item"><span class="k">Nome</span><span class="v">${esc(im.proprietario.nome||'—')}</span></div>
       <div class="review-item"><span class="k">Telefone</span><span class="v">${esc(im.proprietario.tel1||'—')}</span></div>
@@ -3048,14 +3048,19 @@ function renderFinanceiro(){
       <button class="btn sm green" style="width:auto" onclick="novaReceitaManual()">Receitas +</button>
       <button class="btn sm danger" style="width:auto" onclick="novaDespesaManual()">Despesa +</button></div>`;
 
-  // Toggle de visão: Mês / Todas / Fluxo diário / Semana / Realizado
+  // Toggle de visão (ordem definida com o Celso): Por mês / Fluxo diário / Semana / Realizado / Todas
   let htop = `<div style="display:flex;gap:8px;margin-bottom:10px;overflow-x:auto;padding-bottom:2px">
-    ${fchip(finExpView==='mes',`${ic('calendar',14)} Por mês`,"finExpView='mes';renderFinanceiro()")}
-    ${fchip(finExpView==='all',`${ic('doc',14)} Todas`,"finExpView='all';renderFinanceiro()")}
-    ${fchip(finExpView==='fluxo',`${ic('chart',14)} Fluxo diário`,"finExpView='fluxo';renderFinanceiro()")}
-    ${fchip(finExpView==='semana',`${ic('calendar',14)} Semana`,"finExpView='semana';fluxoPeriodo('semana')")}
-    ${fchip(finExpView==='realizado',`${ic('check',14)} Realizado`,"finExpView='realizado';renderFinanceiro()")}
+    ${fchip(finExpView==='mes',`${ic('calendar',14)} Por mês`,"fluxoDiaSel='';finExpView='mes';renderFinanceiro()")}
+    ${fchip(finExpView==='fluxo',`${ic('chart',14)} Fluxo diário`,"fluxoDiaSel='';finExpView='fluxo';renderFinanceiro()")}
+    ${fchip(finExpView==='semana',`${ic('calendar',14)} Semana`,"fluxoDiaSel='';finExpView='semana';fluxoPeriodo('semana')")}
+    ${fchip(finExpView==='realizado',`${ic('check',14)} Realizado`,"fluxoDiaSel='';finExpView='realizado';renderFinanceiro()")}
+    ${fchip(finExpView==='all',`${ic('doc',14)} Todas`,"fluxoDiaSel='';finExpView='all';renderFinanceiro()")}
   </div>`;
+
+  // Detalhe de um dia do fluxo diário (aberto ao tocar na linha da data)
+  if((finExpView==='fluxo'||finExpView==='semana') && fluxoDiaSel){
+    document.getElementById('mainContent').innerHTML = diaFluxoHTML(fluxoDiaSel); return;
+  }
 
   if(finExpView==='fluxo'){ document.getElementById('mainContent').innerHTML = htop + fluxoDiarioHTML(); return; }
   if(finExpView==='semana'){ document.getElementById('mainContent').innerHTML = htop + fluxoDiarioHTML(true); return; }
@@ -3130,7 +3135,7 @@ function renderFinanceiro(){
 }
 
 // ── Relatório de fluxo diário (Receitas / Despesas / Saldo acumulado) ──
-let fluxoIni = '', fluxoFim = '';
+let fluxoIni = '', fluxoFim = '', fluxoDiaSel = '';
 function fluxoPeriodo(qual){
   const hoje = new Date(); hoje.setHours(0,0,0,0);
   if(qual==='semana'){
@@ -3241,7 +3246,7 @@ function fluxoDiarioHTML(modoSemana){
     const p = despAtivas.filter(e=>e.data===iso).reduce((s,e)=>s+(e.valor||0),0);
     acc += r - p; totR+=r; totD+=p;
     const temMov = (r>0||p>0);
-    linhas += `<div style="display:flex;align-items:center;padding:9px 10px;border-bottom:1px solid var(--border);${temMov?'':'opacity:.5'}${estiloLinhaData(iso)}">
+    linhas += `<div ${temMov?`onclick="abrirDiaFluxo('${iso}')" style="cursor:pointer;`:'style="opacity:.5;'}display:flex;align-items:center;padding:9px 10px;border-bottom:1px solid var(--border);${estiloLinhaData(iso)}">
       <div style="width:74px;flex-shrink:0;font-size:11.5px;font-weight:${ehHoje(iso)?'800':'600'}" class="mono">${fmtDataBR(iso)}</div>
       <div style="flex:1;text-align:right;color:var(--success);font-size:12px;font-weight:700">${r>0?fmtBRL(r):'—'}</div>
       <div style="flex:1;text-align:right;color:var(--danger);font-size:12px;font-weight:700">${p>0?fmtBRL(p):'—'}</div>
@@ -3269,7 +3274,56 @@ function fluxoDiarioHTML(modoSemana){
       <div style="flex:1;text-align:right;color:${saldoFinal>=0?'var(--success)':'var(--danger)'}">${fmtBRL(saldoFinal)}</div>
     </div>
   </div>
-  <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5">O saldo é acumulado: cada dia soma as receitas e subtrai as despesas do saldo do dia anterior, até a data final. Verde = positivo, vermelho = negativo.</div>`;
+  <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5">O saldo é acumulado: cada dia soma as receitas e subtrai as despesas do saldo do dia anterior, até a data final. Verde = positivo, vermelho = negativo. <b>Toque num dia com movimento para ver os lançamentos daquele dia.</b></div>`;
+  return h;
+}
+
+// ── Detalhe de um dia do fluxo diário ──
+// Mostra todos os lançamentos em aberto da data escolhida, com as mesmas cores
+// da lista do Financeiro (receita em verde com "+", despesa em vermelho com "-").
+function abrirDiaFluxo(iso){ fluxoDiaSel = iso; renderFinanceiro(); window.scrollTo(0,0); }
+function fecharDiaFluxo(){ fluxoDiaSel = ''; renderFinanceiro(); window.scrollTo(0,0); }
+function diaFluxoHTML(iso){
+  const recs  = DB.financeiro.receitas.filter(e=>!e.dataRealizada && e.data===iso);
+  const desps = DB.financeiro.despesas.filter(e=>!e.dataRealizada && e.data===iso);
+  const totRec  = recs.reduce((s,e)=>s+(e.valor||0),0);
+  const totDesp = desps.reduce((s,e)=>s+(e.valor||0),0);
+  const saldo = totRec - totDesp;
+
+  let h = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+    <b style="flex:1;font-size:15px">${ic('calendar',16)} Lançamentos de ${fmtDataBR(iso)}</b></div>
+  <div class="card" style="margin-bottom:12px">
+    <div style="display:flex;gap:8px;text-align:center">
+      <div style="flex:1"><div style="font-size:9.5px;font-weight:700;color:var(--muted);text-transform:uppercase">Receitas</div><b style="color:var(--success);font-size:15px">${fmtBRL(totRec)}</b></div>
+      <div style="flex:1;border-left:1px solid var(--border);border-right:1px solid var(--border)"><div style="font-size:9.5px;font-weight:700;color:var(--muted);text-transform:uppercase">Despesas</div><b style="color:var(--danger);font-size:15px">${fmtBRL(totDesp)}</b></div>
+      <div style="flex:1"><div style="font-size:9.5px;font-weight:700;color:var(--muted);text-transform:uppercase">Saldo do dia</div><b style="color:${saldo>=0?'var(--success)':'var(--danger)'};font-size:15px">${fmtBRL(saldo)}</b></div>
+    </div>
+  </div>`;
+
+  const lista = [
+    ...recs.map(e=>({...e, _tipo:'rec'})),
+    ...desps.map(e=>({...e, _tipo:'desp'}))
+  ];
+  if(!lista.length){
+    h += `<div class="empty"><div class="big">${ic('receipt',40)}</div>Nenhum lançamento em aberto nesta data</div>`;
+  } else {
+    lista.forEach(e=>{
+      const rec = e._tipo==='rec';
+      h += `<div class="card" style="display:flex;align-items:center;gap:10px;cursor:pointer" onclick="${rec?`editarReceita('${e.id}')`:`editarDespesa('${e.id}')`}">
+        <div class="ptile-icon" style="width:38px;height:38px;flex-shrink:0;background:${rec?'var(--pgreen)':'var(--pblue)'}">${rec?'💚':iconeCat(e.categoria)}</div>
+        <div style="flex:1;min-width:0">
+          <b style="font-size:14px">${esc(e.categoria||(rec?'Receita':'Outros'))}</b>
+          <div style="font-size:10px;font-weight:800;color:${rec?'var(--success)':'var(--danger)'};text-transform:uppercase;margin-top:2px">${rec?'A receber':'A pagar'}</div>
+          ${rec&&e.fontePagadora?`<div style="font-size:11px;color:var(--muted);margin-top:2px">Fonte pagadora: <b style="color:var(--text);font-weight:700">${esc(e.fontePagadora)}</b></div>`:''}
+          ${e.descricao?`<div style="font-size:11px;color:var(--muted);margin-top:2px;white-space:pre-wrap">${ic('doc',12)} ${esc(e.descricao)}</div>`:''}
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${e.origem==='agenda'?'agenda · ':''}toque para editar</div></div>
+        <b style="color:${rec?'var(--success)':'var(--danger)'};white-space:nowrap">${rec?'+':'-'} ${fmtBRL(e.valor)}</b>
+        <button style="background:none;color:var(--muted)" onclick="event.stopPropagation();${rec?`excluirReceita('${e.id}')`:`excluirDespesa('${e.id}')`}">${ic('trash',15)}</button></div>`;
+    });
+  }
+
+  h += `<div style="font-size:11px;color:var(--muted);margin:10px 2px 14px;line-height:1.5">Só aparecem os lançamentos <b>em aberto</b> (sem "Data realizada" preenchida) — os mesmos que somam no fluxo diário.</div>
+  <button class="btn gray" onclick="fecharDiaFluxo()" style="margin-bottom:20px">Voltar</button>`;
   return h;
 }
 function selectImovelHTML(id, sel){

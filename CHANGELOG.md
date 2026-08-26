@@ -1,5 +1,15 @@
 # Corretor Imóveis Autônomo — Histórico de versões
 
+## v1.19.1 — Botão "Traçar rota" em destaque
+- Na tela de **detalhe do imóvel**, o botão **🧭 Traçar rota (Waze / Google Maps)** deixou de ser cinza e passou a ter **fundo azul claro, texto e borda azuis** — fica visível de imediato entre os cartões brancos, sem competir com os botões de ação principais.
+
+## v1.19.0 — Detalhe do dia no fluxo diário + nova ordem dos filtros
+- **Toque no dia, veja os lançamentos.** No **Fluxo diário** (e na **Semana**), tocar numa data com movimento — por exemplo 22/08/2026 — abre a tela **"Lançamentos de 22/08/2026"** com todos os títulos daquele dia. Dias sem movimento continuam apagados e não abrem nada.
+- **Mesmas cores do Financeiro:** receita em verde com `+ R$` e selo **A RECEBER**; despesa em vermelho com `- R$` e selo **A PAGAR**. No topo, um resumo com **Receitas / Despesas / Saldo do dia**.
+- **Toque no lançamento** abre a edição de sempre (dá para preencher a "Data realizada" ali mesmo) e a lixeira exclui. Ao fim do relatório há o botão **Voltar**, que retorna ao fluxo diário no mesmo período.
+- Só entram os lançamentos **em aberto** (sem "Data realizada"), exatamente os que somam no fluxo — os realizados continuam na aba **Realizado**.
+- **Nova ordem dos filtros do Financeiro:** **Por mês · Fluxo diário · Semana · Realizado · Todas**.
+
 ## v1.18.0 — Cadastro do imóvel com 8 etapas (telas unidas)
 - **"Garagem e portão" e "Água, energia e internet" viraram uma etapa só.** O cadastro do imóvel passou de **9 para 8 etapas**, com menos toques em "Avançar". Na nova etapa 4 os dois blocos aparecem um abaixo do outro, com os mesmos campos de antes.
 - **Nome da etapa conforme o tipo:** "Garagem e infraestrutura" para casa, apartamento e chácara; **"Acesso e infraestrutura"** para terreno (que não tem garagem).
