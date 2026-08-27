@@ -328,7 +328,7 @@ header.topbar.home{padding:0;background:transparent;box-shadow:none}
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.24.0';
+const APP_VERSION = '1.26.0';
 // Ajudante para inserir ícones do kit (traço) em qualquer lugar
 function ic(name, size, style){ size=size||18; return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"${style?` style="${style}"`:''}><use href="#i-${name}"/></svg>`; }
 // Logo da marca (usado na splash e nas telas de senha)
@@ -842,6 +842,10 @@ function openProModal(reason){
      <button class="btn" onclick="activatePro()">Ativar Pro</button>`);
 }
 function activatePro(){
+  // O Pro exige senha de acesso. Sem senha criada, pede agora e ativa em seguida.
+  if(!getAuth()){ const code0 = ((document.getElementById('proCode')||{}).value||''); closeSheet();
+    exigirSenhaParaPro(()=>{ openProModal(); setTimeout(()=>{ const e2=document.getElementById('proCode'); if(e2){ e2.value=code0; activatePro(); } },120); });
+    return; }
   const el = document.getElementById('proCode');
   const code = ((el&&el.value)||'').toUpperCase().trim();
   const r = corCheck(code);
@@ -868,6 +872,36 @@ function deactivatePro(){
     noLabel:'Manter Pro', yesLabel:'Sim, desativar', yes:'doDeactivatePro()' });
 }
 function doDeactivatePro(){ if(DB.license) DB.license.pro = false; save(); if(currentTab==='config') renderConfig(); toast('Pro desativado.'); }
+
+// ═══ MODO SOMENTE LEITURA (após o fim do teste grátis) ═══
+// Quando o teste de 30 dias vence e não há Pro ativo, o app entra em SOMENTE
+// LEITURA: dá para abrir e consultar todas as telas, mas nada pode ser incluído,
+// alterado ou excluído. Ficam liberados: a tela de Ajustes (inclusive Dados do
+// corretor e o becape) e a ativação do plano Pro.
+const TRIAL_LEITURA_DIAS = 7;   // janela de consulta a contar do bloqueio
+
+function modoSomenteLeitura(){ return !isProReal() && trialExpirado(); }
+
+// Dias que ainda restam da janela de 7 dias de consulta (0 = janela encerrada)
+function leituraDiasRestantes(){
+  const T = DB.trial;
+  if(!T || !T.expiresAt) return 0;
+  const fim = addDays(T.expiresAt, TRIAL_LEITURA_DIAS);
+  const d = Math.ceil((new Date(fim+'T00:00:00') - new Date(todayISO()+'T00:00:00'))/86400000);
+  return d > 0 ? d : 0;
+}
+
+// Porteiro das ações de escrita. Uso: if(bloqueioTrial('cadastrar imóvel')) return;
+// Devolve true (e explica ao corretor) quando a ação deve ser barrada.
+function bloqueioTrial(acao){
+  if(!modoSomenteLeitura()) return false;
+  const dias = leituraDiasRestantes();
+  confirmar({ icon:'🔒', title:'Teste grátis encerrado',
+    msg:`Não é possível <b>${esc(acao||'fazer alterações')}</b> — o teste de 30 dias terminou.<br><br>
+      <span style="font-size:12.5px">Seus dados <b>continuam salvos</b> e você pode consultar todas as telas normalmente${dias?` por mais <b>${dias} dia(s)</b>`:''}. Para voltar a incluir e alterar, assine o <b>Pro</b>.</span>`,
+    noLabel:'Fechar', yesLabel:'Assinar Pro', yesBg:'var(--success)', yes:"openProModal('Assine para voltar a cadastrar e editar.')" });
+  return true;
+}
 
 // ═══ TESTE GRÁTIS DE 30 DIAS (mesmo padrão do VetFlowCare) ═══
 const TRIAL_DIAS = 30;
@@ -1075,7 +1109,128 @@ function boot(){
       toast('🎁 Você tem 30 dias grátis com tudo liberado!');
     }
   }catch(e){ DB = defaultDB(); }
+  // Já existe senha criada → pede a senha antes de abrir (login normal).
+  if(getAuth()){
+    if(sessionStorage.getItem('unlocked')==='1'){ enterApp(); }
+    else renderLock();
+    return;
+  }
+  // Primeiro acesso neste aparelho (sem senha e sem cadastro nenhum) → oferece criar a senha.
+  if(primeiroAcesso()){ renderPrimeiroAcesso(); return; }
   enterApp();
+}
+// Primeira vez de verdade: nenhuma senha criada, nada cadastrado e o corretor
+// ainda não escolheu "continuar sem senha".
+function primeiroAcesso(){
+  if(getAuth()) return false;
+  if(DB && DB.settings && DB.settings.senhaDispensada) return false;
+  const vazio = !DB || ((DB.imoveis||[]).length===0 && (DB.proprietarios||[]).length===0 && (DB.agendamentos||[]).length===0);
+  return vazio;
+}
+
+// ── Tela de primeiro acesso ──────────────────────────────────────────────────
+// A senha é pedida com confirmação (digitada duas vezes). Durante o teste grátis
+// ela é OPCIONAL — dá para entrar sem senha. Ao assinar o Pro, passa a ser exigida.
+function renderPrimeiroAcesso(){
+  const div = document.createElement('div');
+  div.id = 'setupScreen';
+  div.innerHTML = `
+    <img class="brandlogo sm" src="${LOGO}" alt="Corretor de Imóveis">
+    <div class="auth-title">Bem-vindo(a)! Crie sua senha</div>
+    <div class="auth-sub">A senha protege seus imóveis, proprietários e telefones neste aparelho. Durante o teste grátis ela é opcional — mas <b>ao assinar o Pro será obrigatória</b>.</div>
+    <div class="auth-box">
+      <div class="pwwrap"><input id="setupPass" type="password" placeholder="Crie sua senha" maxlength="10" oninput="checkPwRules('setupPass','setupBtn');conferirSenhas()">
+        <button type="button" class="eye" onclick="togglePw('setupPass',this)">👁</button></div>
+      ${pwRulesHTML()}
+      <div class="pwwrap" style="margin-top:10px"><input id="setupPass2" type="password" placeholder="Digite a senha de novo" maxlength="10" oninput="conferirSenhas()">
+        <button type="button" class="eye" onclick="togglePw('setupPass2',this)">👁</button></div>
+      <div id="setupMatch" style="font-size:11.5px;font-weight:700;min-height:16px;margin-top:6px"></div>
+      <button class="btn" id="setupBtn" disabled onclick="doPrimeiroAcesso()" style="margin-top:10px">Criar senha e entrar</button>
+      <button class="btn gray" style="margin-top:8px" onclick="pularSenhaPrimeiroAcesso()">Continuar sem senha (teste grátis)</button>
+      <div class="auth-err" id="setupErr"></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:12px;line-height:1.6">⚠️ Guarde bem a senha. Ela não fica salva em servidor nenhum — <b>sem ela os dados não podem ser recuperados</b>.</div>
+    </div>`;
+  document.body.appendChild(div);
+}
+// Confere as duas digitações e libera o botão só quando conferem e as regras passam.
+function conferirSenhas(){
+  const p1 = val('setupPass'), p2 = val('setupPass2');
+  const regrasOk = Object.values(validatePassword(p1)).every(Boolean);
+  const el = document.getElementById('setupMatch');
+  const btn = document.getElementById('setupBtn');
+  if(!p2){ if(el) el.textContent=''; if(btn) btn.disabled = true; return; }
+  const iguais = p1===p2;
+  if(el){ el.textContent = iguais ? '✓ As senhas conferem' : '✕ As senhas não conferem';
+          el.style.color = iguais ? 'var(--success)' : 'var(--danger)'; }
+  if(btn) btn.disabled = !(iguais && regrasOk);
+}
+// Cria a senha SEM apagar nada: passa a criptografar o banco que já existe.
+async function criarSenhaParaDBAtual(pass){
+  if(!crypto.subtle) return 'Criptografia indisponível neste navegador.';
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const key = await deriveKey(pass, salt);
+  const check = await makeCheck(key);
+  localStorage.setItem(LS_AUTH, JSON.stringify({salt:b64e(salt), check, createdAt:Date.now()}));
+  _cryptoKey = key;
+  if(DB && DB.settings) DB.settings.senhaDispensada = false;
+  await persistDB();
+  sessionStorage.setItem('unlocked','1');
+  return '';
+}
+async function doPrimeiroAcesso(){
+  const p1 = val('setupPass'), p2 = val('setupPass2');
+  const err = document.getElementById('setupErr');
+  if(p1!==p2){ err.textContent = 'As senhas não conferem.'; return; }
+  if(!Object.values(validatePassword(p1)).every(Boolean)){ err.textContent = 'A senha não atende às regras.'; return; }
+  err.textContent = 'Criando…';
+  const msg = await criarSenhaParaDBAtual(p1);
+  if(msg){ err.textContent = msg; return; }
+  document.getElementById('setupScreen')?.remove();
+  enterApp();
+  toast('🔐 Senha criada. Seus dados estão protegidos.');
+}
+function pularSenhaPrimeiroAcesso(){
+  if(!DB.settings) DB.settings = {};
+  DB.settings.senhaDispensada = true;
+  save();
+  document.getElementById('setupScreen')?.remove();
+  enterApp();
+  toast('Você pode criar a senha depois em Ajustes.');
+}
+// Ao assinar o Pro a senha passa a ser obrigatória: se ainda não houver, pede aqui.
+function exigirSenhaParaPro(depois){
+  showSheet('Crie sua senha de acesso', `
+    <div style="font-size:13px;color:var(--muted);margin-bottom:12px">O Plano Pro exige senha para proteger seus dados. Digite a senha duas vezes para confirmar.</div>
+    <div class="pwwrap"><input id="proPass" type="password" placeholder="Crie sua senha" maxlength="10" oninput="checkPwRules('proPass','proPassBtn');conferirSenhasPro()">
+      <button type="button" class="eye" onclick="togglePw('proPass',this)">👁</button></div>
+    ${pwRulesHTML()}
+    <div class="pwwrap" style="margin-top:10px"><input id="proPass2" type="password" placeholder="Digite a senha de novo" maxlength="10" oninput="conferirSenhasPro()">
+      <button type="button" class="eye" onclick="togglePw('proPass2',this)">👁</button></div>
+    <div id="proMatch" style="font-size:11.5px;font-weight:700;min-height:16px;margin-top:6px"></div>
+    <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.6">⚠️ Guarde bem a senha — sem ela os dados não podem ser recuperados.</div>`,
+    `<button class="btn gray" onclick="closeSheet()">Agora não</button>
+     <button class="btn green" id="proPassBtn" disabled onclick="doSenhaPro()">Criar senha</button>`);
+  window._aposSenhaPro = depois || null;
+}
+function conferirSenhasPro(){
+  const p1 = val('proPass'), p2 = val('proPass2');
+  const regrasOk = Object.values(validatePassword(p1)).every(Boolean);
+  const el = document.getElementById('proMatch'), btn = document.getElementById('proPassBtn');
+  if(!p2){ if(el) el.textContent=''; if(btn) btn.disabled = true; return; }
+  const iguais = p1===p2;
+  if(el){ el.textContent = iguais ? '✓ As senhas conferem' : '✕ As senhas não conferem';
+          el.style.color = iguais ? 'var(--success)' : 'var(--danger)'; }
+  if(btn) btn.disabled = !(iguais && regrasOk);
+}
+async function doSenhaPro(){
+  const p1 = val('proPass'), p2 = val('proPass2');
+  if(p1!==p2 || !Object.values(validatePassword(p1)).every(Boolean)){ toast('Confira a senha e a confirmação.'); return; }
+  const msg = await criarSenhaParaDBAtual(p1);
+  if(msg){ toast(msg); return; }
+  closeSheet();
+  toast('🔐 Senha criada.');
+  const fn = window._aposSenhaPro; window._aposSenhaPro = null;
+  if(typeof fn === 'function') fn();
 }
 // Referência para reativar o login no futuro (não usada agora):
 function bootComLogin(){
@@ -1351,20 +1506,27 @@ function trialBannerHTML(){
   if(isProReal()) return '';
   if(trialAtivo()){
     const dias = trialDiasRestantes();
-    if(dias > TRIAL_AVISO_DIAS) return '';
-    return `<div class="card" style="border:1.5px solid var(--warning);background:#FFF6E6;margin-bottom:14px;cursor:pointer" onclick="openProModal('Seu teste grátis está acabando! Assine o Pro para continuar com tudo liberado.')">
+    const acabando = dias <= TRIAL_AVISO_DIAS;
+    // Durante todo o teste a faixa fica visível, logo abaixo do aviso do CRECI.
+    return `<div class="card" style="border:1.5px solid ${acabando?'var(--warning)':'#FFD980'};background:#FFF9E8;margin-bottom:14px;cursor:pointer" onclick="openProModal('${acabando?'Seu teste grátis está acabando! Assine o Pro para continuar com tudo liberado.':'Assine o Plano Pro e continue com tudo liberado depois do teste.'}')">
       <div style="display:flex;align-items:center;gap:10px">
-        <span style="font-size:24px">⏳</span>
-        <div style="flex:1"><b style="font-size:13.5px">Teste grátis acabando — faltam ${dias} ${dias===1?'dia':'dias'}</b>
-        <div style="font-size:11.5px;color:var(--muted);margin-top:2px">Toque para assinar o Plano Pro e não perder o acesso.</div></div>
+        <span style="font-size:24px">${acabando?'⏳':'🎁'}</span>
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span style="background:${acabando?'var(--warning)':'var(--primary)'};color:#fff;font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:100px">${acabando?'⏳ ACABANDO':'🎁 TESTE GRÁTIS'}</span>
+            <b style="font-size:13.5px">Faltam ${dias} ${dias===1?'dia':'dias'}</b>
+          </div>
+          <div style="font-size:11.5px;color:var(--muted);margin-top:3px">Todas as funções do Pro liberadas durante o teste. Toque para assinar.</div>
+        </div>
       </div></div>`;
   }
   if(trialExpirado()){
+    const dias = leituraDiasRestantes();
     return `<div class="card" style="border:1.5px solid var(--danger);background:#FEECEC;margin-bottom:14px;cursor:pointer" onclick="openProModal('Seu teste grátis de 30 dias terminou.')">
       <div style="display:flex;align-items:center;gap:10px">
         <span style="font-size:24px">🔒</span>
-        <div style="flex:1"><b style="font-size:13.5px;color:#B42318">Teste grátis encerrado</b>
-        <div style="font-size:11.5px;color:var(--muted);margin-top:2px">Seus dados estão salvos. Assine o Pro para continuar com tudo liberado.</div></div>
+        <div style="flex:1"><b style="font-size:13.5px;color:#B42318">Teste grátis encerrado — modo consulta</b>
+        <div style="font-size:11.5px;color:var(--muted);margin-top:2px">Seus dados estão salvos e podem ser consultados${dias?` por mais <b>${dias} dia(s)</b>`:''}, mas <b>não é possível incluir nem alterar</b>. Toque para assinar o Pro.</div></div>
       </div></div>`;
   }
   return '';
@@ -1649,16 +1811,19 @@ function preencherListaProprietarios(){
   });
 }
 function novoProprietario(){
+  if(bloqueioTrial('cadastrar um proprietário')) return;
   P = { id: uid(), codigo: proximoCodigoProp(), nome:'', tel1:'', tel2:'', tel3:'', email1:'', email2:'', temFoto:false, createdAt:Date.now() };
   pFotoCache = null;
   renderPropForm();
 }
 let _voltarAoImovel = false;
 function novoProprietarioDoImovel(){
+  if(bloqueioTrial('cadastrar um proprietário')) return;
   _voltarAoImovel = true;
   novoProprietario();
 }
 async function editarProprietario(id){
+  if(bloqueioTrial('editar o proprietário')) return;
   const p = DB.proprietarios.find(x=>x.id===id); if(!p) return;
   P = JSON.parse(JSON.stringify(p));
   pFotoCache = P.temFoto ? await idbGet(keyPropFoto(P.id)).catch(()=>null) : null;
@@ -1711,6 +1876,7 @@ function imoveisDoProprietario(id){
   });
 }
 function excluirProprietario(id){
+  if(bloqueioTrial('excluir o proprietário')) return;
   const p = DB.proprietarios.find(x=>x.id===id);
   const nome = p ? (p.nome||'este proprietário') : 'este proprietário';
   const vinculados = imoveisDoProprietario(id);
@@ -1735,6 +1901,7 @@ function excluirProprietario(id){
     noLabel:'Cancelar', yesLabel:'Excluir', yes:`doExcluirProprietario('${id}')`});
 }
 async function doExcluirProprietario(id){
+  if(bloqueioTrial('excluir o proprietário')) return;
   await idbDel(keyPropFoto(id)).catch(()=>{});
   DB.proprietarios = DB.proprietarios.filter(x=>x.id!==id);
   // desvincula dos imóveis (mantém os dados copiados no imóvel)
@@ -1758,6 +1925,7 @@ function escolherOrigemPropFoto(){
      <button class="btn" onclick="pegarArquivo('image/*','user',function(f){closeSheet();onPropFoto(f);})">${ic('camera',16)} Câmera</button>`);
 }
 async function removerPropFoto(){
+  if(bloqueioTrial('remover a foto')) return;
   await idbDel(keyPropFoto(P.id)).catch(()=>{});
   pFotoCache = null; P.temFoto=false; renderPropForm();
 }
@@ -1766,6 +1934,7 @@ function cancelarPropForm(){
   goTab('proprietarios');
 }
 function salvarProprietario(){
+  if(bloqueioTrial('salvar o proprietário')) return;
   P.nome = val('pNome') || P.nome;
   if(!P.nome.trim()){ toast('Informe o nome do proprietário.'); return; }
   if(P.cpf && !validarCPF(P.cpf)){ toast('CPF inválido — confira os números.'); return; }
@@ -1826,12 +1995,14 @@ function blankDraft(tipo){
   };
 }
 function iniciarCadastro(tipo){
+  if(bloqueioTrial('cadastrar um imóvel')) return;
   W = blankDraft(tipo||'casa'); wStep = 0; wCache = {};
   W._editando = false;
   document.getElementById('mainNav').classList.add('hidden');
   renderWizard();
 }
 async function editarImovel(id){
+  if(bloqueioTrial('editar o imóvel')) return;
   const im = DB.imoveis.find(x=>x.id===id);
   if(!im) return;
   W = JSON.parse(JSON.stringify(im));
@@ -2238,6 +2409,7 @@ function fotoSlotHTML(kind, i, existingKey, allowPublic, isPublic){
 }
 // Toque numa foto já preenchida: pergunta se quer substituir (gravar sobre a anterior).
 function editarFoto(kind, i){
+  if(bloqueioTrial('trocar fotos')) return;
   const nome = nomeFotoArq(kind, i);
   confirmar({icon:'📷', title:'Substituir a foto?',
     msg:`Deseja excluir a foto atual do campo <b>${esc(nome)}</b> e gravar outra por cima?`,
@@ -2328,6 +2500,7 @@ async function storeFotoDataUrl(kind, i, dataUrl){
   toast('Foto gravada como ' + nome);
 }
 async function removerFoto(kind, i){
+  if(bloqueioTrial('remover a foto')) return;
   const key = kind==='pub' ? keyFotoPub(W.id,i) : keyFotoAdd(W.id,i);
   await idbDel(key).catch(()=>{});
   delete wCache[key];
@@ -2374,11 +2547,13 @@ function escolherOrigemVideo(){
      <button class="btn" onclick="pegarArquivo('video/*','environment',function(f){closeSheet();onVideoSelected(f);})">${ic('camera',16)} Câmera</button>`);
 }
 function editarVideo(){
+  if(bloqueioTrial('trocar o vídeo')) return;
   confirmar({icon:'🎬', title:'Substituir o vídeo?',
     msg:`Deseja excluir o vídeo atual do campo <b>${esc(nomeVideoArq())}</b> e gravar outro por cima?`,
     noLabel:'Não', yesLabel:'Sim', yesBg:'var(--primary)', yes:'escolherOrigemVideo()'});
 }
 async function removerVideo(){
+  if(bloqueioTrial('remover o vídeo')) return;
   await idbDel(keyVideo(W.id)).catch(()=>{});
   W.video = null;
   renderWizard();
@@ -2398,11 +2573,13 @@ async function onContratoSelected(input){
   reader.readAsDataURL(file);
 }
 function editarContrato(){
+  if(bloqueioTrial('trocar o contrato')) return;
   confirmar({icon:'📄', title:'Substituir o contrato?',
     msg:`Deseja excluir o contrato atual do campo <b>${esc(nomeContratoArq())}</b> e gravar outro PDF por cima?`,
     noLabel:'Não', yesLabel:'Sim', yesBg:'var(--primary)', yes:"document.getElementById('contratoInput').click()"});
 }
 async function removerContrato(){
+  if(bloqueioTrial('remover o contrato')) return;
   await idbDel(keyContrato(W.id)).catch(()=>{});
   W.contrato = null;
   renderWizard();
@@ -2436,6 +2613,7 @@ function escolherOrigemCertidao(tipo){
      <button class="btn" onclick="pegarArquivo('image/*','environment',function(f){closeSheet();onCertidaoSelected('${tipo}',f);})">${ic('camera',16)} Câmera</button>`);
 }
 function editarCertidao(tipo){
+  if(bloqueioTrial('trocar a certidão')) return;
   confirmar({icon:'📄', title:'Substituir o anexo?', msg:`Deseja trocar o anexo de <b>${esc(CERTIDAO_LABEL[tipo]||'')}</b>?`,
     noLabel:'Não', yesLabel:'Sim', yesBg:'var(--primary)', yes:`escolherOrigemCertidao('${tipo}')`});
 }
@@ -2458,6 +2636,7 @@ async function storeCertidaoDataUrl(tipo, dataUrl, tipoArq){
   toast((CERTIDAO_LABEL[tipo]||'Certidão')+' anexada.');
 }
 async function removerCertidao(tipo){
+  if(bloqueioTrial('remover a certidão')) return;
   await idbDel(keyCertidao(W.id, tipo)).catch(()=>{});
   if(W.certidoes) delete W.certidoes[tipo];
   delete wCache[keyCertidao(W.id, tipo)];
@@ -2478,6 +2657,7 @@ async function hydratarCertidoes(){
 }
 
 async function salvarImovel(){
+  if(bloqueioTrial('salvar o imóvel')) return;
   const jaExiste = DB.imoveis.some(x=>x.id===W.id);
   if(jaExiste){
     confirmar({icon:'💾', title:'Regravar o imóvel?',
@@ -2488,6 +2668,7 @@ async function salvarImovel(){
   }
 }
 async function gravarImovel(){
+  if(bloqueioTrial('gravar o imóvel')) return;
   const jaExiste = DB.imoveis.some(x=>x.id===W.id);
   // Em imóvel novo, confirma o código sequencial e incrementa o contador do tipo.
   if(!jaExiste){
@@ -2631,6 +2812,7 @@ function abrirDetalhe(id){
   });
 }
 function confirmarExcluir(id){
+  if(bloqueioTrial('excluir o imóvel')) return;
   confirmar({icon:'🗑️', title:'Excluir este imóvel?', msg:'Todos os dados e fotos deste cadastro serão apagados. Esta ação não pode ser desfeita.',
     noLabel:'Cancelar', yesLabel:'Excluir', yes:`doExcluir('${id}')`});
 }
@@ -2693,6 +2875,7 @@ function abrirExtratoImovel(id){
   document.getElementById('mainContent').innerHTML = h;
 }
 async function doExcluir(id){
+  if(bloqueioTrial('excluir o imóvel')) return;
   for(let i=0;i<6;i++) idbDel(keyFotoPub(id,i)).catch(()=>{});
   for(let i=0;i<3;i++) idbDel(keyFotoAdd(id,i)).catch(()=>{});
   idbDel(keyVideo(id)).catch(()=>{});
@@ -2959,6 +3142,7 @@ function avaliacaoCor(n){
   return `rgb(${r},${g},${b})`;
 }
 function abrirAvaliacao(id){
+  if(bloqueioTrial('mudar a avaliação')) return;
   const a = DB.agendamentos.find(x=>x.id===id); if(!a) return;
   const atual = a.avaliacao||0;
   let cells = '';
@@ -2971,14 +3155,17 @@ function abrirAvaliacao(id){
     `<button class="btn gray" onclick="closeSheet()">Fechar</button>`);
 }
 function setAvaliacao(id, n){
+  if(bloqueioTrial('mudar a avaliação')) return;
   const a = DB.agendamentos.find(x=>x.id===id); if(!a) return;
   a.avaliacao = n; save(); closeSheet(); toast('Avaliação: '+n+'/10'); renderAgenda();
 }
 function excluirAgendamento(id){
+  if(bloqueioTrial('cancelar a visita')) return;
   confirmar({icon:'🗑️', title:'Cancelar esta visita?', msg:'A visita será removida da agenda. As despesas já lançadas no financeiro serão mantidas.',
     noLabel:'Voltar', yesLabel:'Cancelar visita', yes:`doExcluirAgendamento('${id}')`});
 }
 function doExcluirAgendamento(id){
+  if(bloqueioTrial('cancelar a visita')) return;
   DB.agendamentos = DB.agendamentos.filter(a=>a.id!==id);
   save(); toast('Compromisso excluído.'); renderAgenda();
 }
@@ -2986,6 +3173,7 @@ function doExcluirAgendamento(id){
 // ── Formulário de Visita ──
 let V = null;
 function novaVisita(){
+  if(bloqueioTrial('agendar uma visita')) return;
   if(DB.imoveis.length===0){ toast('Cadastre um imóvel antes de agendar uma visita.'); return; }
   V = { id:uid(), tipo:'visita', imovelId:'', data: agSelDate||isoDate(new Date()), hora:'09:00',
         compradorNome:'', compradorTel1:'', compradorTel2:'',
@@ -2994,6 +3182,7 @@ function novaVisita(){
   renderVisitaForm();
 }
 function editarAgendamento(id){
+  if(bloqueioTrial('editar a visita')) return;
   const a = DB.agendamentos.find(x=>x.id===id);
   if(!a){ toast('Compromisso não encontrado.'); return; }
   V = JSON.parse(JSON.stringify(a));
@@ -3074,6 +3263,7 @@ function renderVisitaForm(){
     </div></div>`;
 }
 function salvarVisita(){
+  if(bloqueioTrial('salvar a visita')) return;
   if(!V.imovelId){ toast('Escolha o imóvel da visita.'); return; }
   if(!V.compradorNome.trim()){ toast('Informe o nome do comprador.'); return; }
   V.updatedAt = Date.now();
@@ -3462,15 +3652,18 @@ function atualizarAposLancamento(){
   if(currentTab==='inicio') renderInicio(); else renderFinanceiro();
 }
 function novaDespesaManual(){
+  if(bloqueioTrial('lançar uma despesa')) return;
   showSheet('🧾 Nova despesa', despForm(null),
     `<button class="btn gray" onclick="closeSheet()">Cancelar</button><button class="btn" onclick="salvarDespesaManual('')">Salvar</button>`);
 }
 function editarDespesa(id){
+  if(bloqueioTrial('editar a despesa')) return;
   const ex = DB.financeiro.despesas.find(d=>d.id===id); if(!ex) return;
   showSheet('✏️ Editar despesa', despForm(ex),
     `<button class="btn gray" onclick="closeSheet()">Cancelar</button><button class="btn" onclick="salvarDespesaManual('${id}')">Salvar</button>`);
 }
 function salvarDespesaManual(editId){
+  if(bloqueioTrial('salvar a despesa')) return;
   const valor = parseMoeda(document.getElementById('ndVal').value);
   if(valor<=0){ toast('Informe um valor.'); return; }
   let categoria = document.getElementById('ndCat').value;
@@ -3497,11 +3690,13 @@ function salvarDespesaManual(editId){
 let _pendingCommit = null;
 function _runPendingCommit(){ const f=_pendingCommit; _pendingCommit=null; if(f) f(); }
 function excluirDespesa(id){
+  if(bloqueioTrial('excluir a despesa')) return;
   const e = DB.financeiro.despesas.find(d=>d.id===id);
   confirmar({icon:'🧾', title:'Excluir despesa?', msg:`Deseja excluir a despesa de <b>${fmtBRL(e?.valor)}</b>${e?.categoria?` (${esc(e.categoria)})`:''}?`,
     noLabel:'Cancelar', yesLabel:'Excluir', yes:`doExcluirDespesa('${id}')`});
 }
 function doExcluirDespesa(id){
+  if(bloqueioTrial('excluir a despesa')) return;
   DB.financeiro.despesas = DB.financeiro.despesas.filter(d=>d.id!==id);
   save(); toast('🗑️ Despesa excluída'); atualizarAposLancamento();
 }
@@ -3523,15 +3718,18 @@ function recForm(ex){
     <label>Descrição</label><input id="nrDesc" placeholder="Opcional" value="${esc(ex?.descricao||'')}">`;
 }
 function novaReceitaManual(){
+  if(bloqueioTrial('lançar uma receita')) return;
   showSheet('💚 Nova receita', recForm(null),
     `<button class="btn gray" onclick="closeSheet()">Cancelar</button><button class="btn green" onclick="salvarReceitaManual('')">Salvar</button>`);
 }
 function editarReceita(id){
+  if(bloqueioTrial('editar a receita')) return;
   const ex = DB.financeiro.receitas.find(d=>d.id===id); if(!ex) return;
   showSheet('✏️ Editar receita', recForm(ex),
     `<button class="btn gray" onclick="closeSheet()">Cancelar</button><button class="btn green" onclick="salvarReceitaManual('${id}')">Salvar</button>`);
 }
 function salvarReceitaManual(editId){
+  if(bloqueioTrial('salvar a receita')) return;
   const valor = parseMoeda(document.getElementById('nrVal').value);
   if(valor<=0){ toast('Informe um valor.'); return; }
   const categoria = (document.getElementById('nrCat').value||'').trim();
@@ -3553,11 +3751,13 @@ function salvarReceitaManual(editId){
   else { commit(); }
 }
 function excluirReceita(id){
+  if(bloqueioTrial('excluir a receita')) return;
   const e = DB.financeiro.receitas.find(d=>d.id===id);
   confirmar({icon:'💚', title:'Excluir receita?', msg:`Deseja excluir a receita de <b>${fmtBRL(e?.valor)}</b>${e?.categoria?` (${esc(e.categoria)})`:''}?`,
     noLabel:'Cancelar', yesLabel:'Excluir', yes:`doExcluirReceita('${id}')`});
 }
 function doExcluirReceita(id){
+  if(bloqueioTrial('excluir a receita')) return;
   DB.financeiro.receitas = DB.financeiro.receitas.filter(d=>d.id!==id);
   save(); toast('🗑️ Receita excluída'); atualizarAposLancamento();
 }
@@ -3616,7 +3816,10 @@ function renderConfig(){
            <div style="font-size:12px;color:var(--muted);margin-top:2px">Ative o Pro com um código de liberação.</div>
            <button class="btn" style="margin-top:12px" onclick="openProModal()">Ativar Pro</button>`;
       }
-      return `<div class="card">${corpo}
+      // Caixa colorida: amarelo bem claro no teste grátis, verde bem claro no Pro ativo.
+      const boxBg = proReal ? '#EAF9EF' : (emTrial ? '#FFF9E8' : (trialAcabou ? '#FEECEC' : 'var(--surface)'));
+      const boxBd = proReal ? '#8FD9A8' : (emTrial ? '#FFD980' : (trialAcabou ? '#F5B5B5' : 'var(--border)'));
+      return `<div class="card" style="background:${boxBg};border:1.5px solid ${boxBd}">${corpo}
         <div style="font-size:11px;color:var(--muted);margin-top:10px">ID deste aparelho: <b class="mono">AP-${myDevId()}</b></div>
       </div>`;
     })()}

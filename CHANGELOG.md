@@ -1,5 +1,33 @@
 # Corretor Imóveis Autônomo — Histórico de versões
 
+## v1.26.0 — Primeiro acesso com senha, contador do teste e caixa do Plano colorida
+- **Contador do teste na tela Início:** durante todo o teste grátis aparece, logo abaixo do aviso do CRECI, a faixa **"🎁 TESTE GRÁTIS · Faltam X dias"**. Faltando 5 dias ou menos ela vira laranja com **"⏳ ACABANDO"**.
+- **Tela de primeiro acesso:** ao abrir o app pela primeira vez, o corretor é convidado a **criar uma senha, digitada duas vezes** para conferir. A tela avisa na hora se as senhas não conferem e só libera o botão quando conferem e as regras são atendidas.
+- **Durante o teste grátis a senha é opcional** — o botão **"Continuar sem senha (teste grátis)"** entra direto no app, e ela pode ser criada depois.
+- **Ao assinar o Pro a senha passa a ser obrigatória:** quem ativar um código sem ter senha é levado a criá-la (também com confirmação) e a ativação continua logo em seguida. **Nenhum dado é apagado** — o cadastro que já existe passa a ser criptografado com a nova senha.
+- Criada a senha, o app volta a pedi-la ao abrir, com a tela de login de sempre.
+- **Ajustes › Plano:** a caixa agora é colorida — **amarelo bem claro** durante o teste grátis e **verde bem claro** com o Pro ativo (vermelho claro quando o teste termina).
+
+## v1.25.0 — Modo consulta ao fim do teste grátis
+- Quando o **teste de 30 dias vence** e não há Pro ativo, o app entra em **modo consulta**: todas as telas continuam abrindo normalmente — Início com o **Financeiro em aberto**, Imóveis, Agenda, Proprietários, Financeiro e relatórios — mas **nada pode ser incluído, alterado ou excluído**.
+- **Bloqueadas:** cadastrar/editar/excluir imóvel, proprietário e visita; avaliação de interesse; lançar/editar/excluir receita e despesa; trocar ou remover fotos, vídeo, contrato e certidões. Ao tentar, o app explica que o teste acabou e oferece **Assinar Pro**.
+- **Liberadas:** toda a tela de **Ajustes**, incluindo **Dados do corretor**, o **becape** e a **ativação do plano Pro**.
+- A faixa na tela Início mostra **quantos dias ainda restam da janela de consulta** (7 dias a contar do bloqueio).
+- **Nenhum dado é apagado** em momento algum — ativando o Pro, tudo volta a funcionar exatamente como antes.
+
+## v1.24.0 — Proprietário com imóvel não pode ser excluído
+- Ao tocar em **Excluir proprietário**, o app agora **verifica se existe imóvel cadastrado com esse proprietário**. Havendo, a exclusão é **bloqueada** e aparece a mensagem **"Tem imóvel deste proprietário"**, com a **lista dos imóveis** — tipo (Casa, Apartamento, Chácara/Sítio, Terreno) e código de registro (ex.: CS00006).
+- A verificação pega tanto os imóveis **vinculados pelo cadastro** quanto os antigos, sem vínculo, que guardam o **mesmo nome** de proprietário — assim nenhum imóvel fica órfão por engano.
+- Sem imóvel algum, a exclusão segue como antes, com a confirmação de sempre.
+
+## v1.23.0 — Separador de milhar, carteira CRECI no compartilhamento e ajustes de tela
+- **Dinheiro com separador de milhar em todo o app:** os valores passam a aparecer como **R$ 12.980,00** (antes R$ 12980,00). Vale para Financeiro, fluxo diário, extrato do imóvel, detalhe, revisão, tela Início e compartilhamento. Negativos saem como **- R$ 271,00**.
+- **Compartilhar imóvel:** nova chave **"Incluir a carteira CRECI"** na tela de compartilhamento. Ligada, envia junto a foto da carteira cadastrada em *Ajustes › Dados do corretor*; desligada (padrão), envia só as fotos e a descrição. Se não houver carteira cadastrada, o app avisa e não mostra a opção.
+- **Tela da visita:** abaixo de *Tamanho do terreno* e *Área construída* aparecem agora **Frente, Fundos, Lado esquerdo e Lado direito**, trazidos do cadastro do imóvel (somente leitura). Sem medida cadastrada, mostra "—".
+- **Agenda:** botão **Voltar ao Início** no fim da tela.
+- **Agenda — hora por extenso:** o horário da visita passa a aparecer como **as 03:10 hs**.
+- **Dados do corretor:** a foto da carteira CRECI passa a ser exibida **inteira dentro do campo**, sem corte nas bordas — antes a imagem era ampliada e ficava cortada.
+
 ## v1.22.0 — Medidas na chácara, Financeiro sem "Semana" e datas do fluxo diário
 - **Chácara/Sítio:** os quatro campos de medida do lote — **Frente, Fundos, Lado esquerdo e Lado direito**, em metros lineares — passam a aparecer também no cadastro da chácara, logo abaixo de *Terreno / Área total*, iguais aos do terreno. Aparecem na revisão, no detalhe e no compartilhamento; continuam ausentes em casa e apartamento.
 - **Financeiro:** o botão **Semana** foi removido. Os filtros ficam **Por mês · Fluxo diário · Realizado · Todas**.
