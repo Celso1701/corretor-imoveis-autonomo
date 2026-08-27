@@ -9,7 +9,7 @@
 // ou ícones), MUDE o número da versão abaixo (ex: 'v2' → 'v3'). É essa mudança de
 // texto que faz o navegador perceber que o sw.js é diferente e instalar a nova
 // versão — sem isso, ele pode continuar usando o service worker antigo.
-const CACHE_VERSION = 'v1.26.0';
+const CACHE_VERSION = 'v1.28.0';
 const CACHE_NAME = 'corretor-imoveis-' + CACHE_VERSION;
 
 // Arquivos essenciais para o app abrir mesmo sem internet.

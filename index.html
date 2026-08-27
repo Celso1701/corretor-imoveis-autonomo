@@ -328,7 +328,7 @@ header.topbar.home{padding:0;background:transparent;box-shadow:none}
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.26.0';
+const APP_VERSION = '1.28.0';
 // Ajudante para inserir ícones do kit (traço) em qualquer lugar
 function ic(name, size, style){ size=size||18; return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"${style?` style="${style}"`:''}><use href="#i-${name}"/></svg>`; }
 // Logo da marca (usado na splash e nas telas de senha)
@@ -1982,7 +1982,7 @@ function blankDraft(tipo){
     terreno:'', construcao:'', medFrente:'', medFundos:'', medEsquerdo:'', medDireito:'', condicao:'Usada', morador:'Não', tipoCasa:({casa:'Térrea',apartamento:'Padrão',chacara:'Lazer',terreno:'Plano'})[tipo]||'Térrea', outroTipo:'',
     vendaExclusiva:'Não', dataInicial:'', dataFinal:'',
     condominio:'0', comissao:'',
-    valorSolicitado:'', valorMinimo:'', valorNegociado:'',
+    valorSolicitado:'', valorMinimo:'', valorNegociado:'', dataProposta:'',
     vagas:'', coberta:true, disposicao:'Lado a lado', portao:false,
     portariaVigia:false, terrenoCondominio:'', terrenoAcesso:'', terrenoRuas:'', terrenoSarjeta:false, terrenoIluminacao:false,
     // extras do apartamento (Item C)
@@ -2033,6 +2033,7 @@ async function editarImovel(id){
   // reconstrói os campos de valor (planos) a partir de im.valores — zero vira "0,00"
   const centavos = n => maskMoedaFromNumber(n||0);
   W.valorSolicitado = im.valores ? centavos(im.valores.solicitado) : '';
+  W.dataProposta = (im.valores && im.valores.dataProposta) || '';
   W.valorMinimo     = im.valores ? centavos(im.valores.minimo) : '';
   W.valorNegociado  = im.valores ? centavos(im.valores.negociado) : '';
   wStep = 0; wCache = {};
@@ -2333,10 +2334,13 @@ function stepPaneHTML(i){
       <div class="review-item"><span class="k">Código do imóvel</span><span class="v mono" style="color:var(--primary)">${(W.codigo||'').toUpperCase()}</span></div></div>
 
     <div class="section-title">Valores do imóvel</div>
-    <div class="field"><label>Valor solicitado (R$)</label><input inputmode="numeric" placeholder="9.999.999,99" value="${esc(W.valorSolicitado)}" oninput="W.valorSolicitado=maskMoedaG(this)"></div>
     <div class="row2">
+      <div class="field"><label>Valor solicitado (R$)</label><input inputmode="numeric" placeholder="9.999.999,99" value="${esc(W.valorSolicitado)}" oninput="W.valorSolicitado=maskMoedaG(this)"></div>
       <div class="field"><label>Valor mínimo (R$)</label><input inputmode="numeric" placeholder="9.999.999,99" value="${esc(W.valorMinimo)}" oninput="W.valorMinimo=maskMoedaG(this)"></div>
+    </div>
+    <div class="row2">
       <div class="field"><label>Valor negociado (R$)</label><input inputmode="numeric" placeholder="9.999.999,99" value="${esc(W.valorNegociado)}" oninput="W.valorNegociado=maskMoedaG(this);atualizaComissaoCalc()"></div>
+      <div class="field"><label>Data da proposta</label><input type="date" value="${esc(W.dataProposta||'')}" oninput="W.dataProposta=this.value"><div class="hint">Pode ficar em branco</div></div>
     </div>
     <div class="field"><label>Comissão (%)</label><input inputmode="decimal" placeholder="0.0" value="${esc(W.comissao)}" oninput="W.comissao=sanitizarComissao(this);atualizaComissaoCalc()"><div class="hint">Até 99,9%</div></div>
     <div id="comissaoCalc">${comissaoCalcHTML()}</div>
@@ -2686,7 +2690,7 @@ async function gravarImovel(){
     exclusividade:{ exclusiva: W.vendaExclusiva==='Sim', dataInicial:W.dataInicial, dataFinal:W.dataFinal },
     condominio:{ valor: parseFloat(W.condominio)||0 },
     comissao: W.comissao||'',
-    valores:{ solicitado: parseMoeda(W.valorSolicitado||''), minimo: parseMoeda(W.valorMinimo||''), negociado: parseMoeda(W.valorNegociado||'') },
+    valores:{ solicitado: parseMoeda(W.valorSolicitado||''), minimo: parseMoeda(W.valorMinimo||''), negociado: parseMoeda(W.valorNegociado||''), dataProposta: W.dataProposta||'' },
     garagem:{ vagas:W.vagas, coberta:W.coberta, disposicao:W.disposicao, portao:W.portao, portariaVigia:W.portariaVigia },
     loteamento:{ condominio:W.terrenoCondominio, acesso:W.terrenoAcesso, ruas:W.terrenoRuas, sarjeta:W.terrenoSarjeta, iluminacao:W.terrenoIluminacao },
     agua:{ tipo:W.agua, fonte:W.aguaFonte, situacao:W.aguaSituacao },
@@ -2703,6 +2707,108 @@ async function gravarImovel(){
 }
 
 // ── Lista de imóveis ──
+
+// ═══ RESUMO DE PROPOSTAS ═══════════════════════════════════════════════════
+// Lista os imóveis por data de inclusão dentro de um período e fecha com os
+// totais: quantos registros, quantas propostas e a diferença entre o que foi
+// negociado e o que foi pedido.
+let resIni = '', resFim = '', resModo = 'registro';   // 'registro' | 'proposta'
+function abrirResumoPropostas(modo){
+  resModo = modo || 'registro';
+  const hoje = todayISO();
+  if(!resIni){
+    // começa no primeiro dia do mês corrente e vai até hoje
+    resIni = hoje.slice(0,8)+'01';
+    resFim = hoje;
+  }
+  if(resFim < resIni) resFim = resIni;
+  renderResumoPropostas();
+  window.scrollTo(0,0);
+}
+function setResIni(v){ if(!v) return; resIni=v; if(resFim<resIni) resFim=resIni; renderResumoPropostas(); }
+function setResFim(v){
+  if(!v) return;
+  if(v < resIni){ toast('A data final não pode ser anterior à data inicial.'); renderResumoPropostas(); return; }
+  resFim=v; renderResumoPropostas();
+}
+// Data de inclusão do imóvel em ISO (aceita o campo gravado ou o createdAt)
+function dataInclusaoISO(im){
+  if(im.dataInclusao) return im.dataInclusao;
+  if(im.createdAt) return isoDate(new Date(im.createdAt));
+  return '';
+}
+function renderResumoPropostas(){
+  document.getElementById('mainNav').classList.add('hidden');
+  document.getElementById('appHeader').innerHTML = `<h2>Resumo de propostas</h2>`;
+
+  const porProposta = resModo === 'proposta';
+  // "Por registro" filtra pela data de inclusão; "Por proposta", pela data da proposta.
+  const lista = DB.imoveis
+    .map(im=>({ im, d: porProposta ? (im.valores?.dataProposta||'') : dataInclusaoISO(im) }))
+    .filter(x=>x.d && x.d>=resIni && x.d<=resFim)
+    .sort((a,b)=> a.d.localeCompare(b.d));
+
+  let somaSol = 0, somaNeg = 0, nPropostas = 0;
+  let linhas = '';
+  lista.forEach(({im,d})=>{
+    const sol = parseFloat(im.valores?.solicitado)||0;
+    const neg = parseFloat(im.valores?.negociado)||0;
+    const dp  = im.valores?.dataProposta || '';
+    somaSol += sol; somaNeg += neg;
+    if(dp) nPropostas++;
+    linhas += `<div class="card" style="margin-bottom:8px;padding:12px 14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px">
+        <b class="mono" style="color:var(--primary);font-size:13px">${esc((im.codigo||'').toUpperCase())}</b>
+        <span style="font-size:11.5px;color:var(--muted)">${porProposta?'Proposta em':'Incluído em'} ${fmtDataBR(d)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:12.5px;padding:3px 0">
+        <span style="color:var(--muted)">Valor solicitado</span><b>${fmtBRL(sol)}</b></div>
+      <div style="display:flex;justify-content:space-between;font-size:12.5px;padding:3px 0">
+        <span style="color:var(--muted)">Data da proposta</span><b>${dp?fmtDataBR(dp):'—'}</b></div>
+      <div style="display:flex;justify-content:space-between;font-size:12.5px;padding:3px 0">
+        <span style="color:var(--muted)">Valor negociado</span><b style="color:${neg>0?'var(--success)':'var(--muted)'}">${fmtBRL(neg)}</b></div>
+    </div>`;
+  });
+
+  const dif = somaNeg - somaSol;
+  const corDif = dif > 0 ? 'var(--success)' : 'var(--danger)';
+
+  // Cabeçalho colorido: azul por registro, verde médio por proposta.
+  const cabBg = porProposta ? '#16A34A' : 'var(--primary)';
+  const cabTit = porProposta ? 'POR DATA DA PROPOSTA' : 'POR DATA REGISTRO DO IMÓVEL';
+  const cabSub = porProposta ? 'Imóveis cuja proposta foi feita no período' : 'Imóveis incluídos no período';
+
+  document.getElementById('mainContent').innerHTML = `
+    <div style="background:${cabBg};color:#fff;border-radius:14px;padding:14px 16px;margin-bottom:12px">
+      <div style="font-size:14px;font-weight:900;letter-spacing:.4px">${cabTit}</div>
+      <div style="font-size:11.5px;opacity:.85;margin-top:3px">${cabSub}</div>
+    </div>
+    <div class="card" style="margin-bottom:12px">
+      <div class="row2">
+        <div class="field" style="margin:0"><label>Data inicial</label><input type="date" value="${resIni}" onchange="setResIni(this.value)"></div>
+        <div class="field" style="margin:0"><label>Data final</label><input type="date" value="${resFim}" min="${resIni}" onchange="setResFim(this.value)"></div>
+      </div>
+    </div>
+
+    ${lista.length ? linhas : `<div class="empty"><div class="big">${ic('chart',40)}</div>${porProposta?'Nenhuma proposta neste período.':'Nenhum imóvel incluído neste período.'}</div>`}
+
+    <div class="card" style="background:var(--pblue);border:1.5px solid var(--primary);margin-top:14px">
+      <div style="font-size:13px;font-weight:800;margin-bottom:10px">Resumo do período</div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid var(--border)">
+        <span>Total de visitas</span><b>${lista.length}</b></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid var(--border)">
+        <span>Total de propostas</span><b>${nPropostas}</b></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid var(--border)">
+        <span>Valores solicitados</span><b>${fmtBRL(somaSol)}</b></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid var(--border)">
+        <span>Valores negociados</span><b>${fmtBRL(somaNeg)}</b></div>
+      <div style="display:flex;justify-content:space-between;font-size:14.5px;padding:9px 0 2px">
+        <b>Diferença</b><b style="color:${corDif}">${fmtBRL(dif)}</b></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5">Negociado menos solicitado. Verde quando fica acima do pedido; vermelho quando fica igual ou abaixo.</div>
+    </div>
+
+    <button class="btn gray" style="margin:16px 0 24px" onclick="goTab('imoveis')">Voltar</button>`;
+}
 let imoBuscaModo = 'nome';   // 'nome' | 'cep' | 'cidade'
 let imoBuscaQ = '';
 function renderListaImoveis(){
@@ -2717,6 +2823,8 @@ function renderListaImoveis(){
       ${fchip(imoBuscaModo==='nome',`${ic('search',14)} Nome`,"imoBuscaModo='nome';renderListaImoveis()")}
       ${fchip(imoBuscaModo==='cep',`${ic('pin',14)} CEP`,"imoBuscaModo='cep';renderListaImoveis()")}
       ${fchip(imoBuscaModo==='cidade',`${ic('building',14)} Cidade`,"imoBuscaModo='cidade';renderListaImoveis()")}
+      ${fchip(false,`${ic('chart',14)} Por registro`,"abrirResumoPropostas('registro')")}
+      ${fchip(false,`${ic('chart',14)} Por proposta`,"abrirResumoPropostas('proposta')")}
     </div>
     <div class="ag-search" style="margin-top:0;margin-bottom:12px">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
@@ -3113,7 +3221,10 @@ function agCardHTML(a, mostrarData){
   const im = DB.imoveis.find(x=>x.id===a.imovelId);
   const endereco = im ? `${im.localizacao.endereco||''}, ${im.localizacao.numero||''} — ${im.localizacao.cidade||''}/${im.localizacao.estado||''}` : 'Imóvel removido';
   const enderecoFull = im ? `${im.localizacao.endereco||''}, ${im.localizacao.numero||''} ${im.localizacao.cidade||''} ${im.localizacao.estado||''} ${im.localizacao.cep||''}`.trim() : '';
-  const totalDesp = ['transporte','refeicao','gasolina','outros'].reduce((s,k)=>s+parseMoeda(a.despesas?.[k]||''),0);
+  const temLista = Array.isArray(a.despesas?.outrosLista);
+  const chaves = temLista ? ['transporte','refeicao','gasolina'] : ['transporte','refeicao','gasolina','outros'];
+  const totalDesp = chaves.reduce((s,k)=>s+parseMoeda(a.despesas?.[k]||''),0)
+    + (temLista ? a.despesas.outrosLista.reduce((s,o)=>s+parseMoeda(o?.valor||''),0) : 0);
   const tel = (a.compradorTel1||'').replace(/\D/g,'');
   return `<div class="appt">
     <div class="tt">${mostrarData?fmtDataBR(a.data)+' · ':''}${fmtHora(a.hora)}</div>
@@ -3170,6 +3281,21 @@ function doExcluirAgendamento(id){
   save(); toast('Compromisso excluído.'); renderAgenda();
 }
 
+// ── Outros gastos da visita (5 valores + 5 descrições de até 15 caracteres) ──
+// Compatível com as visitas antigas, que tinham um único campo "outros".
+function outrosArr(){
+  if(!V.despesas.outrosLista){
+    const antigo = V.despesas.outros || '';
+    V.despesas.outrosLista = [0,1,2,3,4].map(i=>({ valor: i===0?antigo:'', desc: i===0&&antigo?'Outros':'' }));
+    V.despesas.outros = '';   // o valor migrou para a lista — não pode contar duas vezes
+  }
+  return V.despesas.outrosLista;
+}
+function outroVal(i){ return outrosArr()[i]?.valor || ''; }
+function outroDesc(i){ return outrosArr()[i]?.desc || ''; }
+function setOutroVal(i, v){ outrosArr()[i].valor = v; }
+function setOutroDesc(i, v){ outrosArr()[i].desc = (v||'').slice(0,15); }
+
 // ── Formulário de Visita ──
 let V = null;
 function novaVisita(){
@@ -3177,7 +3303,8 @@ function novaVisita(){
   if(DB.imoveis.length===0){ toast('Cadastre um imóvel antes de agendar uma visita.'); return; }
   V = { id:uid(), tipo:'visita', imovelId:'', data: agSelDate||isoDate(new Date()), hora:'09:00',
         compradorNome:'', compradorTel1:'', compradorTel2:'',
-        despesas:{ transporte:'', refeicao:'', gasolina:'', outros:'' }, createdAt:Date.now() };
+        despesas:{ transporte:'', refeicao:'', gasolina:'', outros:'',
+                   outrosLista:[0,1,2,3,4].map(()=>({valor:'',desc:''})) }, createdAt:Date.now() };
   V._novo = true;
   renderVisitaForm();
 }
@@ -3243,8 +3370,10 @@ function renderVisitaForm(){
 
     <div class="section-title" style="margin-top:8px">Dados do comprador</div>
     <div class="field"><label>Nome do comprador</label><input value="${esc(V.compradorNome)}" oninput="V.compradorNome=this.value"></div>
-    <div class="field"><label>Telefone 1</label><input inputmode="numeric" placeholder="(99)99999.9999" value="${esc(V.compradorTel1)}" oninput="V.compradorTel1=maskTelefone(this)"></div>
-    <div class="field"><label>Telefone 2</label><input inputmode="numeric" placeholder="(99)99999.9999" value="${esc(V.compradorTel2)}" oninput="V.compradorTel2=maskTelefone(this)"></div>
+    <div class="row2">
+      <div class="field"><label>Telefone 1</label><input inputmode="numeric" placeholder="(99)99999.9999" value="${esc(V.compradorTel1)}" oninput="V.compradorTel1=maskTelefone(this)"></div>
+      <div class="field"><label>Telefone 2</label><input inputmode="numeric" placeholder="(99)99999.9999" value="${esc(V.compradorTel2)}" oninput="V.compradorTel2=maskTelefone(this)"></div>
+    </div>
 
     <div class="section-title" style="margin-top:8px">Despesas da visita</div>
     <div class="public-note">Os valores lançados aqui vão para o <b>Financeiro › Despesas</b>, com a data confirmada da visita.</div>
@@ -3252,10 +3381,13 @@ function renderVisitaForm(){
       <div class="field"><label>Transporte</label><input inputmode="numeric" placeholder="99.999,99" value="${esc(V.despesas.transporte)}" oninput="V.despesas.transporte=maskMoeda(this)"></div>
       <div class="field"><label>Refeição</label><input inputmode="numeric" placeholder="99.999,99" value="${esc(V.despesas.refeicao)}" oninput="V.despesas.refeicao=maskMoeda(this)"></div>
     </div>
+    <div class="field"><label>Gasolina</label><input inputmode="numeric" placeholder="99.999,99" value="${esc(V.despesas.gasolina)}" oninput="V.despesas.gasolina=maskMoeda(this)"></div>
+    <div class="public-note" style="margin-top:4px">Outros gastos: informe o valor e, ao lado, um nome curto (até 15 caracteres) para saber do que se trata.</div>
+    ${[0,1,2,3,4].map(i=>`
     <div class="row2">
-      <div class="field"><label>Gasolina</label><input inputmode="numeric" placeholder="99.999,99" value="${esc(V.despesas.gasolina)}" oninput="V.despesas.gasolina=maskMoeda(this)"></div>
-      <div class="field"><label>Outros</label><input inputmode="numeric" placeholder="99.999,99" value="${esc(V.despesas.outros)}" oninput="V.despesas.outros=maskMoeda(this)"></div>
-    </div>
+      <div class="field"><label>Outros ${i+1}</label><input inputmode="numeric" placeholder="99.999,99" value="${esc(outroVal(i))}" oninput="setOutroVal(${i}, maskMoeda(this))"></div>
+      <div class="field"><label>Descrição</label><input maxlength="15" placeholder="Ex.: Estacionamento" value="${esc(outroDesc(i))}" oninput="setOutroDesc(${i}, this.value)"></div>
+    </div>`).join('')}
     <div style="height:80px"></div>
     <div class="wizfooter"><div class="btnrow">
       <button class="btn gray" onclick="goTab('agenda')">Voltar</button>
@@ -3279,7 +3411,7 @@ function salvarVisita(){
   DB.financeiro.despesas = DB.financeiro.despesas.filter(d=>d.agendamentoId!==V.id);
   const im = DB.imoveis.find(x=>x.id===V.imovelId);
   const reg = (im?.codigo||'').toUpperCase();  // ex.: CS00001
-  const cats = { transporte:'Transporte', refeicao:'Refeição', gasolina:'Gasolina', outros:'Outros' };
+  const cats = { transporte:'Transporte', refeicao:'Refeição', gasolina:'Gasolina' };
   Object.keys(cats).forEach(k=>{
     const valor = parseMoeda(V.despesas[k]||'');
     if(valor>0){
@@ -3287,6 +3419,18 @@ function salvarVisita(){
         id: uid(), categoria: cats[k], valor, data: V.data,
         origem:'agenda', agendamentoId: V.id, imovelId: V.imovelId, imovelCodigo: reg,
         descricao: `Visita ${reg} — ${V.compradorNome}`.trim(), createdAt: Date.now()
+      });
+    }
+  });
+  // os 5 campos de "Outros": cada um vira uma despesa própria, levando a descrição digitada
+  (V.despesas.outrosLista||[]).forEach(o=>{
+    const valor = parseMoeda(o.valor||'');
+    if(valor>0){
+      const nome = (o.desc||'').trim();
+      DB.financeiro.despesas.push({
+        id: uid(), categoria:'Outros', valor, data: V.data,
+        origem:'agenda', agendamentoId: V.id, imovelId: V.imovelId, imovelCodigo: reg,
+        descricao: `Visita ${reg} — ${V.compradorNome}${nome?' — '+nome:''}`.trim(), createdAt: Date.now()
       });
     }
   });

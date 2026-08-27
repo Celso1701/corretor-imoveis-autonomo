@@ -1,5 +1,20 @@
 # Corretor Imóveis Autônomo — Histórico de versões
 
+## v1.28.0 — Dois resumos, telefones lado a lado e 5 campos de outros gastos
+- **Dois botões de consulta** na tela de Imóveis: **Por registro** e **Por proposta**. O primeiro filtra pela **data de inclusão do imóvel**; o segundo, pela **data da proposta**. Os detalhes exibidos e os totais são os mesmos nas duas.
+- **Cabeçalho colorido** identificando a consulta: **azul** em *POR DATA REGISTRO DO IMÓVEL* e **verde médio** em *POR DATA DA PROPOSTA*.
+- **Atalhos removidos** — a tela agora tem apenas **data inicial** e **data final**, com a final nunca podendo ser anterior à inicial.
+- **Nova visita / editar visita:** **Telefone 1 e Telefone 2 na mesma linha**.
+- **Outros gastos da visita:** onde havia um único campo "Outros", agora há **5 valores**, cada um com sua **descrição de até 15 caracteres** (ex.: Estacionamento, Pedágio). Cada valor preenchido vira uma despesa própria no Financeiro, levando a descrição digitada.
+- Visitas antigas continuam funcionando: o valor que estava em "Outros" migra automaticamente para o primeiro campo da nova lista, sem contar duas vezes.
+
+## v1.27.0 — Data da proposta e novo Resumo de propostas
+- **Valores do imóvel reorganizados** na etapa de revisão: **Valor solicitado** e **Valor mínimo** na primeira linha; **Valor negociado** e o novo campo **Data da proposta** na segunda.
+- **Novo campo "Data da proposta"** — opcional, pode ficar em branco. É gravado com o imóvel e volta preenchido ao editar.
+- **Novo botão "Resumo"** na tela de Imóveis, ao lado de Nome, CEP e Cidade. Abre uma tela nova com **data inicial e data final** (a final nunca pode ser anterior à inicial) e atalhos **Este mês · Este ano · Tudo**.
+- A tela lista os imóveis do período **ordenados pela data de inclusão, do mais antigo para o mais recente**, mostrando registro, data de inclusão, valor solicitado, data da proposta e valor negociado.
+- No fim, o **resumo do período**: total de visitas (todos os registros listados), total de propostas (apenas os que têm data da proposta preenchida), soma dos valores solicitados, soma dos negociados e a **diferença** — em **verde** quando maior que zero e em **vermelho** quando igual ou menor que zero.
+
 ## v1.26.0 — Primeiro acesso com senha, contador do teste e caixa do Plano colorida
 - **Contador do teste na tela Início:** durante todo o teste grátis aparece, logo abaixo do aviso do CRECI, a faixa **"🎁 TESTE GRÁTIS · Faltam X dias"**. Faltando 5 dias ou menos ela vira laranja com **"⏳ ACABANDO"**.
 - **Tela de primeiro acesso:** ao abrir o app pela primeira vez, o corretor é convidado a **criar uma senha, digitada duas vezes** para conferir. A tela avisa na hora se as senhas não conferem e só libera o botão quando conferem e as regras são atendidas.
