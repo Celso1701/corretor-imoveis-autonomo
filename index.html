@@ -328,7 +328,7 @@ header.topbar.home{padding:0;background:transparent;box-shadow:none}
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.22.0';
+const APP_VERSION = '1.24.0';
 // Ajudante para inserir ícones do kit (traço) em qualquer lugar
 function ic(name, size, style){ size=size||18; return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"${style?` style="${style}"`:''}><use href="#i-${name}"/></svg>`; }
 // Logo da marca (usado na splash e nas telas de senha)
@@ -348,7 +348,15 @@ function toast(msg){
   const t=document.createElement('div'); t.className='toast'; t.textContent=msg;
   document.body.appendChild(t); setTimeout(()=>t.remove(),2600);
 }
-function fmtBRL(v){ return 'R$ ' + (parseFloat(v)||0).toFixed(2).replace('.',','); }
+function fmtBRL(v){
+  const n = parseFloat(v)||0;
+  const neg = n < 0;
+  let [int,dec] = Math.abs(n).toFixed(2).split('.');
+  int = int.replace(/\B(?=(\d{3})+(?!\d))/g,'.');   // 12980 -> 12.980
+  return (neg?'- ':'') + 'R$ ' + int + ',' + dec;
+}
+// Hora das visitas exibida por extenso: "as 03:10 hs"
+function fmtHora(h){ return h ? ('as '+h+' hs') : '--:--'; }
 function fmtDataBR(iso){ if(!iso) return '—'; const [a,m,d]=iso.split('-'); return `${d}/${m}/${a}`; }
 
 // ═══ Máscaras ═══
@@ -1691,12 +1699,39 @@ function renderPropForm(){
       <button class="btn green" onclick="salvarProprietario()">Salvar</button>
     </div></div>`;
 }
+// Imóveis que pertencem a este proprietário — pelo vínculo (id) ou, para cadastros
+// antigos sem vínculo, pelo nome gravado dentro do imóvel.
+function imoveisDoProprietario(id){
+  const p = DB.proprietarios.find(x=>x.id===id);
+  const nomeP = ((p&&p.nome)||'').trim().toLowerCase();
+  return DB.imoveis.filter(im=>{
+    if(im.proprietario?.id===id) return true;
+    const n = (im.proprietario?.nome||'').trim().toLowerCase();
+    return !!nomeP && n===nomeP;
+  });
+}
 function excluirProprietario(id){
   const p = DB.proprietarios.find(x=>x.id===id);
   const nome = p ? (p.nome||'este proprietário') : 'este proprietário';
-  const vinculados = DB.imoveis.filter(im=>im.proprietario?.id===id).length;
+  const vinculados = imoveisDoProprietario(id);
+
+  // Com imóvel cadastrado, a exclusão é BLOQUEADA — o imóvel ficaria sem dono.
+  if(vinculados.length){
+    const lista = vinculados.map(im=>
+      `<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)">
+         <span>${esc(tipoLabel(im.tipo))}</span>
+         <b class="mono" style="color:var(--primary)">${esc((im.codigo||'').toUpperCase())}</b>
+       </div>`).join('');
+    confirmar({icon:'⛔', title:'Não é possível excluir',
+      msg:`<b>Tem imóvel deste proprietário.</b><br>
+        <span style="font-size:12.5px">${esc(nome)} está em <b>${vinculados.length} imóvel(is)</b>. Exclua ou troque o proprietário desses imóveis antes de apagar o cadastro.</span>
+        <div style="margin-top:10px;text-align:left;font-size:12.5px">${lista}</div>`,
+      single:true, yesLabel:'Entendi', yesBg:'var(--primary)', yes:''});
+    return;
+  }
+
   confirmar({icon:'🗑️', title:'Excluir proprietário?',
-    msg:`Deseja realmente excluir <b>${esc(nome)}</b>?${vinculados?` <br>Há ${vinculados} imóvel(is) que usam estes dados — eles não serão apagados, mas perderão o vínculo.`:''} Esta ação não pode ser desfeita.`,
+    msg:`Deseja realmente excluir <b>${esc(nome)}</b>? Esta ação não pode ser desfeita.`,
     noLabel:'Cancelar', yesLabel:'Excluir', yes:`doExcluirProprietario('${id}')`});
 }
 async function doExcluirProprietario(id){
@@ -2679,16 +2714,21 @@ async function abrirCompartilhar(id){
   const nFotos = (im.fotosPublicas||[]).filter(Boolean).length;
   const temVideo = !!(im.video && im.video.compartilhar);
   const videoExisteNaoCompart = !!(im.video && !im.video.compartilhar);
-  _shareData = { texto, files: [], pronto:false };
+  const temCarteira = !!(DB.corretor && DB.corretor.temCreci);
+  _shareData = { texto, files: [], creciFile: null, incluirCreci: false, pronto:false };
   showSheet('Compartilhar imóvel', `
     <div style="font-size:13px;color:var(--muted);margin-bottom:10px">
       Serão compartilhados: <b>${nFotos} foto(s)</b>${temVideo?' + <b>vídeo</b>':''} + a descrição.
       ${videoExisteNaoCompart?'<br><span style="font-size:11.5px">O vídeo existe, mas está marcado para <b>não</b> compartilhar (etapa Vídeo do cadastro).</span>':''}
       ${(nFotos||temVideo)?'':'<br><span style="font-size:11.5px">Sem fotos/vídeo marcados — será compartilhado só o texto.</span>'}
     </div>
+    ${temCarteira?`<div class="toggle-row" style="margin-bottom:10px">
+      <div class="lbl">Incluir a carteira CRECI<span class="d">Envia junto a foto da carteira cadastrada em Dados do corretor</span></div>
+      <div class="switch" id="swCreci" onclick="alternarCreciShare(this)"></div>
+    </div>`:`<div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">Sem foto da carteira CRECI cadastrada em <b>Ajustes › Dados do corretor</b> — nada a anexar.</div>`}
     <textarea rows="6" readonly style="font-size:12.5px">${esc(texto)}</textarea>`,
     `<button class="btn gray" onclick="closeSheet()">Fechar</button>
-     ${(nFotos||temVideo)?`<button class="btn green" onclick="fazerCompartilhamento()">${ic('share',16)} Compartilhar fotos${temVideo?' + vídeo':''}</button>`:''}
+     ${(nFotos||temVideo||temCarteira)?`<button class="btn green" onclick="fazerCompartilhamento()">${ic('share',16)} Compartilhar${(nFotos||temVideo)?' fotos'+(temVideo?' + vídeo':''):''}</button>`:''}
      <button class="btn" onclick="window.open('https://wa.me/?text=${encodeURIComponent(texto)}','_blank')">Só texto</button>`);
   // Pré-carrega as mídias (para o compartilhamento nativo funcionar no iPhone, sem quebrar o gesto do usuário)
   try{
@@ -2702,12 +2742,22 @@ async function abrirCompartilhar(id){
     if(temVideo){
       try{ const dv = await idbGet(keyVideo(id)); if(dv) files.push(await dataURLtoFile(dv, cod+'_video.mp4')); }catch(e){}
     }
+    if(temCarteira){
+      try{ const dc = await idbGet(keyCorretorCreci()); if(dc && _shareData) _shareData.creciFile = await dataURLtoFile(dc, 'carteira_creci.jpg'); }catch(e){}
+    }
     if(_shareData) { _shareData.files = files; _shareData.pronto = true; }
   }catch(e){ if(_shareData) _shareData.pronto = true; }
 }
+// Liga/desliga o anexo da carteira CRECI na folha de compartilhamento.
+function alternarCreciShare(el){
+  if(!_shareData) return;
+  _shareData.incluirCreci = !_shareData.incluirCreci;
+  el.classList.toggle('on', _shareData.incluirCreci);
+}
 async function fazerCompartilhamento(){
   const d = _shareData; if(!d){ closeSheet(); return; }
-  const files = d.files || [];
+  const files = (d.files || []).slice();
+  if(d.incluirCreci && d.creciFile) files.push(d.creciFile);
   // 1) compartilhamento nativo COM arquivos (chamado de forma síncrona p/ preservar o gesto no iPhone)
   if(files.length && navigator.canShare){
     let ok = false; try{ ok = navigator.canShare({ files }); }catch(e){ ok = false; }
@@ -2865,7 +2915,8 @@ function renderAgenda(){
       ${doDia.length===0 ? `<div class="empty"><div class="big">${ic('calendar',40)}</div>Nada agendado para este dia.<br><button class="btn" style="margin-top:16px;max-width:220px" onclick="novaVisita()">＋ Nova visita</button></div>` :
         doDia.map(a=>agCardHTML(a)).join('')}
     `}
-    `}`;
+    `}
+    <button class="btn gray" style="margin:18px 0 24px" onclick="goTab('inicio')">Voltar ao Início</button>`;
   const paraThumbs = resultadosBusca!==null ? resultadosBusca : (agVerSemana ? semanaLista : doDia);
   paraThumbs.forEach(a=>{
     const im = DB.imoveis.find(x=>x.id===a.imovelId);
@@ -2882,7 +2933,7 @@ function agCardHTML(a, mostrarData){
   const totalDesp = ['transporte','refeicao','gasolina','outros'].reduce((s,k)=>s+parseMoeda(a.despesas?.[k]||''),0);
   const tel = (a.compradorTel1||'').replace(/\D/g,'');
   return `<div class="appt">
-    <div class="tt">${mostrarData?fmtDataBR(a.data)+' · ':''}${a.hora||'--:--'}</div>
+    <div class="tt">${mostrarData?fmtDataBR(a.data)+' · ':''}${fmtHora(a.hora)}</div>
     <div style="display:flex;gap:12px">
       <div class="thumb" id="agthumb_${a.id}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 11.5L12 4l8 7.5M6 10.5V19h12v-8.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
       <div style="flex:1;min-width:0">
@@ -2962,8 +3013,15 @@ function selecionarImovelVisita(id){
   // traz do cadastro e grava no agendamento
   V.terreno = im ? (im.caracteristicas.terreno||'') : '';
   V.construida = im ? (im.caracteristicas.construcao||'') : '';
+  V.medidas = im ? medidasLoteTxt(im.caracteristicas) : '';
   V.imovelCodigo = im ? (im.codigo||'').toUpperCase() : '';
   renderVisitaForm();
+}
+// Uma medida do lote do imóvel escolhido, já formatada ("10,5 m") — vazia vira "—".
+function medLote(im, campo){
+  const v = im && im.caracteristicas ? im.caracteristicas[campo] : '';
+  if(v===''||v===null||v===undefined||!(parseFloat(v)>0)) return '—';
+  return String(v).replace('.',',')+' m';
 }
 function renderVisitaForm(){
   document.getElementById('mainNav').classList.add('hidden');
@@ -2980,6 +3038,14 @@ function renderVisitaForm(){
     <div class="row2">
       <div class="field"><label>Tamanho do terreno</label><input value="${esc(V.terreno||'')} m²" disabled></div>
       <div class="field"><label>Área construída</label><input value="${esc(V.construida||'')} m²" disabled></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Frente</label><input value="${esc(medLote(im,'medFrente'))}" disabled></div>
+      <div class="field"><label>Fundos</label><input value="${esc(medLote(im,'medFundos'))}" disabled></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Lado esquerdo</label><input value="${esc(medLote(im,'medEsquerdo'))}" disabled></div>
+      <div class="field"><label>Lado direito</label><input value="${esc(medLote(im,'medDireito'))}" disabled></div>
     </div>`:''}
     <div class="row2">
       <div class="field"><label>Data confirmada</label><input type="date" value="${esc(V.data)}" oninput="V.data=this.value"></div>
@@ -3661,7 +3727,7 @@ function renderDadosCorretor(){
       <button class="btn green" onclick="salvarCorretor()">Salvar</button>
     </div></div>`;
   if(c.temFoto) idbGet(keyCorretorFoto()).then(d=>{ if(d){ const el=document.getElementById('corFotoSlot'); if(el) el.innerHTML=`<img src="${d}" style="width:96px;height:96px;object-fit:cover">`; } }).catch(()=>{});
-  if(c.temCreci) idbGet(keyCorretorCreci()).then(d=>{ if(d){ const el=document.getElementById('corCreciSlot'); if(el){ el.style.border='1.5px solid var(--primary)'; el.innerHTML=`<img src="${d}" style="width:100%;height:100%;object-fit:cover">`; } } }).catch(()=>{});
+  if(c.temCreci) idbGet(keyCorretorCreci()).then(d=>{ if(d){ const el=document.getElementById('corCreciSlot'); if(el){ el.style.border='1.5px solid var(--primary)'; el.style.background='#F1F4F9'; el.innerHTML=`<img src="${d}" style="width:100%;height:100%;object-fit:contain">`; } } }).catch(()=>{});
 }
 function escolherOrigemCorFoto(kind){
   const titulo = kind==='foto' ? 'Foto do corretor' : 'Carteira CRECI';
