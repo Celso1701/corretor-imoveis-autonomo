@@ -153,7 +153,7 @@ legend{padding:0;margin-bottom:8px;font-size:11px;font-weight:700;color:var(--mu
 .review-item .v{font-weight:700;text-align:right}
 .review-block{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:4px 14px;margin-bottom:12px;box-shadow:var(--shadow)}
 .review-block-title{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--primary);padding-top:11px;font-weight:700}
-.wizfooter{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;padding:12px 18px calc(12px + env(safe-area-inset-bottom));background:var(--bg);border-top:1px solid var(--border);z-index:20}
+.wizfooter{position:fixed;bottom:calc(62px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);width:100%;max-width:480px;padding:12px 18px calc(12px + env(safe-area-inset-bottom));background:var(--bg);border-top:1px solid var(--border);z-index:20}
 
 /* ---- bottom nav ---- */
 nav{position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;background:var(--surface);border-top:1px solid var(--border);display:flex;padding:6px 0 calc(8px + env(safe-area-inset-bottom));z-index:50}
@@ -328,7 +328,7 @@ header.topbar.home{padding:0;background:transparent;box-shadow:none}
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.28.0';
+const APP_VERSION = '1.30.0';
 // Ajudante para inserir ícones do kit (traço) em qualquer lugar
 function ic(name, size, style){ size=size||18; return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"${style?` style="${style}"`:''}><use href="#i-${name}"/></svg>`; }
 // Logo da marca (usado na splash e nas telas de senha)
@@ -1347,7 +1347,9 @@ function enterApp(){
   }
 }
 let currentTab = 'inicio';
-function goTab(tab){
+function goTab(tab, forcado){
+  // Saindo de um cadastro pela metade (imóvel ou visita), pergunta antes de perder o que foi digitado.
+  if(!forcado && (W || V)){ perguntarGravarAntesDeSair(tab); return; }
   currentTab = tab;
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on', b.dataset.tab===tab));
   document.getElementById('mainNav').classList.remove('hidden');
@@ -1358,6 +1360,38 @@ function goTab(tab){
   else if(tab==='proprietarios') renderHeader(false), renderListaProprietarios();
   else if(tab==='financeiro'){ fluxoDiaSel=''; renderHeader(false); renderFinanceiro(); }
   else if(tab==='config') renderHeader(false), renderConfig();
+}
+// ── Sair de um cadastro em andamento ─────────────────────────────────────────
+// Chamado quando o corretor toca no menu de baixo no meio do cadastro de um
+// imóvel ou de uma visita. "Sim" grava e vai para a aba escolhida; "Não" sai
+// descartando o que estava sendo digitado.
+function perguntarGravarAntesDeSair(tab){
+  const oQue = W ? 'do imóvel' : 'da visita';
+  confirmar({ icon:'💾', title:'Sair sem terminar?',
+    msg:`Deseja gravar estas informações ${oQue} antes de sair?`,
+    noLabel:'Não', no:`descartarESair('${tab}')`,
+    yesLabel:'Sim', yesBg:'var(--success)', yes:`gravarESair('${tab}')` });
+}
+async function gravarESair(tab){
+  if(W){ await gravarImovel(); }
+  else if(V){ salvarVisita(); }
+  // Se faltou algo obrigatório, o próprio salvamento avisa e o rascunho continua
+  // em pé — nesse caso o corretor permanece na tela em vez de perder os dados.
+  if(W || V) return;
+  goTab(tab, true);
+}
+function descartarESair(tab){
+  if(W){
+    const jaSalvo = DB.imoveis.some(x=>x.id===W.id);
+    if(!jaSalvo){   // imóvel novo: apaga as mídias que já tinham sido escolhidas
+      for(let i=0;i<6;i++) idbDel(keyFotoPub(W.id,i)).catch(()=>{});
+      for(let i=0;i<3;i++) idbDel(keyFotoAdd(W.id,i)).catch(()=>{});
+      idbDel(keyVideo(W.id)).catch(()=>{});
+      idbDel(keyContrato(W.id)).catch(()=>{});
+    }
+  }
+  W = null; V = null;
+  goTab(tab, true);
 }
 function renderHeader(withSearch){
   const primeiroNome = (DB.corretor?.nome||'').trim().split(' ')[0] || 'corretor(a)';
@@ -1737,7 +1771,7 @@ function listaContatosVisitasHTML(){
 
 // ── Tipos de imóvel ──
 function abrirTipos(){
-  document.getElementById('mainNav').classList.add('hidden');
+  document.getElementById('mainNav').classList.remove('hidden');
   document.getElementById('appHeader').innerHTML = `
     <div class="eyebrow">Vender</div><h2>Tipo de imóvel</h2>
     <div class="cat-row" style="margin-top:14px">
@@ -1831,7 +1865,7 @@ async function editarProprietario(id){
 }
 function renderPropForm(){
   const editing = DB.proprietarios.some(x=>x.id===P.id);
-  document.getElementById('mainNav').classList.add('hidden');
+  document.getElementById('mainNav').classList.remove('hidden');
   document.getElementById('appHeader').innerHTML = `
     <h2>${editing?'Editar proprietário':'Novo proprietário'}</h2>`;
   document.getElementById('mainContent').innerHTML = `
@@ -1852,13 +1886,15 @@ function renderPropForm(){
       <div class="field" style="margin:0"><label>RG</label><input value="${esc(P.rg||'')}" oninput="P.rg=this.value"></div>
       <div class="field" style="margin:0"><label>CPF</label><input id="pCpf" value="${esc(P.cpf||'')}" inputmode="numeric" placeholder="000.000.000-00" oninput="P.cpf=maskCPF(this)"><div class="hint" id="cpfHint"></div></div>
     </div>
-    <div class="field"><label>Tel 1</label><input id="pTel1" value="${esc(P.tel1)}" inputmode="numeric" placeholder="(99)99999.9999" oninput="P.tel1=maskTelefone(this)"></div>
-    <div class="field"><label>Tel 2</label><input value="${esc(P.tel2)}" inputmode="numeric" placeholder="(99)99999.9999" oninput="P.tel2=maskTelefone(this)"></div>
-    <div class="field"><label>Tel 3</label><input value="${esc(P.tel3)}" inputmode="numeric" placeholder="(99)99999.9999" oninput="P.tel3=maskTelefone(this)"></div>
-    <div class="field"><label>E-mail 1</label><input value="${esc(P.email1)}" oninput="P.email1=this.value"></div>
-    <div class="field"><label>E-mail 2</label><input value="${esc(P.email2)}" oninput="P.email2=this.value"></div>
+    <div class="row2">
+      <div class="field" style="margin:0"><label>Tel 1</label><input id="pTel1" value="${esc(P.tel1)}" inputmode="numeric" placeholder="(99)99999.9999" oninput="P.tel1=maskTelefone(this)"></div>
+      <div class="field" style="margin:0"><label>Tel 2</label><input value="${esc(P.tel2)}" inputmode="numeric" placeholder="(99)99999.9999" oninput="P.tel2=maskTelefone(this)"></div>
+    </div>
+    <div class="field" style="margin-top:14px"><label>Tel 3</label><input value="${esc(P.tel3)}" inputmode="numeric" placeholder="(99)99999.9999" oninput="P.tel3=maskTelefone(this)"></div>
+    <div class="field"><label>E-mail 1</label><input type="email" inputmode="email" placeholder="nome@exemplo.com" value="${esc(P.email1)}" oninput="P.email1=this.value"></div>
+    <div class="field"><label>E-mail 2</label><input type="email" inputmode="email" placeholder="nome@exemplo.com" value="${esc(P.email2)}" oninput="P.email2=this.value"></div>
     ${editing?`<button class="btn danger" style="margin-top:6px" onclick="excluirProprietario('${P.id}')">${ic('trash',15)} Excluir proprietário</button>`:''}
-    <div style="height:80px"></div>
+    <div style="height:150px"></div>
     <div class="wizfooter"><div class="btnrow">
       <button class="btn gray" onclick="cancelarPropForm()">Voltar</button>
       <button class="btn green" onclick="salvarProprietario()">Salvar</button>
@@ -1930,7 +1966,7 @@ async function removerPropFoto(){
   pFotoCache = null; P.temFoto=false; renderPropForm();
 }
 function cancelarPropForm(){
-  if(_voltarAoImovel && W){ _voltarAoImovel=false; P=null; pFotoCache=null; wStep=1; document.getElementById('mainNav').classList.add('hidden'); renderWizard(); return; }
+  if(_voltarAoImovel && W){ _voltarAoImovel=false; P=null; pFotoCache=null; wStep=1; document.getElementById('mainNav').classList.remove('hidden'); renderWizard(); return; }
   goTab('proprietarios');
 }
 function salvarProprietario(){
@@ -1953,7 +1989,7 @@ function salvarProprietario(){
     // volta ao cadastro do imóvel já selecionando o proprietário recém-criado
     escolherProprietario(novoId);
     wStep = 1;
-    document.getElementById('mainNav').classList.add('hidden');
+    document.getElementById('mainNav').classList.remove('hidden');
     renderWizard();
     return;
   }
@@ -1998,7 +2034,7 @@ function iniciarCadastro(tipo){
   if(bloqueioTrial('cadastrar um imóvel')) return;
   W = blankDraft(tipo||'casa'); wStep = 0; wCache = {};
   W._editando = false;
-  document.getElementById('mainNav').classList.add('hidden');
+  document.getElementById('mainNav').classList.remove('hidden');
   renderWizard();
 }
 async function editarImovel(id){
@@ -2037,7 +2073,7 @@ async function editarImovel(id){
   W.valorMinimo     = im.valores ? centavos(im.valores.minimo) : '';
   W.valorNegociado  = im.valores ? centavos(im.valores.negociado) : '';
   wStep = 0; wCache = {};
-  document.getElementById('mainNav').classList.add('hidden');
+  document.getElementById('mainNav').classList.remove('hidden');
   renderWizard();
 }
 function sairWizardSemSalvar(){
@@ -2064,7 +2100,7 @@ function renderWizard(){
       <div class="progress-track"><div class="progress-fill" style="width:${((wStep+1)/TOTAL_STEPS)*100}%"></div></div>
     </div>`;
   const ultima = TOTAL_STEPS-1;
-  document.getElementById('mainContent').innerHTML = `<div style="padding-bottom:76px">${stepPaneHTML(wStep)}</div>
+  document.getElementById('mainContent').innerHTML = `<div style="padding-bottom:150px">${stepPaneHTML(wStep)}</div>
     <div class="wizfooter"><div class="btnrow">
       <button class="btn gray" onclick="${wStep===0?'sairWizardSemSalvar()':'irStep(wStep-1)'}">Voltar</button>
       <button class="btn ${wStep===ultima?'green':''}" onclick="${wStep===ultima?'salvarImovel()':'irStep(wStep+1)'}">${wStep===ultima?'Salvar imóvel':'Avançar'}</button>
@@ -2738,7 +2774,7 @@ function dataInclusaoISO(im){
   return '';
 }
 function renderResumoPropostas(){
-  document.getElementById('mainNav').classList.add('hidden');
+  document.getElementById('mainNav').classList.remove('hidden');
   document.getElementById('appHeader').innerHTML = `<h2>Resumo de propostas</h2>`;
 
   const porProposta = resModo === 'proposta';
@@ -2748,7 +2784,7 @@ function renderResumoPropostas(){
     .filter(x=>x.d && x.d>=resIni && x.d<=resFim)
     .sort((a,b)=> a.d.localeCompare(b.d));
 
-  let somaSol = 0, somaNeg = 0, nPropostas = 0;
+  let somaSol = 0, somaNeg = 0, nPropostas = 0, somaRec = 0, somaDesp = 0;
   let linhas = '';
   lista.forEach(({im,d})=>{
     const sol = parseFloat(im.valores?.solicitado)||0;
@@ -2756,6 +2792,13 @@ function renderResumoPropostas(){
     const dp  = im.valores?.dataProposta || '';
     somaSol += sol; somaNeg += neg;
     if(dp) nPropostas++;
+    // receitas e despesas lançadas para ESTE imóvel dentro do período escolhido
+    const rec = DB.financeiro.receitas.filter(e=>e.imovelId===im.id && (e.data||'')>=resIni && (e.data||'')<=resFim)
+                  .reduce((t,e)=>t+(e.valor||0),0);
+    const des = DB.financeiro.despesas.filter(e=>e.imovelId===im.id && (e.data||'')>=resIni && (e.data||'')<=resFim)
+                  .reduce((t,e)=>t+(e.valor||0),0);
+    somaRec += rec; somaDesp += des;
+    const sal = rec - des;
     linhas += `<div class="card" style="margin-bottom:8px;padding:12px 14px">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px">
         <b class="mono" style="color:var(--primary);font-size:13px">${esc((im.codigo||'').toUpperCase())}</b>
@@ -2767,6 +2810,14 @@ function renderResumoPropostas(){
         <span style="color:var(--muted)">Data da proposta</span><b>${dp?fmtDataBR(dp):'—'}</b></div>
       <div style="display:flex;justify-content:space-between;font-size:12.5px;padding:3px 0">
         <span style="color:var(--muted)">Valor negociado</span><b style="color:${neg>0?'var(--success)':'var(--muted)'}">${fmtBRL(neg)}</b></div>
+      <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px">
+        <div style="display:flex;justify-content:space-between;font-size:12.5px;padding:2px 0">
+          <span style="color:var(--muted)">Receitas do imóvel</span><b style="color:var(--success)">${fmtBRL(rec)}</b></div>
+        <div style="display:flex;justify-content:space-between;font-size:12.5px;padding:2px 0">
+          <span style="color:var(--muted)">Despesas do imóvel</span><b style="color:var(--danger)">${fmtBRL(des)}</b></div>
+        <div style="display:flex;justify-content:space-between;font-size:12.5px;padding:2px 0">
+          <span style="color:var(--muted)">Saldo</span><b style="color:${sal>=0?'var(--success)':'var(--danger)'}">${fmtBRL(sal)}</b></div>
+      </div>
     </div>`;
   });
 
@@ -2778,11 +2829,19 @@ function renderResumoPropostas(){
   const cabTit = porProposta ? 'POR DATA DA PROPOSTA' : 'POR DATA REGISTRO DO IMÓVEL';
   const cabSub = porProposta ? 'Imóveis cuja proposta foi feita no período' : 'Imóveis incluídos no período';
 
+  const saldoFin = somaRec - somaDesp;
+
   document.getElementById('mainContent').innerHTML = `
+    <div class="btnrow" style="margin-bottom:12px">
+      <button class="btn gray" onclick="goTab('imoveis')">Voltar</button>
+      <button class="btn" onclick="goTab('inicio')">Voltar ao Início</button>
+    </div>
+
     <div style="background:${cabBg};color:#fff;border-radius:14px;padding:14px 16px;margin-bottom:12px">
       <div style="font-size:14px;font-weight:900;letter-spacing:.4px">${cabTit}</div>
       <div style="font-size:11.5px;opacity:.85;margin-top:3px">${cabSub}</div>
     </div>
+
     <div class="card" style="margin-bottom:12px">
       <div class="row2">
         <div class="field" style="margin:0"><label>Data inicial</label><input type="date" value="${resIni}" onchange="setResIni(this.value)"></div>
@@ -2790,9 +2849,7 @@ function renderResumoPropostas(){
       </div>
     </div>
 
-    ${lista.length ? linhas : `<div class="empty"><div class="big">${ic('chart',40)}</div>${porProposta?'Nenhuma proposta neste período.':'Nenhum imóvel incluído neste período.'}</div>`}
-
-    <div class="card" style="background:var(--pblue);border:1.5px solid var(--primary);margin-top:14px">
+    <div class="card" style="background:var(--pblue);border:1.5px solid var(--primary);margin-bottom:14px">
       <div style="font-size:13px;font-weight:800;margin-bottom:10px">Resumo do período</div>
       <div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid var(--border)">
         <span>Total de visitas</span><b>${lista.length}</b></div>
@@ -2802,12 +2859,19 @@ function renderResumoPropostas(){
         <span>Valores solicitados</span><b>${fmtBRL(somaSol)}</b></div>
       <div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid var(--border)">
         <span>Valores negociados</span><b>${fmtBRL(somaNeg)}</b></div>
-      <div style="display:flex;justify-content:space-between;font-size:14.5px;padding:9px 0 2px">
+      <div style="display:flex;justify-content:space-between;font-size:14.5px;padding:9px 0;border-bottom:1px solid var(--border)">
         <b>Diferença</b><b style="color:${corDif}">${fmtBRL(dif)}</b></div>
-      <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5">Negociado menos solicitado. Verde quando fica acima do pedido; vermelho quando fica igual ou abaixo.</div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;padding:7px 0 5px;border-bottom:1px solid var(--border)">
+        <span>Receitas do período</span><b style="color:var(--success)">${fmtBRL(somaRec)}</b></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid var(--border)">
+        <span>Despesas do período</span><b style="color:var(--danger)">${fmtBRL(somaDesp)}</b></div>
+      <div style="display:flex;justify-content:space-between;font-size:14.5px;padding:9px 0 2px">
+        <b>Saldo (receitas − despesas)</b><b style="color:${saldoFin>=0?'var(--success)':'var(--danger)'}">${fmtBRL(saldoFin)}</b></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5">Diferença = negociado menos solicitado (verde acima do pedido, vermelho igual ou abaixo). Receitas e despesas são as dos imóveis listados, dentro do período.</div>
     </div>
 
-    <button class="btn gray" style="margin:16px 0 24px" onclick="goTab('imoveis')">Voltar</button>`;
+    ${lista.length ? linhas : `<div class="empty"><div class="big">${ic('chart',40)}</div>${porProposta?'Nenhuma proposta neste período.':'Nenhum imóvel incluído neste período.'}</div>`}
+    <div style="height:150px"></div>`;
 }
 let imoBuscaModo = 'nome';   // 'nome' | 'cep' | 'cidade'
 let imoBuscaQ = '';
@@ -2868,7 +2932,7 @@ function preencherListaImoveis(){
 function abrirDetalhe(id){
   const im = DB.imoveis.find(x=>x.id===id); if(!im) return;
   const condoVal = im.condominio?.valor||0;
-  document.getElementById('mainNav').classList.add('hidden');
+  document.getElementById('mainNav').classList.remove('hidden');
   document.getElementById('appHeader').innerHTML = `<h2>${esc(im.localizacao.endereco)}, ${esc(im.localizacao.numero)}</h2><div class="mono" style="color:var(--primary);font-weight:700;font-size:12px;margin-top:2px">${(im.codigo||'').toUpperCase()}</div>`;
   const enderecoFull = `${im.localizacao.endereco||''}, ${im.localizacao.numero||''} ${im.localizacao.cidade||''} ${im.localizacao.estado||''} ${im.localizacao.cep||''}`.trim();
   document.getElementById('mainContent').innerHTML = `
@@ -2927,7 +2991,7 @@ function confirmarExcluir(id){
 // ── Extrato do imóvel: todos os lançamentos por data, desde a data de inclusão ──
 function abrirExtratoImovel(id){
   const im = DB.imoveis.find(x=>x.id===id); if(!im) return;
-  document.getElementById('mainNav').classList.add('hidden');
+  document.getElementById('mainNav').classList.remove('hidden');
   const ini = im.dataInclusao || isoDate(new Date(im.createdAt||Date.now()));
   document.getElementById('appHeader').innerHTML = `<h2>Extrato do imóvel</h2><div class="mono" style="color:var(--primary);font-weight:700;font-size:12px;margin-top:2px">${(im.codigo||'').toUpperCase()} · desde ${fmtDataBR(ini)}</div>`;
 
@@ -3340,7 +3404,7 @@ function medLote(im, campo){
   return String(v).replace('.',',')+' m';
 }
 function renderVisitaForm(){
-  document.getElementById('mainNav').classList.add('hidden');
+  document.getElementById('mainNav').classList.remove('hidden');
   document.getElementById('appHeader').innerHTML = `<h2>${V._novo?'Nova visita':'Editar visita'}</h2>`;
   const im = DB.imoveis.find(x=>x.id===V.imovelId);
   document.getElementById('mainContent').innerHTML = `
@@ -3388,7 +3452,7 @@ function renderVisitaForm(){
       <div class="field"><label>Outros ${i+1}</label><input inputmode="numeric" placeholder="99.999,99" value="${esc(outroVal(i))}" oninput="setOutroVal(${i}, maskMoeda(this))"></div>
       <div class="field"><label>Descrição</label><input maxlength="15" placeholder="Ex.: Estacionamento" value="${esc(outroDesc(i))}" oninput="setOutroDesc(${i}, this.value)"></div>
     </div>`).join('')}
-    <div style="height:80px"></div>
+    <div style="height:150px"></div>
     <div class="wizfooter"><div class="btnrow">
       <button class="btn gray" onclick="goTab('agenda')">Voltar</button>
       <button class="btn green" onclick="salvarVisita()">${V._novo?'Salvar visita':'Regravar visita'}</button>
@@ -4035,7 +4099,7 @@ function stopProCountdownTicker(){ if(_proCountdownTimer){ clearInterval(_proCou
 // ── Aba: Dados do corretor (dentro de Ajustes) ──
 function renderDadosCorretor(){
   const c = DB.corretor || {nome:'',creci:'',validadeCreci:''};
-  document.getElementById('mainNav').classList.add('hidden');
+  document.getElementById('mainNav').classList.remove('hidden');
   document.getElementById('appHeader').innerHTML = `<h2>Dados do corretor</h2>`;
   document.getElementById('mainContent').innerHTML = `
     <div class="card">
@@ -4050,9 +4114,13 @@ function renderDadosCorretor(){
       <div class="field" style="margin-bottom:12px"><label>CRECI</label><input id="corCreci" value="${esc(c.creci)}" placeholder="Ex.: CRECI-SP 123456-F"></div>
 
       <label>Carteira CRECI (foto)</label>
-      <div onclick="escolherOrigemCorFoto('creci')" id="corCreciSlot" style="width:100%;aspect-ratio:16/10;border-radius:14px;border:1.5px dashed var(--border);background:var(--surface);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--primary);cursor:pointer;overflow:hidden;margin-bottom:12px">
+      <div onclick="escolherOrigemCorFoto('creci')" id="corCreciSlot" style="width:70%;max-width:260px;margin:0 auto;aspect-ratio:3/4;border-radius:14px;border:1.5px dashed var(--border);background:var(--surface);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--primary);cursor:pointer;overflow:hidden">
         <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.6"/><circle cx="8" cy="10" r="1.6" stroke="currentColor" stroke-width="1.4"/><path d="M13 9h5M13 12h5M6 16h12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
         <span style="font-size:11px;color:var(--muted);font-weight:600">Tirar foto ou escolher da galeria</span>
+      </div>
+      <div id="corCreciGirar" style="display:${c.temCreci?'block':'none'};margin:8px auto 12px;max-width:260px">
+        <button class="btn gray sm" onclick="girarCarteiraCreci()">↻ Girar a foto 90°</button>
+        <div class="hint" style="text-align:center">Use até a carteira ficar em pé, com a foto do lado esquerdo.</div>
       </div>
 
       <div class="field" style="margin-bottom:12px"><label>Validade da carteira CRECI</label>
@@ -4068,13 +4136,32 @@ function renderDadosCorretor(){
       <input type="file" id="corCreciCam" accept="image/*" capture="environment" class="filein" onchange="onCorFoto('creci',this)">
       <input type="file" id="corCreciGal" accept="image/*" class="filein" onchange="onCorFoto('creci',this)">
     </div>
-    <div style="height:80px"></div>
+    <div style="height:150px"></div>
     <div class="wizfooter"><div class="btnrow">
       <button class="btn gray" onclick="goTab('config')">Voltar</button>
       <button class="btn green" onclick="salvarCorretor()">Salvar</button>
     </div></div>`;
   if(c.temFoto) idbGet(keyCorretorFoto()).then(d=>{ if(d){ const el=document.getElementById('corFotoSlot'); if(el) el.innerHTML=`<img src="${d}" style="width:96px;height:96px;object-fit:cover">`; } }).catch(()=>{});
   if(c.temCreci) idbGet(keyCorretorCreci()).then(d=>{ if(d){ const el=document.getElementById('corCreciSlot'); if(el){ el.style.border='1.5px solid var(--primary)'; el.style.background='#F1F4F9'; el.innerHTML=`<img src="${d}" style="width:100%;height:100%;object-fit:contain">`; } } }).catch(()=>{});
+}
+// Gira a foto da carteira 90° no sentido horário e regrava — serve para
+// endireitar a imagem quando ela é tirada deitada.
+async function girarCarteiraCreci(){
+  try{
+    const d = await idbGet(keyCorretorCreci());
+    if(!d){ toast('Nenhuma foto da carteira para girar.'); return; }
+    const img = new Image();
+    await new Promise((ok,err)=>{ img.onload=ok; img.onerror=err; img.src=d; });
+    const cv = document.createElement('canvas');
+    cv.width = img.naturalHeight; cv.height = img.naturalWidth;   // troca largura/altura
+    const cx = cv.getContext('2d');
+    cx.translate(cv.width/2, cv.height/2);
+    cx.rotate(Math.PI/2);
+    cx.drawImage(img, -img.naturalWidth/2, -img.naturalHeight/2);
+    await idbPut(keyCorretorCreci(), cv.toDataURL('image/jpeg', 0.9));
+    renderDadosCorretor();
+    toast('Foto girada.');
+  }catch(e){ toast('Não foi possível girar a foto.'); }
 }
 function escolherOrigemCorFoto(kind){
   const titulo = kind==='foto' ? 'Foto do corretor' : 'Carteira CRECI';

@@ -1,5 +1,28 @@
 # Corretor Imóveis Autônomo — Histórico de versões
 
+## v1.30.0 — Carteira CRECI em formato retrato, com giro da foto
+- O campo **Carteira CRECI (foto)** passou de deitado para **formato retrato** (3:4), centralizado na tela, no mesmo formato da carteira física.
+- A foto aparece **sempre inteira dentro do campo**, sem corte nas bordas, seja qual for o tamanho ou a orientação da imagem escolhida.
+- Novo botão **"↻ Girar a foto 90°"**: cada toque gira a imagem e regrava. Serve para endireitar a carteira quando a foto sai deitada — basta tocar até ela ficar em pé, com a foto do lado esquerdo.
+- A **validade da carteira CRECI** continua podendo ficar **em branco** — nesse caso o aviso vermelho lembra que não haverá alerta de vencimento.
+
+## v1.29.2 — Telefones do proprietário lado a lado
+- Na tela de **cadastro/edição de proprietário**, **Tel 1 e Tel 2 passam a ficar na mesma linha**, no mesmo padrão de RG e CPF. A tela ficou mais curta e o formulário cabe com menos rolagem.
+- **Tel 3** segue sozinho em linha inteira, e os dois **e-mails** continuam um em cada linha — endereços longos ficariam cortados se divididos ao meio.
+- Os campos de e-mail ganharam o teclado de e-mail no celular e um exemplo de preenchimento.
+
+## v1.29.1 — Pergunta antes de sair de um cadastro pela metade
+- Tocar no menu de baixo (Início, Imóveis, Agenda, Propriet., Financ. ou Ajustes) **no meio do cadastro de um imóvel ou de uma visita** agora abre a pergunta **"Deseja gravar estas informações antes de sair?"**, com **Sim** e **Não**.
+- **Sim** grava e leva para a aba escolhida. Se faltar algum dado obrigatório (imóvel não escolhido, nome do comprador em branco), o app avisa e **permanece na tela**, sem perder nada do que já foi digitado.
+- **Não** sai descartando o rascunho — e, em imóvel novo, apaga também as fotos, o vídeo e o contrato que já tinham sido escolhidos, para não deixar arquivo solto ocupando espaço.
+- Navegar entre abas fora de um cadastro continua direto, sem pergunta.
+
+## v1.29.0 — Resumo com financeiro e menu sempre visível
+- **Resumo de propostas reorganizado:** os botões **Voltar** e **Voltar ao Início** e o **Resumo do período** passaram para o **topo da tela** — dá para ver os totais sem rolar. A lista dos imóveis vem abaixo.
+- **Receitas e despesas no resumo do período:** além dos valores solicitados, negociados e da diferença, o resumo mostra agora **Receitas do período**, **Despesas do período** e o **Saldo (receitas − despesas)**, em verde ou vermelho conforme o resultado.
+- **Receitas e despesas por imóvel:** cada cartão (ex.: CS00001) ganhou um rodapé com as **receitas**, as **despesas** e o **saldo daquele imóvel** dentro do período escolhido.
+- **Menu inferior sempre visível:** Início, Imóveis, Agenda, Propriet., Financ. e Ajustes deixam de sumir nas telas internas — cadastro de imóvel, visita, proprietário, detalhe, extrato, certidões e resumos. As barras de Voltar/Avançar foram reposicionadas logo acima do menu, sem sobreposição.
+
 ## v1.28.0 — Dois resumos, telefones lado a lado e 5 campos de outros gastos
 - **Dois botões de consulta** na tela de Imóveis: **Por registro** e **Por proposta**. O primeiro filtra pela **data de inclusão do imóvel**; o segundo, pela **data da proposta**. Os detalhes exibidos e os totais são os mesmos nas duas.
 - **Cabeçalho colorido** identificando a consulta: **azul** em *POR DATA REGISTRO DO IMÓVEL* e **verde médio** em *POR DATA DA PROPOSTA*.
