@@ -1,5 +1,12 @@
 # Corretor Imóveis Autônomo — Histórico de versões
 
+## v1.31.0 — Cômodos, Furô e travas de data
+- **Características (apartamento, casa e chácara):** novos campos numéricos **Quartos simples, Suítes, Banheiros e Lavanderia** (até 2 dígitos), abaixo do tipo. O bloco de **Lazer** passou a aparecer também para **casa e chácara** (antes só no apartamento).
+- **Lazer:** incluído o **Furô** logo após "Piscina aquecida"; a **Sauna** passou para a mesma linha da **Academia**.
+- **Financeiro:** os botões **Por mês** e **Fluxo diário** agora mostram "**em aberto**".
+- **Lançamentos:** a **Data realizada** (receita e despesa) não aceita mais data anterior à **Data**.
+- **Venda exclusiva:** a **Data final** não aceita mais data anterior à **Data inicial** (limites ao vivo + trava ao gravar).
+
 ## v1.30.0 — Carteira CRECI em formato retrato, com giro da foto
 - O campo **Carteira CRECI (foto)** passou de deitado para **formato retrato** (3:4), centralizado na tela, no mesmo formato da carteira física.
 - A foto aparece **sempre inteira dentro do campo**, sem corte nas bordas, seja qual for o tamanho ou a orientação da imagem escolhida.
