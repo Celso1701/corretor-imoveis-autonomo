@@ -116,6 +116,10 @@ main{padding:6px 18px 10px}
 .progress-name{font-size:12.5px;font-weight:700;color:var(--primary)}
 .progress-track{height:5px;background:var(--pblue);border-radius:100px;overflow:hidden}
 .progress-fill{height:100%;background:var(--primary);border-radius:100px;transition:width .25s ease}
+.wtabs{display:flex;gap:3px;overflow-x:auto;margin-top:9px;padding-bottom:1px;-webkit-overflow-scrolling:touch}
+.wtabs::-webkit-scrollbar{height:0}
+.wtab{flex:none;font-size:11px;font-weight:600;padding:6px 11px;border:1px solid var(--border);border-bottom:2px solid transparent;border-radius:9px 9px 0 0;background:var(--pblue);color:var(--primary);white-space:nowrap;cursor:pointer;line-height:1}
+.wtab.on{background:var(--surface);color:var(--text);border-bottom-color:var(--primary)}
 .section-title{font-weight:800;font-size:16px;margin:6px 0 14px}
 
 .chip-group{display:flex;flex-wrap:wrap;gap:8px}
@@ -328,7 +332,7 @@ header.topbar.home{padding:0;background:transparent;box-shadow:none}
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.31.0';
+const APP_VERSION = '1.32.0';
 // Ajudante para inserir ícones do kit (traço) em qualquer lugar
 function ic(name, size, style){ size=size||18; return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"${style?` style="${style}"`:''}><use href="#i-${name}"/></svg>`; }
 // Logo da marca (usado na splash e nas telas de senha)
@@ -1999,13 +2003,18 @@ function salvarProprietario(){
 // ── Wizard de cadastro (CASA) ──
 const stepNames = ['Localização','Proprietário','Características','Garagem e infraestrutura','Fotos','Vídeo','Certidões','Revisão'];
 const TOTAL_STEPS = stepNames.length;   // 8 etapas (garagem/portão e água/energia/internet foram unidas)
+const stepOrder = [0,2,3,4,5,6,1,7];   // posição → índice do pane. Proprietário (pane 1) exibido na penúltima posição.
 // No terreno não há garagem — a etapa 4 se chama "Acesso e infraestrutura".
 function stepNameAtual(){
-  if(wStep===3 && W && W.tipo==='terreno') return 'Acesso e infraestrutura';
-  return stepNames[wStep];
+  const _pane = stepOrder[wStep];
+  if(_pane===3 && W && W.tipo==='terreno') return 'Acesso e infraestrutura';
+  return stepNames[_pane];
 }
 let W = null;       // rascunho do imóvel em edição
 let wStep = 0;
+let wModo = 'novo';   // 'novo' | 'edicao' | 'consulta' — abas estilo Excel em registro existente
+let wDirtySnap = '';
+let wTabTarget = 0;
 let wCache = {};    // cache em memória: chave IDB -> dataURL (evita reler do IDB a cada render)
 
 function blankDraft(tipo){
@@ -2022,7 +2031,7 @@ function blankDraft(tipo){
     vagas:'', coberta:true, disposicao:'Lado a lado', portao:false,
     portariaVigia:false, terrenoCondominio:'', terrenoAcesso:'', terrenoRuas:'', terrenoSarjeta:false, terrenoIluminacao:false,
     // extras do apartamento (Item C)
-    quartos:'', suites:'', banheiros:'', lavanderia:'', piscinaAquecida:false, furo:false, sauna:false, churrasqueira:false, parquinho:false, academia:false, obsApto:'',
+    quartos:'', suites:'', banheiros:'', lavanderia:'', piscina:false, piscinaAquecida:false, furo:false, sauna:false, churrasqueira:false, parquinho:false, academia:false, obsApto:'',
     agua:'Individual', aguaFonte:'Sabesp', aguaSituacao:'Instalado', energia:'Instalado', internet:'Instalado',
     fotosPublicas:[false,false,false,false,false,false],
     fotosAdicionais:[null,null,null],   // null | {publica:true/false}
@@ -2032,7 +2041,7 @@ function blankDraft(tipo){
 }
 function iniciarCadastro(tipo){
   if(bloqueioTrial('cadastrar um imóvel')) return;
-  W = blankDraft(tipo||'casa'); wStep = 0; wCache = {};
+  W = blankDraft(tipo||'casa'); wStep = 0; wCache = {}; wModo='novo';
   W._editando = false;
   document.getElementById('mainNav').classList.remove('hidden');
   renderWizard();
@@ -2057,7 +2066,7 @@ async function editarImovel(id){
   W.terreno = cc.terreno||''; W.construcao = cc.construcao||'';
   W.medFrente = cc.medFrente||''; W.medFundos = cc.medFundos||''; W.medEsquerdo = cc.medEsquerdo||''; W.medDireito = cc.medDireito||''; W.condicao = cc.condicao||'Usada'; W.morador = cc.morador||'Não'; W.tipoCasa = cc.tipoCasa||tipoCasaDefault; W.outroTipo = cc.outroTipo||'';
   W.quartos=cc.quartos||''; W.suites=cc.suites||''; W.banheiros=cc.banheiros||''; W.lavanderia=cc.lavanderia||'';
-  W.piscinaAquecida=!!cc.piscinaAquecida; W.furo=!!cc.furo; W.sauna=!!cc.sauna; W.churrasqueira=!!cc.churrasqueira;
+  W.piscina=!!cc.piscina; W.piscinaAquecida=!!cc.piscinaAquecida; W.furo=!!cc.furo; W.sauna=!!cc.sauna; W.churrasqueira=!!cc.churrasqueira;
   W.parquinho=!!cc.parquinho; W.academia=!!cc.academia; W.obsApto=cc.obsApto||'';
   W.vendaExclusiva = EX.exclusiva ? 'Sim' : 'Não'; W.dataInicial = EX.dataInicial||''; W.dataFinal = EX.dataFinal||'';
   W.condominio = (im.condominio && im.condominio.valor) ? String(im.condominio.valor) : ''; W.comissao = im.comissao||'';
@@ -2075,7 +2084,7 @@ async function editarImovel(id){
   W.valorNegociado  = im.valores ? centavos(im.valores.negociado) : '';
   wStep = 0; wCache = {};
   document.getElementById('mainNav').classList.remove('hidden');
-  renderWizard();
+  perguntarModoEdicao();
 }
 function sairWizardSemSalvar(){
   const editando = W && DB.imoveis.some(x=>x.id===W.id);
@@ -2094,20 +2103,53 @@ async function descartarDraftEVoltar(){
   abrirTipos();
 }
 
+// ═══ Registro existente: abas estilo Excel (consultar/editar) ═══
+function perguntarModoEdicao(){
+  renderWizard();  // já mostra a tela com as abas ao fundo
+  showSheet('📁 ' + ((W&&W.codigo)||'Imóvel').toUpperCase(),
+    `<div style="font-size:14px;line-height:1.65;color:var(--text)">Este imóvel já está cadastrado.<br><br>
+      <b>👁️ Consultar</b> — só ver as informações, sem alterar nada.<br>
+      <b>✏️ Editar</b> — alterar os dados; ao mudar de aba o app pergunta se quer gravar.<br><br>
+      Use as <b>abas</b> no topo para passar rápido por cada etapa.</div>`,
+    `<button class="btn gray" onclick="setModo('consulta')">👁️ Consultar</button><button class="btn" onclick="setModo('edicao')">✏️ Editar</button>`);
+}
+function setModo(m){ wModo=m; try{ wDirtySnap=JSON.stringify(W); }catch(e){} closeSheet(); renderWizard(); window.scrollTo(0,0); }
+function wTabsHTML(){
+  if(wModo==='novo' || !W) return '';
+  return `<div class="wtabs">${stepNames.map((_,pos)=>{
+    const pane=stepOrder[pos];
+    const label=(pane===3 && W.tipo==='terreno')?'Acesso e infraestrutura':stepNames[pane];
+    return `<button type="button" class="wtab ${pos===wStep?'on':''}" onclick="irTab(${pos})">${esc(label)}</button>`;
+  }).join('')}</div>`;
+}
+function irTab(i){
+  if(!W || i===wStep) return;
+  if(wModo==='consulta'){ wStep=i; renderWizard(); window.scrollTo(0,0); return; }
+  let mudou=true; try{ mudou = JSON.stringify(W)!==wDirtySnap; }catch(e){}
+  if(!mudou){ wStep=i; renderWizard(); window.scrollTo(0,0); return; }
+  wTabTarget=i;
+  confirmar({icon:'💾', title:'Gravar alterações?', msg:'Você mexeu nesta etapa. Deseja gravar antes de mudar de aba?', noLabel:'Não gravar', yesLabel:'Gravar', yesBg:'var(--primary)', yes:'gravarEIrTab()', no:'irTabAgora()'});
+}
+function irTabAgora(){ wStep=wTabTarget; renderWizard(); window.scrollTo(0,0); }
+async function gravarEIrTab(){ await gravarImovel(true); wStep=wTabTarget; renderWizard(); window.scrollTo(0,0); }
+
 function renderWizard(){
   document.getElementById('appHeader').innerHTML = `
     <div class="progress-wrap" style="padding:0">
       <div class="progress-top"><span class="progress-label">ETAPA ${wStep+1} DE ${TOTAL_STEPS}</span><span class="progress-name">${tipoLabel(W.tipo)} · ${stepNameAtual()}</span></div>
       <div class="progress-track"><div class="progress-fill" style="width:${((wStep+1)/TOTAL_STEPS)*100}%"></div></div>
+      ${wTabsHTML()}
     </div>`;
   const ultima = TOTAL_STEPS-1;
-  document.getElementById('mainContent').innerHTML = `<div style="padding-bottom:150px">${stepPaneHTML(wStep)}</div>
+  document.getElementById('mainContent').innerHTML = `<div style="padding-bottom:150px">${stepPaneHTML(stepOrder[wStep])}</div>
     <div class="wizfooter"><div class="btnrow">
-      <button class="btn gray" onclick="${wStep===0?'sairWizardSemSalvar()':'irStep(wStep-1)'}">Voltar</button>
-      <button class="btn ${wStep===ultima?'green':''}" onclick="${wStep===ultima?'salvarImovel()':'irStep(wStep+1)'}">${wStep===ultima?'Salvar imóvel':'Avançar'}</button>
+      ${wModo==='consulta'
+        ? `<button class="btn gray" onclick="W=null;goTab('imoveis')">Sair</button><button class="btn" onclick="setModo('edicao')">✏️ Editar</button>`
+        : `<button class="btn gray" onclick="${wStep===0?'sairWizardSemSalvar()':'irStep(wStep-1)'}">Voltar</button>
+      <button class="btn ${wStep===ultima?'green':''}" onclick="${wStep===ultima?'salvarImovel()':'irStep(wStep+1)'}">${wStep===ultima?'Salvar imóvel':'Avançar'}</button>`}
     </div></div>`;
-  if(wStep===4) hydratarFotos();
-  if(wStep===6) hydratarCertidoes();
+  if(stepOrder[wStep]===4) hydratarFotos();
+  if(stepOrder[wStep]===6) hydratarCertidoes();
 }
 function validarStep(s){
   if(s===0 && !(W.endereco||'').trim()){ toast('Informe o endereço do imóvel.'); return false; }
@@ -2115,7 +2157,7 @@ function validarStep(s){
   return true;
 }
 function irStep(i){
-  if(i > wStep && !validarStep(wStep)) return;  // só valida ao avançar
+  if(i > wStep && !validarStep(stepOrder[wStep])) return;  // só valida ao avançar
   wStep = Math.max(0, Math.min(i,TOTAL_STEPS-1)); renderWizard(); window.scrollTo(0,0);
 }
 
@@ -2275,28 +2317,20 @@ function stepPaneHTML(i){
     </div>
     <div class="section-title" style="margin-top:6px">${ehApto?'Lazer do condomínio':'Lazer'}</div>
     <div class="row2">
-      <fieldset><legend>Piscina aquecida</legend><div class="chip-group">${chipBool('piscinaAquecida')}</div></fieldset>
-      <fieldset><legend>Furô</legend><div class="chip-group">${chipBool('furo')}</div></fieldset>
+      <fieldset><legend>Piscina</legend><div class="chip-group"><div class="chip ${W.piscina?'selected':''}" onclick="W.piscina=true;renderWizard()">Sim</div><div class="chip ${!W.piscina?'selected':''}" onclick="W.piscina=false;W.piscinaAquecida=false;renderWizard()">Não</div></div></fieldset>
+      <fieldset><legend>Aquecida</legend><div class="chip-group">${W.piscina?chipBool('piscinaAquecida'):`<div class="chip" style="opacity:.45;pointer-events:none">Sim</div><div class="chip selected" style="opacity:.45;pointer-events:none">Não</div>`}</div></fieldset>
     </div>
     <div class="row2">
+      <fieldset><legend>Furô</legend><div class="chip-group">${chipBool('furo')}</div></fieldset>
       <fieldset><legend>Churrasqueira</legend><div class="chip-group">${chipBool('churrasqueira')}</div></fieldset>
-      <fieldset><legend>Parquinho</legend><div class="chip-group">${chipBool('parquinho')}</div></fieldset>
     </div>
     <div class="row2">
       <fieldset><legend>Academia</legend><div class="chip-group">${chipBool('academia')}</div></fieldset>
       <fieldset><legend>Sauna</legend><div class="chip-group">${chipBool('sauna')}</div></fieldset>
     </div>
-    ${ehApto?`<div class="field"><label>Observações (máx. 30)</label><input maxlength="30" value="${esc(W.obsApto||'')}" oninput="W.obsApto=this.value;document.getElementById('obsc').textContent=this.value.length"><div class="charcount"><span id="obsc">${(W.obsApto||'').length}</span>/30</div></div>`:''}`:''}
-    <fieldset><legend>Venda exclusiva</legend><div class="chip-group">${chip('vendaExclusiva','Não','Não')}${chip('vendaExclusiva','Sim','Sim')}</div></fieldset>
-    <div class="row2">
-      <div class="field"><label>Data inicial</label><input type="date" id="exclIni" value="${esc(W.dataInicial)}" max="${esc(W.dataFinal||'')}" ${W.vendaExclusiva==='Sim'?'':'disabled'} oninput="W.dataInicial=this.value;syncDatasExcl()"></div>
-      <div class="field"><label>Data final</label><input type="date" id="exclFim" value="${esc(W.dataFinal)}" min="${esc(W.dataInicial||'')}" ${W.vendaExclusiva==='Sim'?'':'disabled'} oninput="W.dataFinal=this.value;syncDatasExcl()"></div>
-    </div>
-    ${W.vendaExclusiva!=='Sim'?`<div class="hint" style="margin-top:-8px;margin-bottom:12px">As datas só podem ser preenchidas se a venda exclusiva estiver marcada como <b>Sim</b>.</div>`:''}
-    <div class="row2">
-      <div class="field"><label>Taxa de condomínio (R$)</label><input inputmode="numeric" placeholder="0,00" value="${W.condominio&&parseFloat(W.condominio)>0?maskMoedaFromNumber(parseFloat(W.condominio)):''}" oninput="W.condominio=String(parseMoeda(maskMoeda(this)))"></div>
-      <div class="field"><label>Comissão (%)</label><input inputmode="decimal" value="${esc(W.comissao)}" placeholder="0.0" oninput="W.comissao=sanitizarComissao(this)"><div class="hint">Até 99,9%. O valor da comissão aparece na última etapa.</div></div>
-    </div>`;
+    <fieldset><legend>Parquinho</legend><div class="chip-group">${chipBool('parquinho')}</div></fieldset>`:''}
+    <div class="field"><label>Taxa de condomínio (R$)</label><input inputmode="numeric" placeholder="0,00" value="${W.condominio&&parseFloat(W.condominio)>0?maskMoedaFromNumber(parseFloat(W.condominio)):''}" oninput="W.condominio=String(parseMoeda(maskMoeda(this)))"></div>
+    ${ehApto?`<div class="field"><label>Observações (máx. 30)</label><input maxlength="30" value="${esc(W.obsApto||'')}" oninput="W.obsApto=this.value;document.getElementById('obsc').textContent=this.value.length"><div class="charcount"><span id="obsc">${(W.obsApto||'').length}</span>/30</div></div>`:''}`;
   }
 
   // Etapa 4 — garagem/acesso + água, energia e internet (telas unidas na v1.18.0)
@@ -2369,7 +2403,15 @@ function stepPaneHTML(i){
     ${certidaoSlotHTML('iptu','IPTU')}
     ${certidaoSlotHTML('registro','Registro de Imóveis')}
     ${certidaoSlotHTML('cnd','CND Prefeitura')}
-    ${certidaoSlotHTML('testamento','Testamento')}`;
+    ${certidaoSlotHTML('testamento','Testamento')}
+    <div class="section-title" style="margin-top:16px">Exclusividade e comissão</div>
+    <fieldset><legend>Venda exclusiva</legend><div class="chip-group">${chip('vendaExclusiva','Não','Não')}${chip('vendaExclusiva','Sim','Sim')}</div></fieldset>
+    <div class="row2">
+      <div class="field"><label>Data inicial</label><input type="date" id="exclIni" value="${esc(W.dataInicial)}" max="${esc(W.dataFinal||'')}" ${W.vendaExclusiva==='Sim'?'':'disabled'} oninput="W.dataInicial=this.value;syncDatasExcl()"></div>
+      <div class="field"><label>Data final</label><input type="date" id="exclFim" value="${esc(W.dataFinal)}" min="${esc(W.dataInicial||'')}" ${W.vendaExclusiva==='Sim'?'':'disabled'} oninput="W.dataFinal=this.value;syncDatasExcl()"></div>
+    </div>
+    ${W.vendaExclusiva!=='Sim'?`<div class="hint" style="margin-top:-8px;margin-bottom:12px">As datas só podem ser preenchidas se a venda exclusiva estiver marcada como <b>Sim</b>.</div>`:''}
+    <div class="field"><label>Comissão (%)</label><input inputmode="decimal" value="${esc(W.comissao)}" placeholder="0.0" oninput="W.comissao=sanitizarComissao(this)"><div class="hint">Até 99,9%. O valor da comissão aparece na última etapa.</div></div>`;
 
   if(i===7){
     const pubCount = W.fotosPublicas.filter(Boolean).length;
@@ -2409,7 +2451,7 @@ function stepPaneHTML(i){
       <div class="review-item"><span class="k">Morador</span><span class="v">${esc(W.morador)}</span></div>
       <div class="review-item"><span class="k">${W.tipo==='terreno'?'Tipo do terreno':(W.tipo==='chacara'?'Tipo da chácara':(W.tipo==='apartamento'?'Tipo do apartamento':'Tipo da casa'))}</span><span class="v">${esc(W.tipoCasa==='Outro'&&W.outroTipo?W.outroTipo:W.tipoCasa)}</span></div>
       ${W.tipo!=='terreno'?`<div class="review-item"><span class="k">Cômodos</span><span class="v">${[W.quartos&&(W.quartos+' quarto(s)'),W.suites&&(W.suites+' suíte(s)'),W.banheiros&&(W.banheiros+' banh.'),W.lavanderia&&(W.lavanderia+' lavand.')].filter(Boolean).join(' · ')||'—'}</span></div>
-      <div class="review-item"><span class="k">Lazer</span><span class="v">${[W.piscinaAquecida&&'Piscina aq.',W.furo&&'Furô',W.sauna&&'Sauna',W.churrasqueira&&'Churrasq.',W.parquinho&&'Parquinho',W.academia&&'Academia'].filter(Boolean).join(', ')||'—'}</span></div>${W.tipo==='apartamento'&&W.obsApto?`<div class="review-item"><span class="k">Observações</span><span class="v">${esc(W.obsApto)}</span></div>`:''}`:''}
+      <div class="review-item"><span class="k">Lazer</span><span class="v">${[W.piscina&&'Piscina',W.piscinaAquecida&&'Aquecida',W.furo&&'Furô',W.sauna&&'Sauna',W.churrasqueira&&'Churrasq.',W.parquinho&&'Parquinho',W.academia&&'Academia'].filter(Boolean).join(', ')||'—'}</span></div>${W.tipo==='apartamento'&&W.obsApto?`<div class="review-item"><span class="k">Observações</span><span class="v">${esc(W.obsApto)}</span></div>`:''}`:''}
       <div class="review-item"><span class="k">Venda exclusiva</span><span class="v">${W.vendaExclusiva==='Sim'?('Sim'+((W.dataInicial||W.dataFinal)?` (${fmtDataBR(W.dataInicial)} → ${fmtDataBR(W.dataFinal)})`:'')):'Não'}</span></div>
       <div class="review-item"><span class="k">Condomínio</span><span class="v">${condoVal>0?fmtBRL(condoVal):'Sem condomínio'}</span></div></div>
     ${W.tipo==='terreno'?`<div class="review-block"><div class="review-block-title">Acesso</div>
@@ -2720,7 +2762,7 @@ async function salvarImovel(){
     gravarImovel();
   }
 }
-async function gravarImovel(){
+async function gravarImovel(semSair){
   if(bloqueioTrial('gravar o imóvel')) return;
   if(W.vendaExclusiva==='Sim' && W.dataInicial && W.dataFinal && W.dataFinal < W.dataInicial){ toast('A data final não pode ser anterior à data inicial.'); return; }
   const jaExiste = DB.imoveis.some(x=>x.id===W.id);
@@ -2736,7 +2778,7 @@ async function gravarImovel(){
     localizacao:{ tipoEndereco:W.tipoEndereco, endereco:W.endereco, numero:W.numero, complemento:W.complemento, bairro:W.bairro, cidade:W.cidade, estado:W.estado, cep:W.cep },
     proprietario:{ id:W.proprietarioId||'', nome:W.nome, tel1:W.tel1, tel2:W.tel2, tel3:W.tel3, email1:W.email1, email2:W.email2 },
     caracteristicas:{ terreno:W.terreno, construcao:W.construcao, medFrente:W.medFrente||'', medFundos:W.medFundos||'', medEsquerdo:W.medEsquerdo||'', medDireito:W.medDireito||'', condicao:W.condicao, morador:W.morador, tipoCasa:W.tipoCasa, outroTipo:W.outroTipo,
-      quartos:W.quartos||'', suites:W.suites||'', banheiros:W.banheiros||'', lavanderia:W.lavanderia||'', piscinaAquecida:!!W.piscinaAquecida, furo:!!W.furo, sauna:!!W.sauna, churrasqueira:!!W.churrasqueira, parquinho:!!W.parquinho, academia:!!W.academia, obsApto:W.obsApto||'' },
+      quartos:W.quartos||'', suites:W.suites||'', banheiros:W.banheiros||'', lavanderia:W.lavanderia||'', piscina:!!W.piscina, piscinaAquecida:!!W.piscinaAquecida, furo:!!W.furo, sauna:!!W.sauna, churrasqueira:!!W.churrasqueira, parquinho:!!W.parquinho, academia:!!W.academia, obsApto:W.obsApto||'' },
     exclusividade:{ exclusiva: W.vendaExclusiva==='Sim', dataInicial:W.dataInicial, dataFinal:W.dataFinal },
     condominio:{ valor: parseFloat(W.condominio)||0 },
     comissao: W.comissao||'',
@@ -2751,6 +2793,7 @@ async function gravarImovel(){
   const idx = DB.imoveis.findIndex(x=>x.id===imovel.id);
   if(idx>=0) DB.imoveis[idx]=imovel; else DB.imoveis.push(imovel);
   save();
+  if(semSair){ toast('✓ Alterações gravadas'); try{ wDirtySnap = JSON.stringify(W); }catch(e){} return; }
   toast((idx>=0?'✓ Imóvel regravado — ':'✓ Imóvel salvo — ') + (imovel.codigo||'').toUpperCase());
   W = null;
   goTab('imoveis');
@@ -2971,7 +3014,7 @@ function abrirDetalhe(id){
       ${(im.tipo==='terreno'||im.tipo==='chacara')&&medidasLoteTxt(im.caracteristicas)?`<div class="review-item"><span class="k">Medidas do lote</span><span class="v">${esc(medidasLoteTxt(im.caracteristicas))}</span></div>`:''}
       <div class="review-item"><span class="k">Tipo</span><span class="v">${esc(im.caracteristicas.tipoCasa)}</span></div>
       ${im.tipo!=='terreno'?`<div class="review-item"><span class="k">Cômodos</span><span class="v">${[im.caracteristicas.quartos&&(im.caracteristicas.quartos+' quarto(s)'),im.caracteristicas.suites&&(im.caracteristicas.suites+' suíte(s)'),im.caracteristicas.banheiros&&(im.caracteristicas.banheiros+' banh.'),im.caracteristicas.lavanderia&&(im.caracteristicas.lavanderia+' lavand.')].filter(Boolean).join(' · ')||'—'}</span></div>
-      <div class="review-item"><span class="k">Lazer</span><span class="v">${[im.caracteristicas.piscinaAquecida&&'Piscina aq.',im.caracteristicas.furo&&'Furô',im.caracteristicas.sauna&&'Sauna',im.caracteristicas.churrasqueira&&'Churrasq.',im.caracteristicas.parquinho&&'Parquinho',im.caracteristicas.academia&&'Academia'].filter(Boolean).join(', ')||'—'}</span></div>${im.tipo==='apartamento'&&im.caracteristicas.obsApto?`<div class="review-item"><span class="k">Observações</span><span class="v">${esc(im.caracteristicas.obsApto)}</span></div>`:''}`:''}
+      <div class="review-item"><span class="k">Lazer</span><span class="v">${[im.caracteristicas.piscina&&'Piscina',im.caracteristicas.piscinaAquecida&&'Aquecida',im.caracteristicas.furo&&'Furô',im.caracteristicas.sauna&&'Sauna',im.caracteristicas.churrasqueira&&'Churrasq.',im.caracteristicas.parquinho&&'Parquinho',im.caracteristicas.academia&&'Academia'].filter(Boolean).join(', ')||'—'}</span></div>${im.tipo==='apartamento'&&im.caracteristicas.obsApto?`<div class="review-item"><span class="k">Observações</span><span class="v">${esc(im.caracteristicas.obsApto)}</span></div>`:''}`:''}
       <div class="review-item"><span class="k">Venda exclusiva</span><span class="v">${im.exclusividade?.exclusiva?('Sim'+((im.exclusividade.dataInicial||im.exclusividade.dataFinal)?` (${fmtDataBR(im.exclusividade.dataInicial)} → ${fmtDataBR(im.exclusividade.dataFinal)})`:'')):'Não'}</span></div>
       <div class="review-item"><span class="k">Comissão</span><span class="v">${im.comissao?im.comissao.replace('.',',')+'%':'—'}</span></div>
       <div class="review-item"><span class="k">Valor solicitado</span><span class="v">${fmtBRL(im.valores?.solicitado||0)}</span></div>

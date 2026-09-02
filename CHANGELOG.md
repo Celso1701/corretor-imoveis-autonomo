@@ -1,5 +1,12 @@
 # Corretor Imóveis Autônomo — Histórico de versões
 
+## v1.32.0 — Abas por etapa, reorganização do cadastro e piscina
+- **Registro existente:** ao abrir um imóvel já cadastrado, o app pergunta **Consultar** ou **Editar** e mostra **abas estilo Excel** (com o nome de cada etapa) para pular rápido. Em **Editar**, ao mudar de aba com alterações, pergunta se quer **gravar**; em **Consultar**, não pergunta nada. Cadastro **novo** segue sequencial, sem abas.
+- **Etapa Proprietário** movida para a **penúltima** posição (logo antes da Revisão).
+- **Piscina:** na linha do lazer agora tem **Piscina (Sim/Não)** e, ao lado, **Aquecida (Sim/Não)** — a Aquecida só fica ativa se Piscina = Sim (antes era um único botão "Piscina aquecida").
+- **Taxa de condomínio** reposicionada para **antes de Observações** na tela de Características.
+- **Venda exclusiva, Data inicial, Data final e Comissão** foram movidas para a tela **Certidões e documentos**.
+
 ## v1.31.0 — Cômodos, Furô e travas de data
 - **Características (apartamento, casa e chácara):** novos campos numéricos **Quartos simples, Suítes, Banheiros e Lavanderia** (até 2 dígitos), abaixo do tipo. O bloco de **Lazer** passou a aparecer também para **casa e chácara** (antes só no apartamento).
 - **Lazer:** incluído o **Furô** logo após "Piscina aquecida"; a **Sauna** passou para a mesma linha da **Academia**.
