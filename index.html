@@ -6,8 +6,8 @@
 <meta name="theme-color" content="#1D4ED8">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Corretor de Imóveis">
-<title>Corretor de Imóveis — Gestão de Imóveis</title>
+<meta name="apple-mobile-web-app-title" content="Cor Sync Imóveis">
+<title>Cor Sync Imóveis — Gestão de Imóveis</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -303,7 +303,7 @@ header.topbar.home{padding:0;background:transparent;box-shadow:none}
 
 <!-- ============ SPLASH ============ -->
 <div id="splash">
-  <img class="brandlogo" id="splashLogo" alt="Corretor de Imóveis">
+  <img class="brandlogo" id="splashLogo" alt="Cor Sync Imóveis">
   <div class="tag">Gestão de imóveis</div>
 </div>
 
@@ -332,7 +332,7 @@ header.topbar.home{padding:0;background:transparent;box-shadow:none}
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.32.0';
+const APP_VERSION = '1.33.0';
 // Ajudante para inserir ícones do kit (traço) em qualquer lugar
 function ic(name, size, style){ size=size||18; return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"${style?` style="${style}"`:''}><use href="#i-${name}"/></svg>`; }
 // Logo da marca (usado na splash e nas telas de senha)
@@ -660,13 +660,13 @@ async function persistDB(){
 }
 
 // ═══ Regras de senha exigidas pelo projeto original ═══
-// Exatamente 10 caracteres, com maiúscula, minúscula, número e especial.
+// No mínimo 10 caracteres, com maiúscula, minúscula, número e especial.
 function validatePassword(v){
-  return { len: v.length===10, up:/[A-Z]/.test(v), low:/[a-z]/.test(v), num:/[0-9]/.test(v), sp:/[^A-Za-z0-9]/.test(v) };
+  return { len: v.length>=10, up:/[A-Z]/.test(v), low:/[a-z]/.test(v), num:/[0-9]/.test(v), sp:/[^A-Za-z0-9]/.test(v) };
 }
 function pwRulesHTML(){
   return `<div class="pw-rules" id="pwRules">
-    <div class="pw-rule" data-r="len"><span class="rc"></span>10 caracteres</div>
+    <div class="pw-rule" data-r="len"><span class="rc"></span>10+ caracteres</div>
     <div class="pw-rule" data-r="up"><span class="rc"></span>1 maiúscula</div>
     <div class="pw-rule" data-r="low"><span class="rc"></span>1 minúscula</div>
     <div class="pw-rule" data-r="num"><span class="rc"></span>1 número</div>
@@ -819,10 +819,10 @@ function maskProCode(el){
   el.value = out;
 }
 function copiarDevId(){ const d='AP-'+myDevId(); if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(d).then(function(){ toast('ID copiado!'); }).catch(function(){ toast(d); }); } else { toast(d); } }
-function abrirWhatsPro(){ const dev='AP-'+myDevId(); const msg='Oi! Quero assinar o aplicativo Corretor de Imóveis Pro.\nMeu ID do aparelho é '+dev; window.open('https://wa.me/'+PRO_WHATS+'?text='+encodeURIComponent(msg),'_blank'); }
+function abrirWhatsPro(){ const dev='AP-'+myDevId(); const msg='Oi! Quero assinar o aplicativo Cor Sync Imóveis Pro.\nMeu ID do aparelho é '+dev; window.open('https://wa.me/'+PRO_WHATS+'?text='+encodeURIComponent(msg),'_blank'); }
 function openProModal(reason){
   const dev = 'AP-' + myDevId();
-  showSheet('Corretor de Imóveis Pro', `
+  showSheet('Cor Sync Imóveis Pro', `
     ${reason?`<div style="background:rgba(240,165,0,.12);border:1.5px solid #F0A500;border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:12px">${reason}</div>`:''}
     <div style="font-size:14px;font-weight:800;margin-bottom:8px">Planos</div>
     <div style="font-size:13.5px;line-height:1.9;color:var(--text)">
@@ -959,7 +959,7 @@ function promptInstall(){
     return;
   }
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-  showSheet('📲 Instalar o Corretor de Imóveis', isIOS ? `
+  showSheet('📲 Instalar o Cor Sync Imóveis', isIOS ? `
     <div style="font-size:14px;line-height:2">
     No iPhone/iPad:<br>
     1. Toque no botão <b>Compartilhar</b> (□↑) na barra do Safari<br>
@@ -981,9 +981,9 @@ function ativarNotifPerms(){
 }
 function pularNotifPerms(){ localStorage.setItem('cor_perms_shown','1'); closeSheet(); }
 
-// ═══ TUTORIAL GUIADO — mesmo padrão do VetFlowCare, adaptado ao Corretor de Imóveis ═══
+// ═══ TUTORIAL GUIADO — mesmo padrão do VetFlowCare, adaptado ao Cor Sync Imóveis ═══
 const TUT_STEPS = [
-  {emo:'🏠', title:'Bem-vindo(a) ao Corretor de Imóveis!',
+  {emo:'🏠', title:'Bem-vindo(a) ao Cor Sync Imóveis!',
    body:`Sua carteira de imóveis completa no bolso.<br><br>
    ✅ Funciona <b>offline</b> — os dados ficam só neste aparelho<br>
    ✅ <b>Instale na tela inicial</b> para abrir como um app de verdade<br>
@@ -1029,13 +1029,13 @@ const TUT_STEPS = [
   {emo:'💾', title:'Backup — proteja seus dados',
    body:`Seus dados ficam <b>só neste aparelho</b>. Em <b>Ajustes → Becape</b>, exporte um backup completo de vez em quando — assim você não perde nada ao trocar de celular.`},
   {emo:'🔒', title:'Sobre as permissões do app',
-   body:`O Corretor de Imóveis respeita sua privacidade. Ele só usa:<br><br>
+   body:`O Cor Sync Imóveis respeita sua privacidade. Ele só usa:<br><br>
    • <b>📷 Câmera</b> — só quando VOCÊ toca para fotografar um imóvel ou documento<br>
    • <b>🔔 Notificações</b> — para lembrar de visitas vencendo, se você permitir<br><br>
    Nada é enviado para fora do aparelho — os dados ficam <b>salvos localmente</b>. Você pode desligar quando quiser em <b>Ajustes</b>.`,
    action:{label:'Entendi, ativar avisos', fn:'ativarNotifPerms()'}},
   {emo:'🎉', title:'Tudo pronto!',
-   body:`Você já conhece o essencial do Corretor de Imóveis. 🏠<br><br>
+   body:`Você já conhece o essencial do Cor Sync Imóveis. 🏠<br><br>
    Reveja este guia quando quiser em <b>Ajustes → Ver tutorial</b>.<br><br>
    Aproveite os <b>30 dias grátis</b> do Plano Pro!`}
 ];
@@ -1065,7 +1065,7 @@ function finishTutorial(skipNext){
 // Tela que explica as permissões antes de pedir (câmera é só sob toque do usuário; não exige permissão de sistema)
 function showPermsOnboarding(){
   showSheet('👋 Sobre as permissões', `
-    <div style="font-size:13px;color:var(--muted);margin-bottom:14px">O Corretor de Imóveis respeita sua privacidade. Ele só usa estes recursos com o seu consentimento:</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:14px">O Cor Sync Imóveis respeita sua privacidade. Ele só usa estes recursos com o seu consentimento:</div>
     <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:14px">
       <div style="font-size:26px;flex-shrink:0">🔔</div>
       <div><b style="font-size:14px">Notificações</b>
@@ -1139,14 +1139,14 @@ function renderPrimeiroAcesso(){
   const div = document.createElement('div');
   div.id = 'setupScreen';
   div.innerHTML = `
-    <img class="brandlogo sm" src="${LOGO}" alt="Corretor de Imóveis">
+    <img class="brandlogo sm" src="${LOGO}" alt="Cor Sync Imóveis">
     <div class="auth-title">Bem-vindo(a)! Crie sua senha</div>
     <div class="auth-sub">A senha protege seus imóveis, proprietários e telefones neste aparelho. Durante o teste grátis ela é opcional — mas <b>ao assinar o Pro será obrigatória</b>.</div>
     <div class="auth-box">
-      <div class="pwwrap"><input id="setupPass" type="password" placeholder="Crie sua senha" maxlength="10" oninput="checkPwRules('setupPass','setupBtn');conferirSenhas()">
+      <div class="pwwrap"><input id="setupPass" type="password" placeholder="Crie sua senha" maxlength="64" oninput="checkPwRules('setupPass','setupBtn');conferirSenhas()">
         <button type="button" class="eye" onclick="togglePw('setupPass',this)">👁</button></div>
       ${pwRulesHTML()}
-      <div class="pwwrap" style="margin-top:10px"><input id="setupPass2" type="password" placeholder="Digite a senha de novo" maxlength="10" oninput="conferirSenhas()">
+      <div class="pwwrap" style="margin-top:10px"><input id="setupPass2" type="password" placeholder="Digite a senha de novo" maxlength="64" oninput="conferirSenhas()">
         <button type="button" class="eye" onclick="togglePw('setupPass2',this)">👁</button></div>
       <div id="setupMatch" style="font-size:11.5px;font-weight:700;min-height:16px;margin-top:6px"></div>
       <button class="btn" id="setupBtn" disabled onclick="doPrimeiroAcesso()" style="margin-top:10px">Criar senha e entrar</button>
@@ -1205,10 +1205,10 @@ function pularSenhaPrimeiroAcesso(){
 function exigirSenhaParaPro(depois){
   showSheet('Crie sua senha de acesso', `
     <div style="font-size:13px;color:var(--muted);margin-bottom:12px">O Plano Pro exige senha para proteger seus dados. Digite a senha duas vezes para confirmar.</div>
-    <div class="pwwrap"><input id="proPass" type="password" placeholder="Crie sua senha" maxlength="10" oninput="checkPwRules('proPass','proPassBtn');conferirSenhasPro()">
+    <div class="pwwrap"><input id="proPass" type="password" placeholder="Crie sua senha" maxlength="64" oninput="checkPwRules('proPass','proPassBtn');conferirSenhasPro()">
       <button type="button" class="eye" onclick="togglePw('proPass',this)">👁</button></div>
     ${pwRulesHTML()}
-    <div class="pwwrap" style="margin-top:10px"><input id="proPass2" type="password" placeholder="Digite a senha de novo" maxlength="10" oninput="conferirSenhasPro()">
+    <div class="pwwrap" style="margin-top:10px"><input id="proPass2" type="password" placeholder="Digite a senha de novo" maxlength="64" oninput="conferirSenhasPro()">
       <button type="button" class="eye" onclick="togglePw('proPass2',this)">👁</button></div>
     <div id="proMatch" style="font-size:11.5px;font-weight:700;min-height:16px;margin-top:6px"></div>
     <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.6">⚠️ Guarde bem a senha — sem ela os dados não podem ser recuperados.</div>`,
@@ -1248,11 +1248,11 @@ function renderSetup(){
   const div = document.createElement('div');
   div.id = 'setupScreen';
   div.innerHTML = `
-    <img class="brandlogo sm" src="${LOGO}" alt="Corretor de Imóveis">
+    <img class="brandlogo sm" src="${LOGO}" alt="Cor Sync Imóveis">
     <div class="auth-title">Crie sua senha de acesso</div>
     <div class="auth-sub">Seus dados (proprietários, endereços, telefones) ficam criptografados neste aparelho. Guarde bem esta senha — sem ela os dados não podem ser recuperados.</div>
     <div class="auth-box">
-      <div class="pwwrap"><input id="setupPass" type="password" placeholder="Crie sua senha" maxlength="10" oninput="checkPwRules('setupPass','setupBtn')">
+      <div class="pwwrap"><input id="setupPass" type="password" placeholder="Crie sua senha" maxlength="64" oninput="checkPwRules('setupPass','setupBtn')">
         <button type="button" class="eye" onclick="togglePw('setupPass',this)">👁</button></div>
       ${pwRulesHTML()}
       <button class="btn" id="setupBtn" disabled onclick="doSetup()" style="margin-top:16px">Criar e entrar</button>
@@ -1282,11 +1282,11 @@ function renderLock(){
   const div = document.createElement('div');
   div.id = 'lockScreen';
   div.innerHTML = `
-    <img class="brandlogo sm" src="${LOGO}" alt="Corretor de Imóveis">
+    <img class="brandlogo sm" src="${LOGO}" alt="Cor Sync Imóveis">
     <div class="auth-title">Bem-vindo de volta</div>
     <div class="auth-sub">Digite sua senha de acesso para abrir sua carteira de imóveis.</div>
     <div class="auth-box">
-      <div class="pwwrap"><input id="lockPass" type="password" placeholder="Digite sua senha" maxlength="10" onkeydown="if(event.key==='Enter')unlockApp()">
+      <div class="pwwrap"><input id="lockPass" type="password" placeholder="Digite sua senha" maxlength="64" onkeydown="if(event.key==='Enter')unlockApp()">
         <button type="button" class="eye" onclick="togglePw('lockPass',this)">👁</button></div>
       <button class="btn" onclick="unlockApp()" style="margin-top:16px">Entrar</button>
       <div class="auth-err" id="lockErr"></div>
@@ -4108,10 +4108,10 @@ function renderConfig(){
     <div class="stitle">Ajuda</div>
     <div class="card">
       <button class="btn" onclick="promptInstall()">📲 Instalar o app neste celular</button>
-      <div style="font-size:11px;color:var(--muted);margin:6px 0 12px">Coloca o Corretor de Imóveis como aplicativo de verdade: ícone próprio, tela cheia, sem barra do navegador.</div>
+      <div style="font-size:11px;color:var(--muted);margin:6px 0 12px">Coloca o Cor Sync Imóveis como aplicativo de verdade: ícone próprio, tela cheia, sem barra do navegador.</div>
       <button class="btn gray" onclick="openTutorial(0)">📖 Ver tutorial do app</button>
       <button class="btn gray" style="margin-top:8px" onclick="showPermsOnboarding()">🔒 Sobre as permissões (câmera e avisos)</button>
-      <button class="btn gray" style="margin-top:8px" onclick="window.open('https://wa.me/${PRO_WHATS}?text=' + encodeURIComponent('Oi! Preciso de ajuda com o Corretor de Imóveis.'))">💬 Suporte e dúvidas (WhatsApp)</button>
+      <button class="btn gray" style="margin-top:8px" onclick="window.open('https://wa.me/${PRO_WHATS}?text=' + encodeURIComponent('Oi! Preciso de ajuda com o Cor Sync Imóveis.'))">💬 Suporte e dúvidas (WhatsApp)</button>
     </div>
     <div class="stitle">Becape e proteção de dados</div>
     <div class="card">
@@ -4132,7 +4132,7 @@ function renderConfig(){
     <div class="stitle">Sobre</div>
     <div class="card" style="font-size:12.5px;color:var(--muted);line-height:1.6">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-        <b style="color:var(--text)">Corretor de Imóveis</b>
+        <b style="color:var(--text)">Cor Sync Imóveis</b>
         <span class="mono" style="color:var(--primary);font-weight:700;background:var(--pblue);padding:3px 10px;border-radius:100px">v${APP_VERSION}</span>
       </div>
       Dados salvos localmente neste aparelho.<br>
@@ -4271,7 +4271,7 @@ function salvarCorretor(){
 function openChangePass(){
   showSheet('Alterar senha', `
     <label>Senha atual</label><div class="pwwrap"><input id="cpOld" type="password"><button type="button" class="eye" onclick="togglePw('cpOld',this)">👁</button></div>
-    <label>Nova senha</label><div class="pwwrap"><input id="cpNew" type="password" maxlength="10" oninput="checkPwRules('cpNew','cpBtn')"><button type="button" class="eye" onclick="togglePw('cpNew',this)">👁</button></div>
+    <label>Nova senha</label><div class="pwwrap"><input id="cpNew" type="password" maxlength="64" oninput="checkPwRules('cpNew','cpBtn')"><button type="button" class="eye" onclick="togglePw('cpNew',this)">👁</button></div>
     ${pwRulesHTML()}`,
     `<button class="btn gray" onclick="closeSheet()">Cancelar</button><button class="btn" id="cpBtn" disabled onclick="doChangePass()">Salvar</button>`);
 }
