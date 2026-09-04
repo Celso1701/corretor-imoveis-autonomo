@@ -1,4 +1,23 @@
-# Corretor Imóveis Autônomo — Histórico de versões
+# Cor Sync Imóveis — Histórico de versões
+
+## v1.34.1 — Botões do detalhe no topo (confirmação)
+- Reempacotamento da v1.34.0 com o número de versão solicitado. Os botões **Editar · Compartilhar · Extrato · Excluir · Voltar · Incluir imóvel** já aparecem no **topo** da tela de detalhe do imóvel, no mesmo formato. Conteúdo idêntico ao da v1.34.0.
+
+## v1.34.0 — Layout da etapa de infraestrutura, compartilhar e detalhe
+- **Garagem e infraestrutura:** **Portão eletrônico** e **Portaria com vigia** na mesma linha (todos os tipos); **Fonte** e **Situação da água** na mesma linha; **Energia elétrica** com campo **Complemento** (20 caracteres: solar, eólica…) ao lado.
+- **Terreno:** a lista **Acesso** mantém as três opções (Portaria c/ vigia · Controle remoto · Aberto).
+- **Compartilhar:** botões na ordem **WhatsApp → E-mail → Com fotos (mais apps)**. Corrigido o "início duplicado" ao enviar (removido o `title` do compartilhamento nativo, que era somado ao texto).
+- **Detalhe do imóvel:** os botões **Editar · Compartilhar · Extrato · Excluir · Voltar · Incluir imóvel** foram para o **topo** da tela.
+- Inclui o arquivo **CNAME** (`app.corsyncimoveis.com.br`) no pacote.
+
+## v1.33.0 — Novo nome: Cor Sync Imóveis
+- O aplicativo passou a se chamar **Cor Sync Imóveis** em todo o texto visível: título da aba, manifesto (nome na instalação), tela **Sobre**, **tutorial** de boas-vindas, telas de **instalar** e **Pro**, e mensagens de **WhatsApp**.
+- Mantidos os **identificadores internos** (id do app, chave dos dados `corretorimoveis_db`, nomes de cache e mídia) para **não perder dados nem duplicar a instalação** já feita.
+- ⚠️ A **imagem do logo/ícone** ainda mostra o nome antigo (o texto está desenhado dentro da arte) — precisa ser refeita à parte.
+
+## v1.32.1 — Senha: mínimo 10 (não corta mais) + CNAME do domínio
+- **Senha:** o campo aceitava só 10 caracteres (`maxlength=10`) e exigia **exatamente 10**, então senhas maiores eram **cortadas** — por isso o caractere especial no fim (ex.: `CelsoRizzieri17#`) "não funcionava". Agora a regra é **no mínimo 10** e o campo aceita senhas longas (até 64). Todas as regras (maiúscula, minúscula, número e especial) passam a acender corretamente.
+- **Domínio:** incluído o arquivo `CNAME` (`app.corsyncimoveis.com.br`) no pacote, para o domínio personalizado não se perder ao publicar novas versões.
 
 ## v1.32.0 — Abas por etapa, reorganização do cadastro e piscina
 - **Registro existente:** ao abrir um imóvel já cadastrado, o app pergunta **Consultar** ou **Editar** e mostra **abas estilo Excel** (com o nome de cada etapa) para pular rápido. Em **Editar**, ao mudar de aba com alterações, pergunta se quer **gravar**; em **Consultar**, não pergunta nada. Cadastro **novo** segue sequencial, sem abas.
