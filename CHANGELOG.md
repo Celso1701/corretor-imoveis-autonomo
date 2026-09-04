@@ -1,5 +1,9 @@
 # Cor Sync Imóveis — Histórico de versões
 
+## v1.36.0 — Segurança (todos os tipos) + Acesso/Ruas no sítio
+- **Segurança:** abaixo do **Portão eletrônico**, novos botões **Segurança interna** (Sim/Não) e **Monitorado por câmera** (Sim/Não), em todos os tipos (apartamento, casa, sítio/chácara e terreno).
+- **Sítio/chácara:** passou a ter também **Acesso** (Portaria c/ vigia · Controle remoto · Aberto) e **Ruas internas** (Terra cascalhada · Asfaltada), como no terreno — no cadastro e na edição.
+
 ## v1.35.0 — Cálculo da área do lote (terreno e chácara)
 - **Ordem:** na etapa Características, as medidas **Frente / Fundos / Lado esquerdo / Lado direito** agora vêm **antes** de **Área total** (e Construção, na chácara).
 - **Campos opcionais:** as medidas podem ficar em branco.

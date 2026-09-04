@@ -332,7 +332,7 @@ header.topbar.home{padding:0;background:transparent;box-shadow:none}
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.35.0';
+const APP_VERSION = '1.36.0';
 // Ajudante para inserir ícones do kit (traço) em qualquer lugar
 function ic(name, size, style){ size=size||18; return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"${style?` style="${style}"`:''}><use href="#i-${name}"/></svg>`; }
 // Logo da marca (usado na splash e nas telas de senha)
@@ -2029,7 +2029,7 @@ function blankDraft(tipo){
     condominio:'0', comissao:'',
     valorSolicitado:'', valorMinimo:'', valorNegociado:'', dataProposta:'',
     vagas:'', coberta:true, disposicao:'Lado a lado', portao:false,
-    portariaVigia:false, terrenoCondominio:'', terrenoAcesso:'', terrenoRuas:'', terrenoSarjeta:false, terrenoIluminacao:false,
+    portariaVigia:false, segurancaInterna:false, monitoradoCamera:false, terrenoCondominio:'', terrenoAcesso:'', terrenoRuas:'', terrenoSarjeta:false, terrenoIluminacao:false,
     // extras do apartamento (Item C)
     quartos:'', suites:'', banheiros:'', lavanderia:'', piscina:false, piscinaAquecida:false, furo:false, sauna:false, churrasqueira:false, parquinho:false, academia:false, obsApto:'',
     agua:'Individual', aguaFonte:'Sabesp', aguaSituacao:'Instalado', energia:'Instalado', energiaInfo:'', internet:'Instalado',
@@ -2071,7 +2071,7 @@ async function editarImovel(id){
   W.vendaExclusiva = EX.exclusiva ? 'Sim' : 'Não'; W.dataInicial = EX.dataInicial||''; W.dataFinal = EX.dataFinal||'';
   W.condominio = (im.condominio && im.condominio.valor) ? String(im.condominio.valor) : ''; W.comissao = im.comissao||'';
   W.vagas = GA.vagas||''; W.coberta = GA.coberta||''; W.disposicao = GA.disposicao||''; W.portao = GA.portao||'';
-  W.portariaVigia = !!GA.portariaVigia;
+  W.portariaVigia = !!GA.portariaVigia; W.segurancaInterna = !!GA.segurancaInterna; W.monitoradoCamera = !!GA.monitoradoCamera;
   const LO = im.loteamento||{};
   W.terrenoCondominio = LO.condominio||''; W.terrenoAcesso = LO.acesso||''; W.terrenoRuas = LO.ruas||''; W.terrenoSarjeta = !!LO.sarjeta; W.terrenoIluminacao = !!LO.iluminacao;
   W.agua = AG.tipo||''; W.aguaFonte = AG.fonte||''; W.aguaSituacao = AG.situacao||'';
@@ -2343,6 +2343,10 @@ function stepPaneHTML(i){
     const linhaPortao = `<div class="row2">
       <fieldset><legend>Portão eletrônico</legend><div class="chip-group">${chipBool('portao')}</div></fieldset>
       <fieldset><legend>Portaria com vigia</legend><div class="chip-group">${chipBool('portariaVigia')}</div></fieldset>
+    </div>
+    <div class="row2">
+      <fieldset><legend>Segurança interna</legend><div class="chip-group">${chipBool('segurancaInterna')}</div></fieldset>
+      <fieldset><legend>Monitorado por câmera</legend><div class="chip-group">${chipBool('monitoradoCamera')}</div></fieldset>
     </div>`;
     const blocoGaragem = ehTerreno ? `
     <div class="section-title">Acesso e portão</div>
@@ -2357,7 +2361,9 @@ function stepPaneHTML(i){
     </div>
     <div class="toggle-row"><div class="lbl">Garagem coberta<span class="d">A cobertura protege os veículos</span></div>${toggle('coberta')}</div>
     <fieldset style="margin-top:14px"><legend>Disposição dos carros</legend><div class="chip-group">${chip('disposicao','Lado a lado','Lado a lado')}${chip('disposicao','Em fila','Em fila')}</div></fieldset>
-    ${linhaPortao}`;
+    ${linhaPortao}${W.tipo==='chacara'?`
+    <fieldset><legend>Acesso</legend><div class="chip-group">${chip('terrenoAcesso','Portaria c/ vigia','Portaria c/ vigia')}${chip('terrenoAcesso','Controle remoto','Controle remoto')}${chip('terrenoAcesso','Aberto','Aberto')}</div></fieldset>
+    <fieldset><legend>Ruas internas</legend><div class="chip-group">${chip('terrenoRuas','Terra (cascalhada)','Terra (cascalhada)')}${chip('terrenoRuas','Asfaltada','Asfaltada')}</div></fieldset>`:''}`;
 
     const blocoInfra = `
     <div class="section-title" style="margin-top:22px">Água, energia e internet</div>
@@ -2792,7 +2798,7 @@ async function gravarImovel(semSair){
     condominio:{ valor: parseFloat(W.condominio)||0 },
     comissao: W.comissao||'',
     valores:{ solicitado: parseMoeda(W.valorSolicitado||''), minimo: parseMoeda(W.valorMinimo||''), negociado: parseMoeda(W.valorNegociado||''), dataProposta: W.dataProposta||'' },
-    garagem:{ vagas:W.vagas, coberta:W.coberta, disposicao:W.disposicao, portao:W.portao, portariaVigia:W.portariaVigia },
+    garagem:{ vagas:W.vagas, coberta:W.coberta, disposicao:W.disposicao, portao:W.portao, portariaVigia:W.portariaVigia, segurancaInterna:!!W.segurancaInterna, monitoradoCamera:!!W.monitoradoCamera },
     loteamento:{ condominio:W.terrenoCondominio, acesso:W.terrenoAcesso, ruas:W.terrenoRuas, sarjeta:W.terrenoSarjeta, iluminacao:W.terrenoIluminacao },
     agua:{ tipo:W.agua, fonte:W.aguaFonte, situacao:W.aguaSituacao },
     energia:{ situacao:W.energia, info:W.energiaInfo }, internet:{ situacao:W.internet },
