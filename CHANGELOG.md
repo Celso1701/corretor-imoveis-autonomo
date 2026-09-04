@@ -1,5 +1,11 @@
 # Cor Sync Imóveis — Histórico de versões
 
+## v1.35.0 — Cálculo da área do lote (terreno e chácara)
+- **Ordem:** na etapa Características, as medidas **Frente / Fundos / Lado esquerdo / Lado direito** agora vêm **antes** de **Área total** (e Construção, na chácara).
+- **Campos opcionais:** as medidas podem ficar em branco.
+- **Cálculo automático:** ao preencher as medidas, a **Área total** é calculada sozinha — média das frentes × média das laterais ((frente+fundos)/2 × (lado esq.+lado dir.)/2). Se faltar fundos ou lado direito, usa o valor do lado oposto (funciona também para lote retangular).
+- **Editável:** a Área total continua podendo ser digitada/corrigida à mão.
+
 ## v1.34.1 — Botões do detalhe no topo (confirmação)
 - Reempacotamento da v1.34.0 com o número de versão solicitado. Os botões **Editar · Compartilhar · Extrato · Excluir · Voltar · Incluir imóvel** já aparecem no **topo** da tela de detalhe do imóvel, no mesmo formato. Conteúdo idêntico ao da v1.34.0.
 

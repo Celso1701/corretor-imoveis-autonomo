@@ -332,7 +332,7 @@ header.topbar.home{padding:0;background:transparent;box-shadow:none}
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.34.1';
+const APP_VERSION = '1.35.0';
 // Ajudante para inserir ícones do kit (traço) em qualquer lugar
 function ic(name, size, style){ size=size||18; return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"${style?` style="${style}"`:''}><use href="#i-${name}"/></svg>`; }
 // Logo da marca (usado na splash e nas telas de senha)
@@ -2286,20 +2286,24 @@ function stepPaneHTML(i){
                      : ['Térrea','Sobrado','Outro'];
     return `
     <div class="section-title">Características ${ehTerreno?'do terreno':(ehChacara?'da chácara':(ehApto?'do apartamento':'da casa'))}</div>
-    <div class="row2">
-      <div class="field"><label>Terreno / Área total (m²)</label><input type="number" value="${esc(W.terreno)}" oninput="W.terreno=this.value"></div>
-      ${ehTerreno?'':`<div class="field"><label>${ehApto?'Área útil (m²)':'Construção (m²)'}</label><input type="number" value="${esc(W.construcao)}" oninput="W.construcao=this.value"></div>`}
-    </div>
     ${(ehTerreno||ehChacara)?`
-    <div class="hint" style="margin-top:-6px;margin-bottom:8px">Medidas do lote, em metros lineares (opcional).</div>
+    <div class="hint" style="margin-bottom:8px">Medidas do lote, em metros lineares (opcional). Se preencher, a <b>área total</b> é calculada automaticamente — e você pode editar.</div>
     <div class="row2">
-      <div class="field"><label>Frente (m)</label><input type="number" inputmode="decimal" step="0.01" min="0" value="${esc(W.medFrente||'')}" oninput="W.medFrente=this.value"></div>
-      <div class="field"><label>Fundos (m)</label><input type="number" inputmode="decimal" step="0.01" min="0" value="${esc(W.medFundos||'')}" oninput="W.medFundos=this.value"></div>
+      <div class="field"><label>Frente (m)</label><input type="number" inputmode="decimal" step="0.01" min="0" value="${esc(W.medFrente||'')}" oninput="W.medFrente=this.value;calcAreaLote()"></div>
+      <div class="field"><label>Fundos (m)</label><input type="number" inputmode="decimal" step="0.01" min="0" value="${esc(W.medFundos||'')}" oninput="W.medFundos=this.value;calcAreaLote()"></div>
     </div>
     <div class="row2">
-      <div class="field"><label>Lado esquerdo (m)</label><input type="number" inputmode="decimal" step="0.01" min="0" value="${esc(W.medEsquerdo||'')}" oninput="W.medEsquerdo=this.value"></div>
-      <div class="field"><label>Lado direito (m)</label><input type="number" inputmode="decimal" step="0.01" min="0" value="${esc(W.medDireito||'')}" oninput="W.medDireito=this.value"></div>
-    </div>`:''}
+      <div class="field"><label>Lado esquerdo (m)</label><input type="number" inputmode="decimal" step="0.01" min="0" value="${esc(W.medEsquerdo||'')}" oninput="W.medEsquerdo=this.value;calcAreaLote()"></div>
+      <div class="field"><label>Lado direito (m)</label><input type="number" inputmode="decimal" step="0.01" min="0" value="${esc(W.medDireito||'')}" oninput="W.medDireito=this.value;calcAreaLote()"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Terreno / Área total (m²)</label><input type="number" id="areaTotalInput" value="${esc(W.terreno)}" oninput="W.terreno=this.value"></div>
+      ${ehTerreno?'':`<div class="field"><label>Construção (m²)</label><input type="number" value="${esc(W.construcao)}" oninput="W.construcao=this.value"></div>`}
+    </div>`:`
+    <div class="row2">
+      <div class="field"><label>Terreno / Área total (m²)</label><input type="number" id="areaTotalInput" value="${esc(W.terreno)}" oninput="W.terreno=this.value"></div>
+      ${ehTerreno?'':`<div class="field"><label>${ehApto?'Área útil (m²)':'Construção (m²)'}</label><input type="number" value="${esc(W.construcao)}" oninput="W.construcao=this.value"></div>`}
+    </div>`}
     <div class="row2">
       <fieldset><legend>Condição do imóvel</legend><div class="chip-group">${chip('condicao','Nova','Nova')}${chip('condicao','Usada','Usada')}</div></fieldset>
       ${ehTerreno?'':`<fieldset><legend>Tem morador?</legend><div class="chip-group">${chip('morador','Sim','Sim')}${chip('morador','Não','Não')}</div></fieldset>`}
@@ -3922,6 +3926,17 @@ function despForm(ex){
 // no Financeiro, atualiza o Financeiro.
 function atualizarAposLancamento(){
   if(currentTab==='inicio') renderInicio(); else renderFinanceiro();
+}
+function calcAreaLote(){
+  var f=parseFloat(String(W.medFrente||'').replace(',','.'))||0;
+  var fu=parseFloat(String(W.medFundos||'').replace(',','.'))||0;
+  var e=parseFloat(String(W.medEsquerdo||'').replace(',','.'))||0;
+  var d=parseFloat(String(W.medDireito||'').replace(',','.'))||0;
+  if(f>0 && e>0){
+    var mediaF=(f+(fu>0?fu:f))/2, mediaL=(e+(d>0?d:e))/2;
+    W.terreno=String(Math.round(mediaF*mediaL));
+    var el=document.getElementById('areaTotalInput'); if(el) el.value=W.terreno;
+  }
 }
 function syncMinReal(dataId, realId){ var d=document.getElementById(dataId), r=document.getElementById(realId); if(d&&r){ r.min=d.value||''; if(r.value && d.value && r.value < d.value){ r.value=''; } } }
 function syncDatasExcl(){ var i=document.getElementById('exclIni'), f=document.getElementById('exclFim'); if(i&&f){ f.min=i.value||''; i.max=f.value||''; if(i.value && f.value && f.value < i.value){ f.value=''; W.dataFinal=''; toast('A data final não pode ser anterior à data inicial.'); } } }
