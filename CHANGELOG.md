@@ -1,5 +1,25 @@
 # Cor Sync Imóveis — Histórico de versões
 
+## v1.38.0 — Consulta ideal, proposta, origem da captação e mais
+- **Consulta ideal (busca cruzada):** botão na tela inicial — informe o que o cliente procura (tipo, cidade, faixa de preço, quartos) e veja os imóveis da carteira que combinam.
+- **Gerar proposta:** botão no compartilhar — monta uma proposta pronta (cliente, valor, condição, validade, observações) para enviar.
+- **Origem da captação:** campo na etapa 6 (Placa/Indicação/Imobiliária/Instagram/Outros — com "Outros" digitável até 25) + chip **Tipo de captação** na lista, com resumo totalizado por origem.
+- **Parecer da visita:** campo de observações sobre o cliente, junto da avaliação de interesse (aparece na visita).
+- **Sacada** (casa/apto), **Segurança interna + Monitorado por câmera** já no texto compartilhado; **texto de compartilhamento enriquecido** por tipo.
+- **Coberta** na mesma linha da vaga; **Energia + Complemento** alinhados; **Comissão** na mesma linha da Venda exclusiva.
+- **Filtro por tipo** na lista; **acessibilidade abre em 80%** + slide no tutorial.
+- **Compartilhar:** "Compartilhar com fotos" como principal; WhatsApp/E-mail marcados como "só texto".
+- **Visita:** foto 1 + tipo + endereço ao escolher o imóvel; **Data realizada** com botão "Limpar".
+- Botão **Editar** da agenda em laranja.
+
+## v1.37.0 — Navegação (Voltar), visitas editáveis e financeiro
+- **Compartilhar:** o WhatsApp por link só leva texto (limitação do WhatsApp). Agora **Compartilhar com fotos** é o botão principal (envia as imagens via lista do sistema) e **WhatsApp/E-mail** ficam marcados como **só texto**, com aviso.
+- **Agenda:** botão **Voltar**.
+- **Próximas visitas:** tocar numa visita **abre direto para edição** (edita e regrava).
+- **Extrato do imóvel:** botão **Voltar** (retorna ao imóvel).
+- **Traçar rota:** botão em **azul bem claro** com destaque.
+- **Financeiro:** nova ordem das abas — **Por mês · Semana · Fluxo diário · Realizado · Todas**; botão **Voltar**; e ao **tocar num dia** abre uma tela com **todos os lançamentos daquele dia** (mesmas cores de receita/despesa) e **Voltar** para a tela anterior.
+
 ## v1.36.0 — Segurança (todos os tipos) + Acesso/Ruas no sítio
 - **Segurança:** abaixo do **Portão eletrônico**, novos botões **Segurança interna** (Sim/Não) e **Monitorado por câmera** (Sim/Não), em todos os tipos (apartamento, casa, sítio/chácara e terreno).
 - **Sítio/chácara:** passou a ter também **Acesso** (Portaria c/ vigia · Controle remoto · Aberto) e **Ruas internas** (Terra cascalhada · Asfaltada), como no terreno — no cadastro e na edição.
