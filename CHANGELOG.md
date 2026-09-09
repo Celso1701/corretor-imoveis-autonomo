@@ -1,5 +1,20 @@
 # Cor Sync Imóveis — Histórico de versões
 
+## v1.39.0 — Botões do detalhe, proposta independente e ajustes de 100%
+- **Detalhe do imóvel:** nova ordem dos botões — **Editar · Incluir imóvel · Compartilhar · Gerar proposta · Extrato · Voltar · Excluir**.
+- **Gerar proposta** virou botão **independente** (saiu de dentro do Compartilhar).
+- **Compartilhar:** a **carteira CRECI** vai por último (a pedido).
+- **Zoom 100%:** ajuste de layout — a **Fonte** (Sabesp / Poço artesiano / Poço caipira) ocupa a linha inteira, sem empilhar.
+- **Lista de imóveis:** as duas linhas de botões (busca e filtro por tipo) ganharam **barra de rolagem visível + degradê e seta ›**, indicando que há mais botões à direita.
+
+## v1.38.1 — Correção do zoom (padrão 100%)
+- O app volta a **abrir em 100%** (a v1.38.0 tinha ficado em 80%). O corretor ainda pode ajustar quando quiser.
+- No **primeiro acesso**, o tutorial avisa **onde alterar** o tamanho da tela (Ajustes → Acessibilidade → Tamanho da tela).
+
+## v1.38.1 — Correção do zoom (acessibilidade)
+- **Tamanho da tela (zoom)** volta ao padrão **100%** (antes vinha 80%).
+- No **primeiro acesso**, o tutorial abre com o aviso **"Tamanho da letra"** informando que o app abre em 100% e **onde alterar** (Ajustes → Acessibilidade → Tamanho da tela).
+
 ## v1.38.0 — Consulta ideal, proposta, origem da captação e mais
 - **Consulta ideal (busca cruzada):** botão na tela inicial — informe o que o cliente procura (tipo, cidade, faixa de preço, quartos) e veja os imóveis da carteira que combinam.
 - **Gerar proposta:** botão no compartilhar — monta uma proposta pronta (cliente, valor, condição, validade, observações) para enviar.
