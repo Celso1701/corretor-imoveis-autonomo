@@ -123,14 +123,20 @@ main{padding:6px 18px 10px}
 .section-title{font-weight:800;font-size:16px;margin:6px 0 14px}
 
 .chip-group{display:flex;flex-wrap:wrap;gap:8px}
-.chipwrap{position:relative}
-.chiprow{display:flex;gap:8px;overflow-x:auto;padding-bottom:7px;scrollbar-width:thin;scrollbar-color:var(--primary) var(--border)}
-.chiprow::-webkit-scrollbar{height:5px}
-.chiprow::-webkit-scrollbar-thumb{background:var(--primary);border-radius:6px}
-.chiprow::-webkit-scrollbar-track{background:var(--border);border-radius:6px}
-.chipfade{position:absolute;top:0;right:0;bottom:7px;width:38px;pointer-events:none;background:linear-gradient(to right, rgba(244,246,252,0), var(--bg) 62%);display:flex;align-items:center;justify-content:flex-end}
-.chipfade b{color:var(--primary);font-size:20px;line-height:1;font-weight:900;animation:chipnud 1.1s ease-in-out infinite}
-@keyframes chipnud{0%,100%{transform:translateX(0);opacity:.65}50%{transform:translateX(3px);opacity:1}}
+.hscrollwrap{position:relative}
+.chiprow{display:flex;gap:8px;overflow-x:auto;padding-bottom:7px}
+.chiprow,.wtabs,.weekstrip,.pills,.quick,.cat-row{scrollbar-width:thin;scrollbar-color:var(--primary) var(--border)}
+.chiprow::-webkit-scrollbar,.wtabs::-webkit-scrollbar,.weekstrip::-webkit-scrollbar,.pills::-webkit-scrollbar,.quick::-webkit-scrollbar,.cat-row::-webkit-scrollbar{height:5px}
+.chiprow::-webkit-scrollbar-thumb,.wtabs::-webkit-scrollbar-thumb,.weekstrip::-webkit-scrollbar-thumb,.pills::-webkit-scrollbar-thumb,.quick::-webkit-scrollbar-thumb,.cat-row::-webkit-scrollbar-thumb{background:var(--primary);border-radius:6px}
+.chiprow::-webkit-scrollbar-track,.wtabs::-webkit-scrollbar-track,.weekstrip::-webkit-scrollbar-track,.pills::-webkit-scrollbar-track,.quick::-webkit-scrollbar-track,.cat-row::-webkit-scrollbar-track{background:var(--border);border-radius:6px}
+.chipfade{position:absolute;top:0;bottom:8px;width:34px;pointer-events:none;display:flex;align-items:center;z-index:3}
+.chipfade-r{right:0;justify-content:flex-end;background:linear-gradient(to right, rgba(244,246,252,0), var(--bg) 60%)}
+.chipfade-l{left:0;justify-content:flex-start;background:linear-gradient(to left, rgba(244,246,252,0), var(--bg) 60%);display:none}
+.chipfade b{color:var(--primary);font-size:19px;line-height:1;font-weight:900}
+.chipfade-r b{animation:chipnud 1.1s ease-in-out infinite}
+.chipfade-l b{animation:chipnudL 1.1s ease-in-out infinite}
+@keyframes chipnud{0%,100%{transform:translateX(0);opacity:.6}50%{transform:translateX(3px);opacity:1}}
+@keyframes chipnudL{0%,100%{transform:translateX(0);opacity:.6}50%{transform:translateX(-3px);opacity:1}}
 .chip{padding:9px 14px;border-radius:100px;border:1.5px solid var(--border);background:var(--surface);font-size:12.5px;font-weight:700;cursor:pointer;user-select:none}
 .chip.selected{background:var(--primary);border-color:var(--primary);color:#fff}
 fieldset{border:none;padding:0;margin:0 0 15px}
@@ -340,7 +346,7 @@ header.topbar.home{padding:0;background:transparent;box-shadow:none}
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.39.0';
+const APP_VERSION = '1.39.1';
 // Ajudante para inserir ícones do kit (traço) em qualquer lugar
 function ic(name, size, style){ size=size||18; return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"${style?` style="${style}"`:''}><use href="#i-${name}"/></svg>`; }
 // Logo da marca (usado na splash e nas telas de senha)
@@ -2324,15 +2330,14 @@ function stepPaneHTML(i){
       <fieldset><legend>Condição do imóvel</legend><div class="chip-group">${chip('condicao','Nova','Nova')}${chip('condicao','Usada','Usada')}</div></fieldset>
       ${ehTerreno?'':`<fieldset><legend>Tem morador?</legend><div class="chip-group">${chip('morador','Sim','Sim')}${chip('morador','Não','Não')}</div></fieldset>`}
     </div>
-    ${ehApto?`<fieldset><legend>Sacada</legend><div class="chip-group">${chipBool('sacada')}</div></fieldset>`:''}
     <fieldset><legend>${tipoLegend}</legend><div class="chip-group">${opcoesTipo.map(o=>chip('tipoCasa',o,o)).join('')}</div></fieldset>
     ${W.tipoCasa==='Outro'?`<div class="field"><label>Outro (máx. 20)</label><input maxlength="20" value="${esc(W.outroTipo)}" oninput="W.outroTipo=this.value;document.getElementById('oc').textContent=this.value.length"><div class="charcount"><span id="oc">${(W.outroTipo||'').length}</span>/20</div></div>`:''}
-    ${t==='casa'?`<fieldset><legend>Sacada</legend><div class="chip-group">${chipBool('sacada')}</div></fieldset>`:''}
     ${!ehTerreno?`
     <div class="row2">
       <div class="field"><label>Quartos simples</label><input type="number" min="0" max="99" value="${esc(W.quartos)}" oninput="W.quartos=this.value.slice(0,2)"></div>
       <div class="field"><label>Suítes</label><input type="number" min="0" max="99" value="${esc(W.suites)}" oninput="W.suites=this.value.slice(0,2)"></div>
     </div>
+    ${(t==='casa'||ehApto)?`<fieldset><legend>Sala com sacada</legend><div class="chip-group">${chipBool('sacada')}</div></fieldset>`:''}
     <div class="row2">
       <div class="field"><label>Banheiros</label><input type="number" min="0" max="99" value="${esc(W.banheiros)}" oninput="W.banheiros=this.value.slice(0,2)"></div>
       <div class="field"><label>Lavanderia</label><input type="number" min="0" max="99" value="${esc(W.lavanderia)}" oninput="W.lavanderia=this.value.slice(0,2)"></div>
@@ -2344,11 +2349,11 @@ function stepPaneHTML(i){
     </div>
     <div class="row2">
       <fieldset><legend>Furô</legend><div class="chip-group">${chipBool('furo')}</div></fieldset>
-      <fieldset><legend>Churrasqueira</legend><div class="chip-group">${chipBool('churrasqueira')}</div></fieldset>
+      <fieldset><legend>Sauna</legend><div class="chip-group">${chipBool('sauna')}</div></fieldset>
     </div>
     <div class="row2">
       <fieldset><legend>Academia</legend><div class="chip-group">${chipBool('academia')}</div></fieldset>
-      <fieldset><legend>Sauna</legend><div class="chip-group">${chipBool('sauna')}</div></fieldset>
+      <fieldset><legend>Churrasqueira</legend><div class="chip-group">${chipBool('churrasqueira')}</div></fieldset>
     </div>
     <fieldset><legend>Parquinho</legend><div class="chip-group">${chipBool('parquinho')}</div></fieldset>`:''}
     <div class="field"><label>Taxa de condomínio (R$)</label><input inputmode="numeric" placeholder="0,00" value="${W.condominio&&parseFloat(W.condominio)>0?maskMoedaFromNumber(parseFloat(W.condominio)):''}" oninput="W.condominio=String(parseMoeda(maskMoeda(this)))"></div>
@@ -2437,7 +2442,7 @@ function stepPaneHTML(i){
     ${certidaoSlotHTML('registro','Registro de Imóveis')}
     ${certidaoSlotHTML('cnd','CND Prefeitura')}
     ${certidaoSlotHTML('testamento','Testamento')}
-    <div class="section-title" style="margin-top:16px">Origem da captação</div>
+    <div class="section-title" style="margin-top:16px">Onde captou este imóvel para venda</div>
     <div class="row2" style="align-items:flex-start">
       <fieldset><legend>Como captou</legend><select onchange="W.origemCaptacao=this.value;renderWizard()"><option value="" ${!W.origemCaptacao?'selected':''}>— selecione —</option>${['Placa','Indicação','Imobiliária','Instagram','Outros'].map(o=>`<option ${W.origemCaptacao===o?'selected':''}>${o}</option>`).join('')}</select></fieldset>
       ${W.origemCaptacao==='Outros'?`<fieldset><legend>Qual? (máx. 25)</legend><input maxlength="25" value="${esc(W.origemCaptacaoDetalhe||'')}" oninput="W.origemCaptacaoDetalhe=this.value"></fieldset>`:''}
@@ -2850,7 +2855,7 @@ async function gravarImovel(semSair){
 let resIni = '', resFim = '', resModo = 'registro';   // 'registro' | 'proposta'
 function abrirResumoCaptacao(){
   document.getElementById('mainNav').classList.remove('hidden');
-  document.getElementById('appHeader').innerHTML = `<h2>Origem da captação</h2>`;
+  document.getElementById('appHeader').innerHTML = `<h2>Onde captou este imóvel</h2>`;
   const cats=['Placa','Indicação','Imobiliária','Instagram','Outros','Não informado'];
   const cores={'Placa':'#2563EB','Indicação':'#0D9488','Imobiliária':'#7C3AED','Instagram':'#DB2777','Outros':'#F97316','Não informado':'#94A3B8'};
   const grupos={}; cats.forEach(c=>grupos[c]={n:0,sol:0});
@@ -3003,25 +3008,21 @@ function renderListaImoveis(){
       <div class="stitle" style="margin:0">Imóveis cadastrados (${total})</div>
       <button class="btn sm" style="width:auto" onclick="abrirTipos()">+ Novo</button>
     </div>
-    <div class="chipwrap" style="margin-bottom:8px">
-      <div class="chiprow">
+    <div class="chiprow" style="margin-bottom:8px">
       ${fchip(imoBuscaModo==='nome',`${ic('search',14)} Nome`,"imoBuscaModo='nome';renderListaImoveis()")}
       ${fchip(imoBuscaModo==='cep',`${ic('pin',14)} CEP`,"imoBuscaModo='cep';renderListaImoveis()")}
       ${fchip(imoBuscaModo==='cidade',`${ic('building',14)} Cidade`,"imoBuscaModo='cidade';renderListaImoveis()")}
       ${fchip(false,`${ic('chart',14)} Tipo de captação`,"abrirResumoCaptacao()")}
       ${fchip(false,`${ic('chart',14)} Por registro`,"abrirResumoPropostas('registro')")}
       ${fchip(false,`${ic('chart',14)} Por proposta`,"abrirResumoPropostas('proposta')")}
-      </div><div class="chipfade"><b>›</b></div>
-    </div>
-    <div class="chipwrap" style="margin-bottom:10px">
-      <div class="chiprow">
+      </div>
+    <div class="chiprow" style="margin-bottom:10px">
       ${fchip(imoTipoFiltro==='todos',`Todos`,"imoTipoFiltro='todos';renderListaImoveis()")}
       ${fchip(imoTipoFiltro==='casa',`Só casa`,"imoTipoFiltro='casa';renderListaImoveis()")}
       ${fchip(imoTipoFiltro==='apartamento',`Só apartamento`,"imoTipoFiltro='apartamento';renderListaImoveis()")}
       ${fchip(imoTipoFiltro==='chacara',`Só sítio/chácara`,"imoTipoFiltro='chacara';renderListaImoveis()")}
       ${fchip(imoTipoFiltro==='terreno',`Só terreno`,"imoTipoFiltro='terreno';renderListaImoveis()")}
-      </div><div class="chipfade"><b>›</b></div>
-    </div>
+      </div>
     <div class="ag-search" style="margin-top:0;margin-bottom:12px">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
       <input style="border:none;outline:none;flex:1;background:none;font-size:13.5px;color:var(--text)" placeholder="${ph}" value="${esc(imoBuscaQ)}" ${imoBuscaModo==='cep'?'inputmode="numeric" maxlength="9"':''} oninput="imoBuscaQ=${imoBuscaModo==='cep'?'maskCEP(this)':'this.value'};preencherListaImoveis()">
@@ -3106,7 +3107,7 @@ function abrirDetalhe(id){
       <div class="review-item"><span class="k">Lazer</span><span class="v">${[im.caracteristicas.piscina&&'Piscina',im.caracteristicas.piscinaAquecida&&'Aquecida',im.caracteristicas.furo&&'Furô',im.caracteristicas.sauna&&'Sauna',im.caracteristicas.churrasqueira&&'Churrasq.',im.caracteristicas.parquinho&&'Parquinho',im.caracteristicas.academia&&'Academia'].filter(Boolean).join(', ')||'—'}</span></div>${im.tipo==='apartamento'&&im.caracteristicas.obsApto?`<div class="review-item"><span class="k">Observações</span><span class="v">${esc(im.caracteristicas.obsApto)}</span></div>`:''}`:''}
       <div class="review-item"><span class="k">Venda exclusiva</span><span class="v">${im.exclusividade?.exclusiva?('Sim'+((im.exclusividade.dataInicial||im.exclusividade.dataFinal)?` (${fmtDataBR(im.exclusividade.dataInicial)} → ${fmtDataBR(im.exclusividade.dataFinal)})`:'')):'Não'}</span></div>
       <div class="review-item"><span class="k">Comissão</span><span class="v">${im.comissao?im.comissao.replace('.',',')+'%':'—'}</span></div>
-      ${im.origemCaptacao?`<div class="review-item"><span class="k">Origem da captação</span><span class="v">${esc(im.origemCaptacao)}${im.origemCaptacao==='Outros'&&im.origemCaptacaoDetalhe?' — '+esc(im.origemCaptacaoDetalhe):''}</span></div>`:''}
+      ${im.origemCaptacao?`<div class="review-item"><span class="k">Onde captou</span><span class="v">${esc(im.origemCaptacao)}${im.origemCaptacao==='Outros'&&im.origemCaptacaoDetalhe?' — '+esc(im.origemCaptacaoDetalhe):''}</span></div>`:''}
       <div class="review-item"><span class="k">Valor solicitado</span><span class="v">${fmtBRL(im.valores?.solicitado||0)}</span></div>
       <div class="review-item"><span class="k">Valor mínimo</span><span class="v">${fmtBRL(im.valores?.minimo||0)}</span></div>
       <div class="review-item"><span class="k">Valor negociado</span><span class="v" style="font-weight:700">${fmtBRL(im.valores?.negociado||0)}</span></div>
@@ -3273,6 +3274,31 @@ async function fazerCompartilhamento(){
 }
 // ═══ Consulta ideal (busca cruzada) ═══
 let _propImovel=null, _propCond='À vista';
+(function(){
+  function updFade(row){
+    var wrap=row.closest('.hscrollwrap'); if(!wrap) return;
+    var l=wrap.querySelector('.chipfade-l'), r=wrap.querySelector('.chipfade-r');
+    var over=row.scrollWidth-row.clientWidth;
+    if(l) l.style.display=(row.scrollLeft>2)?'flex':'none';
+    if(r) r.style.display=(over>2 && row.scrollLeft<over-2)?'flex':'none';
+  }
+  var SEL='.chiprow,.wtabs,.weekstrip,.pills,.quick,.cat-row', MO=null;
+  function decorate(){
+    document.querySelectorAll(SEL).forEach(function(row){
+      if(!row.closest('.hscrollwrap')){
+        var wrap=document.createElement('div'); wrap.className='hscrollwrap';
+        row.parentNode.insertBefore(wrap,row); wrap.appendChild(row);
+        var l=document.createElement('div'); l.className='chipfade chipfade-l'; l.innerHTML='<b>\u2039</b>'; wrap.appendChild(l);
+        var r=document.createElement('div'); r.className='chipfade chipfade-r'; r.innerHTML='<b>\u203a</b>'; wrap.appendChild(r);
+      }
+      if(!row.__wired){ row.__wired=true; row.addEventListener('scroll',function(){updFade(row);},{passive:true}); }
+      updFade(row);
+    });
+  }
+  function schedule(){ if(MO)MO.disconnect(); requestAnimationFrame(function(){ try{decorate();}catch(e){} if(MO){ var mc=document.getElementById('mainContent'); if(mc)MO.observe(mc,{childList:true,subtree:true}); var md=document.getElementById('modals'); if(md)MO.observe(md,{childList:true,subtree:true}); } }); }
+  function start(){ MO=new MutationObserver(schedule); schedule(); window.addEventListener('resize',function(){ document.querySelectorAll(SEL).forEach(updFade); }); }
+  if(document.readyState!=='loading') start(); else document.addEventListener('DOMContentLoaded',start);
+})();
 function abrirConsultaIdeal(){
   document.getElementById('appHeader').innerHTML = `<h2>Consulta ideal</h2>`;
   document.getElementById('mainContent').innerHTML = `
@@ -3831,7 +3857,7 @@ function renderFinanceiro(){
       <button class="btn sm danger" style="width:auto" onclick="novaDespesaManual()">Despesa +</button></div>`;
 
   // Toggle de visão (ordem definida com o Celso): Por mês / Fluxo diário / Semana / Realizado / Todas
-  let htop = `<button class="btn gray" style="width:auto;padding:8px 16px;margin-bottom:10px" onclick="goTab('inicio')">‹ Voltar</button><div style="display:flex;gap:8px;margin-bottom:10px;overflow-x:auto;padding-bottom:2px">
+  let htop = `<button class="btn gray" style="width:auto;padding:8px 16px;margin-bottom:10px" onclick="goTab('inicio')">‹ Voltar</button><div class="chiprow" style="margin-bottom:10px">
     ${fchip(finExpView==='mes',`${ic('calendar',14)} Por mês em aberto`,"fluxoDiaSel='';finExpView='mes';renderFinanceiro()")}
     ${fchip(finExpView==='semana',`📆 Semana`,"fluxoDiaSel='';finExpView='semana';renderFinanceiro()")}
     ${fchip(finExpView==='fluxo',`${ic('chart',14)} Fluxo diário em aberto`,"fluxoDiaSel='';finExpView='fluxo';renderFinanceiro()")}
@@ -4022,7 +4048,7 @@ function fluxoDiarioHTML(modoSemana){
 
   let h = `<div class="card" style="margin-bottom:10px">
     ${modoSemana?`<div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:8px">🗓️ Semana — de hoje até +7 dias</div>`:`
-    <div style="display:flex;gap:8px;margin-bottom:10px;overflow-x:auto;padding-bottom:2px">
+    <div class="chiprow" style="margin-bottom:10px">
       ${fchip(false,'🗓️ Este mês',"fluxoPeriodo('mes')")}
       ${fchip(false,'📆 Hoje',"fluxoPeriodo('hoje')")}
     </div>`}

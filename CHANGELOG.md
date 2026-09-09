@@ -1,5 +1,11 @@
 # Cor Sync Imóveis — Histórico de versões
 
+## v1.39.1 — Ajustes de layout e barras de rolagem
+- **Características:** a **Sacada** virou **"Sala com sacada"** e foi para **abaixo dos Quartos simples** (casa e apartamento).
+- **Lazer:** posições trocadas — **Furô · Sauna** em cima, **Academia · Churrasqueira** embaixo.
+- **Etapa 6:** "Origem da captação" renomeada para **"Onde captou este imóvel para venda"**.
+- **Barras de rolagem:** indicador **dinâmico** em todas as barras roláveis — **›** à direita quando há mais conteúdo e **‹** à esquerda quando já rolou; some conforme chega ao início/fim. Barra de rolagem fininha visível.
+
 ## v1.39.0 — Botões do detalhe, proposta independente e ajustes de 100%
 - **Detalhe do imóvel:** nova ordem dos botões — **Editar · Incluir imóvel · Compartilhar · Gerar proposta · Extrato · Voltar · Excluir**.
 - **Gerar proposta** virou botão **independente** (saiu de dentro do Compartilhar).
