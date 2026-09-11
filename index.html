@@ -346,7 +346,7 @@ header.topbar.home{padding:0;background:transparent;box-shadow:none}
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.39.1';
+const APP_VERSION = '1.40.0';
 // Ajudante para inserir ícones do kit (traço) em qualquer lugar
 function ic(name, size, style){ size=size||18; return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"${style?` style="${style}"`:''}><use href="#i-${name}"/></svg>`; }
 // Logo da marca (usado na splash e nas telas de senha)
@@ -1104,9 +1104,10 @@ function boot(){
     const parsed = raw ? JSON.parse(raw) : null;
     // Se por acaso houver um blob criptografado antigo, ignora e recomeça limpo.
     DB = (parsed && Array.isArray(parsed.imoveis)) ? parsed : defaultDB();
-    if(!DB.corretor) DB.corretor = { nome:'', creci:'', validadeCreci:'', temFoto:false, temCreci:false };
+    if(!DB.corretor) DB.corretor = { nome:'', creci:'', validadeCreci:'', temFoto:false, temCreci:false, whatsapp:'' };
     if(DB.corretor.validadeCreci===undefined) DB.corretor.validadeCreci='';
     if(DB.corretor.email===undefined) DB.corretor.email='';
+    if(DB.corretor.whatsapp===undefined) DB.corretor.whatsapp='';
     if(!Array.isArray(DB.proprietarios)) DB.proprietarios = [];
     if(!Array.isArray(DB.agendamentos)) DB.agendamentos = [];
     if(!DB.financeiro || !Array.isArray(DB.financeiro.despesas)) DB.financeiro = { despesas:[], receitas:[] };
@@ -1206,8 +1207,7 @@ async function doPrimeiroAcesso(){
   const msg = await criarSenhaParaDBAtual(p1);
   if(msg){ err.textContent = msg; return; }
   document.getElementById('setupScreen')?.remove();
-  enterApp();
-  toast('🔐 Senha criada. Seus dados estão protegidos.');
+  enviarSenhaWhats(p1, function(){ enterApp(); toast('🔐 Senha criada. Seus dados estão protegidos.'); });
 }
 function pularSenhaPrimeiroAcesso(){
   if(!DB.settings) DB.settings = {};
@@ -3217,7 +3217,7 @@ async function abrirCompartilhar(id){
       ${(nFotos||temVideo)?'':'<br><span style="font-size:11.5px">Sem fotos/vídeo marcados — será compartilhado só o texto.</span>'}
       ${(nFotos||temVideo)?'<br><span style="font-size:11.5px">Para enviar as <b>fotos</b>, use <b>Compartilhar com fotos</b> e escolha o WhatsApp na lista. Os botões <b>WhatsApp/E-mail</b> abaixo enviam <b>só o texto</b> (o WhatsApp por link não anexa fotos).</span>':''}
     </div>
-    ${temCarteira?`<div class="toggle-row" style="margin-bottom:10px">
+    ${temCarteira?`<div class="toggle-row" style="margin-bottom:10px;border:2px solid var(--primary);border-radius:14px;padding:12px 14px;background:var(--pblue)">
       <div class="lbl">Incluir a carteira CRECI<span class="d">Envia junto a foto da carteira cadastrada em Dados do corretor</span></div>
       <div class="switch" id="swCreci" onclick="alternarCreciShare(this)"></div>
     </div>`:`<div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">Sem foto da carteira CRECI cadastrada em <b>Ajustes › Dados do corretor</b> — nada a anexar.</div>`}
@@ -3432,6 +3432,7 @@ function montarTextoImovel(im){
   if(net.situacao) infra.push(`Internet: ${net.situacao}`);
 
   let txt = `🏡 ${tipoLabel(im.tipo)} à venda\n${l.endereco}, ${l.numero} — ${l.cidade}/${l.estado}\n\n`;
+  const _sol=(im.valores&&im.valores.solicitado)||0; if(_sol>0) txt += `💰 Valor: ${fmtBRL(_sol)}\n\n`;
   if(im.tipo==='terreno'){
     txt += `Terreno: ${c.terreno||'-'} m²\n`;
     const med = medidasLoteTxt(c); if(med) txt += `Medidas: ${med}\n`;
@@ -4398,10 +4399,24 @@ function renderConfig(){
       <button class="btn gray" style="margin-top:8px" onclick="var i=document.getElementById('impBackup'); if(i) i.click();">${ic('doc',16)} Importar backup</button>
       <input type="file" id="impBackup" accept="application/json,.json" style="display:none" onchange="importarBackup(this)">
     </div>
-    <div class="stitle">Segurança</div>
-    <div class="card" style="font-size:12.5px;color:var(--muted);line-height:1.6">
-      🔒 O acesso por senha está <b>desativado</b> nesta versão e será adicionado numa fase futura. Por enquanto os dados ficam salvos apenas neste aparelho, sem senha.
-    </div>
+    <div class="stitle">Segurança e login</div>
+    ${getAuth() ? `
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span style="font-size:20px">🔐</span><b style="color:var(--success)">Dados criptografados (AES-256)</b></div>
+      <div class="toggle-row" style="border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:10px">
+        <div class="lbl">Exigir senha ao abrir<span class="d">Desativar remove a senha e volta ao modo sem senha</span></div>
+        <div class="switch on" onclick="removerSenha()"></div>
+      </div>
+      <div style="font-size:11.5px;color:var(--muted);margin-bottom:12px">🔑 Com a senha ativa, seus dados ficam protegidos mesmo se alguém pegar o celular.</div>
+      <button class="btn gray" onclick="openChangePass()">${ic('edit',15)} Alterar senha</button>
+    </div>` : `
+    <div class="card">
+      <div style="font-size:12.5px;color:var(--muted);line-height:1.6;margin-bottom:12px">Ative a senha para <b>criptografar</b> seus dados (AES‑256). Sem senha, os dados ficam salvos neste aparelho sem proteção.</div>
+      <div class="toggle-row" style="border:1px solid var(--border);border-radius:12px;padding:12px 14px">
+        <div class="lbl">Exigir senha ao abrir<span class="d">Ative para proteger seus dados com senha</span></div>
+        <div class="switch" onclick="abrirCriarSenhaAjustes()"></div>
+      </div>
+    </div>`}
     <div class="stitle">Dados</div>
     <button class="ptile" onclick="confirmarReset()"><div class="ptile-icon">🗑️</div><div><div class="ptile-title">Apagar todos os dados</div><div class="ptile-sub">Remove imóveis e fotos deste aparelho</div></div></button>
     <div class="stitle">Sobre</div>
@@ -4411,7 +4426,7 @@ function renderConfig(){
         <span class="mono" style="color:var(--primary);font-weight:700;background:var(--pblue);padding:3px 10px;border-radius:100px">v${APP_VERSION}</span>
       </div>
       Dados salvos localmente neste aparelho.<br>
-      Módulo ativo: <b>Vender › Casa, Apartamento, Chácara e Terreno</b>. O login por senha entra em fase futura.
+      Módulo ativo: <b>Vender › Casa, Apartamento, Chácara e Terreno</b>.
     </div>`;
   if(c.temFoto) idbGet(keyCorretorFoto()).then(d=>{ if(d){ const el=document.getElementById('cfgCorThumb'); if(el){ el.style.overflow='hidden'; el.innerHTML=`<img src="${d}" style="width:100%;height:100%;object-fit:cover">`; } } }).catch(()=>{});
   stopProCountdownTicker();
@@ -4468,6 +4483,10 @@ function renderDadosCorretor(){
         <input id="corEmail" type="email" maxlength="35" value="${esc(c.email||'')}" placeholder="seuemail@exemplo.com">
         <div class="hint">Até 35 caracteres. Aparece no compartilhamento do imóvel.</div></div>
 
+      <div class="field" style="margin-bottom:12px"><label>Seu WhatsApp (com DDD)</label>
+        <input id="corWhats" inputmode="numeric" maxlength="20" value="${esc(c.whatsapp||'')}" placeholder="(15) 99999-9999">
+        <div class="hint">Usado para você receber e guardar a sua senha de acesso.</div></div>
+
       <input type="file" id="corFotoCam" accept="image/*" capture="user" class="filein" onchange="onCorFoto('foto',this)">
       <input type="file" id="corFotoGal" accept="image/*" class="filein" onchange="onCorFoto('foto',this)">
       <input type="file" id="corCreciCam" accept="image/*" capture="environment" class="filein" onchange="onCorFoto('creci',this)">
@@ -4507,7 +4526,7 @@ function escolherOrigemCorFoto(kind){
      <button class="btn gray" onclick="pegarArquivo('image/*',null,function(f){closeSheet();onCorFoto('${kind}',f);})">${ic('image',16)} Galeria</button>
      <button class="btn" onclick="capturarCorField();pegarArquivo('image/*','${kind==='foto'?'user':'environment'}',function(f){closeSheet();onCorFoto('${kind}',f);})">${ic('camera',16)} Câmera</button>`);
 }
-function capturarCorField(){ DB.corretor.nome = val('corNome')||DB.corretor.nome; DB.corretor.creci = val('corCreci')||DB.corretor.creci; if(document.getElementById('corValidade')) DB.corretor.validadeCreci = val('corValidade'); DB.corretor.email = (document.getElementById('corEmail')?document.getElementById('corEmail').value:DB.corretor.email)||''; }
+function capturarCorField(){ DB.corretor.nome = val('corNome')||DB.corretor.nome; DB.corretor.creci = val('corCreci')||DB.corretor.creci; if(document.getElementById('corValidade')) DB.corretor.validadeCreci = val('corValidade'); DB.corretor.email = (document.getElementById('corEmail')?document.getElementById('corEmail').value:DB.corretor.email)||''; DB.corretor.whatsapp = (document.getElementById('corWhats')?document.getElementById('corWhats').value:DB.corretor.whatsapp)||''; }
 async function storeCorFoto(kind, dataUrl){
   if(kind==='foto'){ await idbPut(keyCorretorFoto(), dataUrl); DB.corretor.temFoto=true; }
   else { await idbPut(keyCorretorCreci(), dataUrl); DB.corretor.temCreci=true; }
@@ -4539,9 +4558,55 @@ function salvarCorretor(){
   DB.corretor.creci = val('corCreci');
   DB.corretor.validadeCreci = validade;
   DB.corretor.email = (document.getElementById('corEmail')?document.getElementById('corEmail').value:DB.corretor.email)||'';
+  DB.corretor.whatsapp = (document.getElementById('corWhats')?document.getElementById('corWhats').value:DB.corretor.whatsapp)||'';
   save();
   toast('Dados do corretor salvos.');
   goTab('config');
+}
+function abrirCriarSenhaAjustes(){
+  showSheet('🔐 Criar senha de acesso', `
+    <div style="font-size:13px;color:var(--muted);margin-bottom:12px">Sua senha <b>criptografa</b> os dados (AES‑256). Guarde bem — sem ela os dados não podem ser recuperados. Digite duas vezes.</div>
+    <div class="pwwrap"><input id="ajPass" type="password" placeholder="Crie sua senha" maxlength="64" oninput="checkPwRules('ajPass','ajPassBtn');conferirSenhasAj()"><button type="button" class="eye" onclick="togglePw('ajPass',this)">👁</button></div>
+    ${pwRulesHTML()}
+    <div class="pwwrap" style="margin-top:10px"><input id="ajPass2" type="password" placeholder="Digite a senha de novo" maxlength="64" oninput="conferirSenhasAj()"><button type="button" class="eye" onclick="togglePw('ajPass2',this)">👁</button></div>
+    <div id="ajMatch" style="font-size:11.5px;font-weight:700;min-height:16px;margin-top:6px"></div>`,
+    `<button class="btn gray" onclick="closeSheet()">Cancelar</button><button class="btn green" id="ajPassBtn" disabled onclick="doCriarSenhaAjustes()">Criar senha</button>`);
+}
+function conferirSenhasAj(){
+  const p1=val('ajPass'), p2=val('ajPass2'); const ok=Object.values(validatePassword(p1)).every(Boolean);
+  const el=document.getElementById('ajMatch'), btn=document.getElementById('ajPassBtn');
+  if(!p2){ if(el)el.textContent=''; if(btn)btn.disabled=true; return; }
+  const ig=p1===p2; if(el){ el.textContent=ig?'✓ As senhas conferem':'✕ As senhas não conferem'; el.style.color=ig?'var(--success)':'var(--danger)'; }
+  if(btn) btn.disabled=!(ig&&ok);
+}
+async function doCriarSenhaAjustes(){
+  const p1=val('ajPass'), p2=val('ajPass2');
+  if(p1!==p2 || !Object.values(validatePassword(p1)).every(Boolean)) return;
+  const msg=await criarSenhaParaDBAtual(p1);
+  if(msg){ toast(msg); return; }
+  closeSheet(); if(currentTab==='config') renderConfig(); toast('🔐 Senha criada. Dados protegidos.');
+  enviarSenhaWhats(p1);
+}
+function removerSenha(){
+  confirmar({icon:'⚠️', title:'Remover a senha?', msg:'Os dados voltam a ficar SEM criptografia neste aparelho. Você vai precisar digitar a senha atual para confirmar.', noLabel:'Cancelar', yesLabel:'Continuar', yes:'pedirSenhaParaRemover()'});
+}
+function pedirSenhaParaRemover(){
+  showSheet('Remover senha', `
+    <label>Senha atual</label><div class="pwwrap"><input id="rmOld" type="password"><button type="button" class="eye" onclick="togglePw('rmOld',this)">👁</button></div>
+    <div style="font-size:11.5px;color:var(--muted);margin-top:8px">Depois de remover, o app abrirá <b>sem pedir senha</b>.</div>`,
+    `<button class="btn gray" onclick="closeSheet()">Cancelar</button><button class="btn danger" onclick="doRemoverSenha()">Remover senha</button>`);
+}
+async function doRemoverSenha(){
+  const auth=getAuth(); if(!auth){ closeSheet(); return; }
+  const key=await deriveKey(val('rmOld'), b64d(auth.salt));
+  if(!(await verifyKey(key, auth.check))){ toast('Senha atual incorreta'); return; }
+  _cryptoKey=null;
+  localStorage.removeItem(LS_AUTH);
+  if(!DB.settings) DB.settings={};
+  DB.settings.senhaDispensada=true;
+  await persistDB();
+  sessionStorage.removeItem('unlocked');
+  closeSheet(); if(currentTab==='config') renderConfig(); toast('Senha removida. O app abrirá sem senha.');
 }
 function openChangePass(){
   showSheet('Alterar senha', `
@@ -4549,6 +4614,26 @@ function openChangePass(){
     <label>Nova senha</label><div class="pwwrap"><input id="cpNew" type="password" maxlength="64" oninput="checkPwRules('cpNew','cpBtn')"><button type="button" class="eye" onclick="togglePw('cpNew',this)">👁</button></div>
     ${pwRulesHTML()}`,
     `<button class="btn gray" onclick="closeSheet()">Cancelar</button><button class="btn" id="cpBtn" disabled onclick="doChangePass()">Salvar</button>`);
+}
+var _senhaTmp='', _senhaDone=null;
+function enviarSenhaWhats(senha, onDone){
+  _senhaTmp = senha||''; _senhaDone = onDone||null;
+  showSheet('🔐 Guardar sua senha', `
+    <div style="font-size:13px;color:var(--text);margin-bottom:10px">Envie sua senha para o <b>seu próprio WhatsApp</b>. Se um dia esquecer, você não perde o acesso aos seus dados (eles ficam criptografados e não há como recuperar sem a senha).</div>
+    <div class="field"><label>Seu WhatsApp (com DDD)</label><input id="pwWhats" inputmode="numeric" maxlength="20" placeholder="(15) 99999-9999" value="${esc((DB.corretor&&DB.corretor.whatsapp)||'')}"></div>
+    <div style="font-size:11px;color:var(--muted);line-height:1.6">A senha vai abrir no WhatsApp para você enviar a si mesmo. <b>Guarde a mensagem em local seguro</b> e evite compartilhá-la.</div>`,
+    `<button class="btn gray" onclick="pularEnvioSenha()">Agora não</button><button class="btn green" onclick="doEnviarSenhaWhats()">Enviar ao meu WhatsApp</button>`);
+}
+function _fimEnvioSenha(){ _senhaTmp=''; closeSheet(); var f=_senhaDone; _senhaDone=null; if(typeof f==='function') f(); }
+function pularEnvioSenha(){ _fimEnvioSenha(); }
+function doEnviarSenhaWhats(){
+  var raw=(val('pwWhats')||''); var num=raw.replace(/\D/g,'');
+  if(num.length<10){ toast('Informe um WhatsApp válido com DDD.'); return; }
+  if(num.length<=11) num='55'+num;
+  if(DB.corretor){ DB.corretor.whatsapp=raw; save(); }
+  var msg='🔐 Cor Sync Imóveis — GUARDE COM SEGURANÇA.\nSua senha de acesso é: '+_senhaTmp+'\n\nSem ela seus dados neste aparelho não podem ser recuperados.';
+  window.open('https://wa.me/'+num+'?text='+encodeURIComponent(msg),'_blank');
+  _fimEnvioSenha();
 }
 async function doChangePass(){
   const auth = getAuth();
@@ -4563,6 +4648,7 @@ async function doChangePass(){
   _cryptoKey = key;
   await persistDB();
   closeSheet(); toast('Senha alterada com sucesso.');
+  enviarSenhaWhats(novo);
 }
 function doLogout(){
   sessionStorage.removeItem('unlocked');
