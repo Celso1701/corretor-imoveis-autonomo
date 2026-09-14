@@ -346,7 +346,7 @@ header.topbar.home{padding:0;background:transparent;box-shadow:none}
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.40.1';
+const APP_VERSION = '1.40.2';
 // Ajudante para inserir ícones do kit (traço) em qualquer lugar
 function ic(name, size, style){ size=size||18; return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"${style?` style="${style}"`:''}><use href="#i-${name}"/></svg>`; }
 // Logo da marca (usado na splash e nas telas de senha)
@@ -4431,6 +4431,7 @@ function renderConfig(){
         <div class="lbl">Exigir senha ao abrir<span class="d">Ative para proteger seus dados com senha</span></div>
         <div class="switch" onclick="abrirCriarSenhaAjustes()"></div>
       </div>
+      ${(!window.crypto||!crypto.subtle) ? `<div style="margin-top:10px;font-size:11.5px;color:var(--danger);font-weight:700;line-height:1.5">⚠️ A criptografia NÃO está disponível neste contexto. A senha só funciona abrindo o app por <b>https</b> (com cadeado) ou instalado pelo link https.</div>` : `<div style="margin-top:10px;font-size:11px;color:var(--success)">✓ Criptografia disponível neste aparelho.</div>`}
     </div>`}
     <div class="stitle">Dados</div>
     <button class="ptile" onclick="confirmarReset()"><div class="ptile-icon">🗑️</div><div><div class="ptile-title">Apagar todos os dados</div><div class="ptile-sub">Remove imóveis e fotos deste aparelho</div></div></button>
@@ -4598,7 +4599,8 @@ async function doCriarSenhaAjustes(){
   const p1=val('ajPass'), p2=val('ajPass2');
   if(p1!==p2 || !Object.values(validatePassword(p1)).every(Boolean)) return;
   const msg=await criarSenhaParaDBAtual(p1);
-  if(msg){ toast(msg); return; }
+  if(msg){ closeSheet(); showSheet('⚠️ Não foi possível ativar a senha', `<div style="font-size:13px;color:var(--text);line-height:1.6">${esc(msg)}</div>`, `<button class="btn" onclick="closeSheet()">Entendi</button>`); return; }
+  if(!getAuth()){ closeSheet(); showSheet('⚠️ A senha não foi salva', `<div style="font-size:13px;color:var(--text);line-height:1.6">A senha não ficou salva neste aparelho. Abra o app pelo endereço <b>https://app.corsyncimoveis.com.br</b> (com cadeado) ou <b>reinstale</b> pelo atalho da tela inicial e tente de novo.</div>`, `<button class="btn" onclick="closeSheet()">Entendi</button>`); return; }
   closeSheet(); if(currentTab==='config') renderConfig(); toast('🔐 Senha criada. Dados protegidos.');
   enviarSenhaWhats(p1);
 }
