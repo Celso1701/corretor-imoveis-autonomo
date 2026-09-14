@@ -1,5 +1,11 @@
 # Cor Sync Imóveis — Histórico de versões
 
+## v1.41.0 — Senha: correção, WhatsApp automático e destaque
+- **Correção importante:** o botão "Criar senha"/"Salvar" agora é **sempre clicável** e mostra na hora o que falta (regras da senha ou confirmação), em vez de parecer travado. Isso resolve o caso em que a senha não era criada e o app não pedia senha ao reabrir.
+- **Senha no WhatsApp automática:** ao **criar** ou **alterar** a senha, o app envia a cópia **direto para o WhatsApp cadastrado** em Dados do corretor (Seu WhatsApp) e mostra o aviso **"Cópia da senha encaminhada ao seu WhatsApp"**. Se ainda não houver número cadastrado, ele pergunta.
+- **Regras da senha visíveis:** caixa destacando que a senha precisa de **10+ caracteres, 1 maiúscula, 1 minúscula, 1 número e 1 símbolo** (ao criar e ao alterar).
+- **Destaque:** o botão **"Exigir senha ao abrir"** agora aparece em **amarelo claro**.
+
 ## v1.40.2 — Diagnóstico da senha
 - **Segurança e login:** agora mostra um indicador se a **criptografia está disponível** no aparelho (✓) ou não (⚠️), e avisa de forma clara caso a senha não consiga ser salva. Ajuda a diagnosticar por que a senha não ativa em alguns contextos.
 

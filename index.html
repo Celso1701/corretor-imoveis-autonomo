@@ -346,7 +346,7 @@ header.topbar.home{padding:0;background:transparent;box-shadow:none}
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.40.2';
+const APP_VERSION = '1.41.0';
 // Ajudante para inserir ícones do kit (traço) em qualquer lugar
 function ic(name, size, style){ size=size||18; return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"${style?` style="${style}"`:''}><use href="#i-${name}"/></svg>`; }
 // Logo da marca (usado na splash e nas telas de senha)
@@ -4418,7 +4418,7 @@ function renderConfig(){
     ${getAuth() ? `
     <div class="card">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span style="font-size:20px">🔐</span><b style="color:var(--success)">Dados criptografados (AES-256)</b></div>
-      <div class="toggle-row" style="border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:10px">
+      <div class="toggle-row" style="background:#FFF9E8;border:1.5px solid #FFD980;border-radius:12px;padding:12px 14px;margin-bottom:10px">
         <div class="lbl">Exigir senha ao abrir<span class="d">Desativar remove a senha e volta ao modo sem senha</span></div>
         <div class="switch on" onclick="removerSenha()"></div>
       </div>
@@ -4427,7 +4427,7 @@ function renderConfig(){
     </div>` : `
     <div class="card">
       <div style="font-size:12.5px;color:var(--muted);line-height:1.6;margin-bottom:12px">Ative a senha para <b>criptografar</b> seus dados (AES‑256). Sem senha, os dados ficam salvos neste aparelho sem proteção.</div>
-      <div class="toggle-row" style="border:1px solid var(--border);border-radius:12px;padding:12px 14px">
+      <div class="toggle-row" style="background:#FFF9E8;border:1.5px solid #FFD980;border-radius:12px;padding:12px 14px">
         <div class="lbl">Exigir senha ao abrir<span class="d">Ative para proteger seus dados com senha</span></div>
         <div class="switch" onclick="abrirCriarSenhaAjustes()"></div>
       </div>
@@ -4581,7 +4581,8 @@ function salvarCorretor(){
 }
 function abrirCriarSenhaAjustes(){
   showSheet('🔐 Criar senha de acesso', `
-    <div style="font-size:13px;color:var(--muted);margin-bottom:12px">Sua senha <b>criptografa</b> os dados (AES‑256). Guarde bem — sem ela os dados não podem ser recuperados. Digite duas vezes.</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:10px">Sua senha <b>criptografa</b> os dados (AES‑256). Guarde bem — sem ela os dados não podem ser recuperados. Digite duas vezes.</div>
+    <div style="font-size:12px;color:var(--text);background:#FFF9E8;border:1px solid #FFD980;border-radius:10px;padding:8px 10px;margin-bottom:12px">A senha deve ter <b>no mínimo 10 caracteres</b>, com <b>1 maiúscula, 1 minúscula, 1 número e 1 símbolo</b>.</div>
     <div class="pwwrap"><input id="ajPass" type="password" placeholder="Crie sua senha" maxlength="64" oninput="checkPwRules('ajPass','ajPassBtn');conferirSenhasAj()"><button type="button" class="eye" onclick="togglePw('ajPass',this)">👁</button></div>
     ${pwRulesHTML()}
     <div class="pwwrap" style="margin-top:10px"><input id="ajPass2" type="password" placeholder="Digite a senha de novo" maxlength="64" oninput="conferirSenhasAj()"><button type="button" class="eye" onclick="togglePw('ajPass2',this)">👁</button></div>
@@ -4628,13 +4629,16 @@ async function doRemoverSenha(){
 function openChangePass(){
   showSheet('Alterar senha', `
     <label>Senha atual</label><div class="pwwrap"><input id="cpOld" type="password"><button type="button" class="eye" onclick="togglePw('cpOld',this)">👁</button></div>
-    <label>Nova senha</label><div class="pwwrap"><input id="cpNew" type="password" maxlength="64" oninput="checkPwRules('cpNew','cpBtn')"><button type="button" class="eye" onclick="togglePw('cpNew',this)">👁</button></div>
+    <div style="font-size:12px;color:var(--text);background:#FFF9E8;border:1px solid #FFD980;border-radius:10px;padding:8px 10px;margin:10px 0">A nova senha deve ter <b>no mínimo 10 caracteres</b>, com <b>1 maiúscula, 1 minúscula, 1 número e 1 símbolo</b>.</div>
+    <label>Nova senha</label><div class="pwwrap"><input id="cpNew" type="password" maxlength="64" oninput="checkPwRules('cpNew','__nobtn')"><button type="button" class="eye" onclick="togglePw('cpNew',this)">👁</button></div>
     ${pwRulesHTML()}`,
-    `<button class="btn gray" onclick="closeSheet()">Cancelar</button><button class="btn" id="cpBtn" disabled onclick="doChangePass()">Salvar</button>`);
+    `<button class="btn gray" onclick="closeSheet()">Cancelar</button><button class="btn" onclick="doChangePass()">Salvar</button>`);
 }
 var _senhaTmp='', _senhaDone=null;
 function enviarSenhaWhats(senha, onDone){
   _senhaTmp = senha||''; _senhaDone = onDone||null;
+  var _raw=(DB.corretor&&DB.corretor.whatsapp)||''; var _num=_raw.replace(/\D/g,'');
+  if(_num.length>=10){ doEnviarSenhaWhats(_num.length<=11?('55'+_num):_num); return; }
   showSheet('🔐 Guardar sua senha', `
     <div style="font-size:13px;color:var(--text);margin-bottom:10px">Envie sua senha para o <b>seu próprio WhatsApp</b>. Se um dia esquecer, você não perde o acesso aos seus dados (eles ficam criptografados e não há como recuperar sem a senha).</div>
     <div class="field"><label>Seu WhatsApp (com DDD)</label><input id="pwWhats" inputmode="numeric" maxlength="20" placeholder="(15) 99999-9999" value="${esc((DB.corretor&&DB.corretor.whatsapp)||'')}"></div>
@@ -4643,29 +4647,30 @@ function enviarSenhaWhats(senha, onDone){
 }
 function _fimEnvioSenha(){ _senhaTmp=''; closeSheet(); var f=_senhaDone; _senhaDone=null; if(typeof f==='function') f(); }
 function pularEnvioSenha(){ _fimEnvioSenha(); }
-function doEnviarSenhaWhats(){
-  var raw=(val('pwWhats')||''); var num=raw.replace(/\D/g,'');
-  if(num.length<10){ toast('Informe um WhatsApp válido com DDD.'); return; }
-  if(num.length<=11) num='55'+num;
-  if(DB.corretor){ DB.corretor.whatsapp=raw; save(); }
+function doEnviarSenhaWhats(numDireto){
+  var num=numDireto;
+  if(!num){ var raw=(val('pwWhats')||''); num=raw.replace(/\D/g,''); if(num.length<10){ toast('Informe um WhatsApp válido com DDD.'); return; } if(num.length<=11) num='55'+num; if(DB.corretor){ DB.corretor.whatsapp=raw; save(); } }
   var msg='🔐 Cor Sync Imóveis — GUARDE COM SEGURANÇA.\nSua senha de acesso é: '+_senhaTmp+'\n\nSem ela seus dados neste aparelho não podem ser recuperados.';
   window.open('https://wa.me/'+num+'?text='+encodeURIComponent(msg),'_blank');
+  toast('📲 Cópia da senha encaminhada ao seu WhatsApp.');
   _fimEnvioSenha();
 }
 async function doChangePass(){
   const auth = getAuth();
-  const oldKey = await deriveKey(val('cpOld'), b64d(auth.salt));
-  if(!(await verifyKey(oldKey, auth.check))){ toast('Senha atual incorreta'); return; }
-  const novo = val('cpNew');
-  if(!Object.values(validatePassword(novo)).every(Boolean)) return;
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const key = await deriveKey(novo, salt);
-  const check = await makeCheck(key);
-  localStorage.setItem(LS_AUTH, JSON.stringify({salt:b64e(salt), check, createdAt:auth.createdAt}));
-  _cryptoKey = key;
-  await persistDB();
-  closeSheet(); toast('Senha alterada com sucesso.');
-  enviarSenhaWhats(novo);
+  try{
+    const oldKey = await deriveKey(val('cpOld'), b64d(auth.salt));
+    if(!(await verifyKey(oldKey, auth.check))){ toast('Senha atual incorreta.'); return; }
+    const novo = val('cpNew');
+    if(!Object.values(validatePassword(novo)).every(Boolean)){ toast('A nova senha precisa ter 10+ caracteres, com maiúscula, minúscula, número e símbolo.'); return; }
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const key = await deriveKey(novo, salt);
+    const check = await makeCheck(key);
+    localStorage.setItem(LS_AUTH, JSON.stringify({salt:b64e(salt), check, createdAt:auth.createdAt}));
+    _cryptoKey = key;
+    await persistDB();
+    closeSheet(); toast('Senha alterada com sucesso.');
+    enviarSenhaWhats(novo);
+  }catch(e){ closeSheet(); showSheet('⚠️ Erro ao alterar a senha', `<div style="font-size:13px;color:var(--text);line-height:1.6">${esc(''+(e&&e.message||e))}</div>`, `<button class="btn" onclick="closeSheet()">Entendi</button>`); }
 }
 function doLogout(){
   sessionStorage.removeItem('unlocked');
