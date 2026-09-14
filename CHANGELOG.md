@@ -1,5 +1,9 @@
 # Cor Sync Imóveis — Histórico de versões
 
+## v1.40.1 — Proposta com anexos e ajuste da senha
+- **Gerar proposta:** agora anexa automaticamente a **carteira CRECI** + as **2 primeiras fotos públicas** e traz mais dados do imóvel (**área, tipo, cômodos, lazer, condomínio quando preenchido**), além do valor anunciado e dados da proposta. Não leva: venda exclusiva, comissão, valor mínimo/negociado nem dados do proprietário.
+- **Senha (mensagem):** quando a criptografia não estiver disponível (app aberto fora de HTTPS), o app agora avisa de forma clara que a senha só funciona por **https** ou com o app **instalado na tela inicial**.
+
 ## v1.40.0 — Segurança (senha) e compartilhar
 - **Segurança e login (Ajustes):** seção real, logo abaixo do backup — **habilitar senha** (quando o corretor escolheu "sem senha"), **Alterar senha** e **remover** (desligar o toggle, pedindo a senha atual). Criptografia AES‑256.
 - **Senha no WhatsApp:** ao **criar** (1º acesso) e ao **alterar** a senha, o app abre o WhatsApp do corretor com a senha para ele guardar — recuperação caso esqueça (a senha não fica salva em lugar nenhum).

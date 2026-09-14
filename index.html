@@ -346,7 +346,7 @@ header.topbar.home{padding:0;background:transparent;box-shadow:none}
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.40.0';
+const APP_VERSION = '1.40.1';
 // Ajudante para inserir ícones do kit (traço) em qualquer lugar
 function ic(name, size, style){ size=size||18; return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"${style?` style="${style}"`:''}><use href="#i-${name}"/></svg>`; }
 // Logo da marca (usado na splash e nas telas de senha)
@@ -1187,7 +1187,7 @@ function conferirSenhas(){
 }
 // Cria a senha SEM apagar nada: passa a criptografar o banco que já existe.
 async function criarSenhaParaDBAtual(pass){
-  if(!crypto.subtle) return 'Criptografia indisponível neste navegador.';
+  if(!crypto.subtle) return 'A senha só funciona com o app aberto por HTTPS (https://app.corsyncimoveis.com.br) ou instalado na tela inicial. Neste contexto a criptografia não está disponível.';
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const key = await deriveKey(pass, salt);
   const check = await makeCheck(key);
@@ -3368,9 +3368,20 @@ function propForm(im){
 }
 function propSetCond(el,c){ _propCond=c; const box=document.getElementById('propConds'); if(box){ Array.from(box.children).forEach(ch=>ch.classList.remove('selected')); el.classList.add('selected'); } }
 function montarTextoProposta(im,p){
-  const L=im.localizacao||{}; const cor=DB.corretor||{};
+  const L=im.localizacao||{}, c=im.caracteristicas||{}, cor=DB.corretor||{};
   const sol=(im.valores&&im.valores.solicitado)||0;
+  const cond=(im.condominio&&im.condominio.valor)||0;
   let t=`📝 PROPOSTA DE COMPRA\n${tipoLabel(im.tipo)} — cód. ${(im.codigo||'').toUpperCase()}\n${L.endereco||''}, ${L.numero||''} — ${L.cidade||''}/${L.estado||''}\n\n`;
+  if(im.tipo==='terreno') t+=`Terreno: ${c.terreno||'-'} m²\n`;
+  else t+=`Terreno: ${c.terreno||'-'} m² · Construção: ${c.construcao||'-'} m²\n`;
+  const med=medidasLoteTxt(c); if(med && (im.tipo==='terreno'||im.tipo==='chacara')) t+=`Medidas: ${med}\n`;
+  const tt=(c.tipoCasa==='Outro'&&c.outroTipo)?c.outroTipo:c.tipoCasa; if(tt) t+=`Tipo: ${tt}\n`;
+  const com=[]; if(+c.quartos>0)com.push(`${c.quartos} quarto(s)`); if(+c.suites>0)com.push(`${c.suites} suíte(s)`); if(+c.banheiros>0)com.push(`${c.banheiros} banheiro(s)`); if(+c.lavanderia>0)com.push(`${c.lavanderia} lavanderia`);
+  if(com.length) t+=com.join(' · ')+'\n';
+  const laz=[]; if(c.piscina)laz.push('Piscina'+(c.piscinaAquecida?' (aquecida)':'')); if(c.furo)laz.push('Furô'); if(c.churrasqueira)laz.push('Churrasqueira'); if(c.academia)laz.push('Academia'); if(c.sauna)laz.push('Sauna'); if(c.parquinho)laz.push('Parquinho');
+  if(laz.length) t+=`Lazer: ${laz.join(', ')}\n`;
+  if(cond>0) t+=`Condomínio: ${fmtBRL(cond)}\n`;
+  t+=`\n`;
   if(sol>0) t+=`Valor anunciado: ${fmtBRL(sol)}\n`;
   t+=`💰 Valor da proposta: ${fmtBRL(p.valor)}\n`;
   t+=`Condição: ${p.cond}\n`;
@@ -3381,21 +3392,25 @@ function montarTextoProposta(im,p){
     t+=`\n————————\n`;
     if(cor.nome) t+=`${cor.nome}\n`;
     if(cor.creci) t+=`CRECI Nº: ${cor.creci}\n`;
-    if(cor.telefone) t+=`Tel: ${cor.telefone}\n`;
+    if(cor.whatsapp) t+=`WhatsApp: ${cor.whatsapp}\n`;
     if(cor.email) t+=`E-mail: ${cor.email}\n`;
     t=t.replace(/\n$/,'');
   }
   return t;
 }
-function compartilharProposta(){
+async function compartilharProposta(){
   const im=_propImovel; if(!im) return;
   const g=id=>document.getElementById(id);
   const valor=parseMoeda(g('propValor').value||'');
   if(!valor){ toast('Informe o valor da proposta.'); return; }
   const p={ cliente:(g('propCliente').value||'').trim(), valor:valor, validade:g('propValidade').value||'', obs:(g('propObs').value||'').trim(), cond:_propCond||'À vista' };
   const txt=montarTextoProposta(im,p);
-  try{ if(navigator.share){ navigator.share({text:txt}).then(()=>closeSheet()).catch(()=>{}); return; } }catch(e){}
-  window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');
+  const files=[];
+  try{ if(DB.corretor&&DB.corretor.temCreci){ const dc=await idbGet(keyCorretorCreci()); if(dc) files.push(await dataURLtoFile(dc,'carteira_creci.jpg')); } }catch(e){}
+  try{ const pubs=(im.fotosPublicas||[]); let n=0; for(let i=0;i<pubs.length && n<2;i++){ if(pubs[i]){ const d=await idbGet(keyFotoPub(im.id,i)); if(d){ files.push(await dataURLtoFile(d,(im.codigo||'foto')+'_'+(n+1)+'.jpg')); n++; } } } }catch(e){}
+  try{ if(files.length && navigator.canShare && navigator.canShare({files})){ await navigator.share({files, text:txt}); closeSheet(); return; } }catch(e){}
+  try{ if(navigator.share){ await navigator.share({text:txt}); closeSheet(); return; } }catch(e){}
+  window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank'); closeSheet();
 }
 
 function montarTextoImovel(im){
