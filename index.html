@@ -346,7 +346,7 @@ header.topbar.home{padding:0;background:transparent;box-shadow:none}
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.42.1';
+const APP_VERSION = '1.42.2';
 // Ajudante para inserir ícones do kit (traço) em qualquer lugar
 function ic(name, size, style){ size=size||18; return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"${style?` style="${style}"`:''}><use href="#i-${name}"/></svg>`; }
 // Logo da marca (usado na splash e nas telas de senha)
@@ -2013,7 +2013,7 @@ async function removerPropFoto(){
   pFotoCache = null; P.temFoto=false; renderPropForm();
 }
 function cancelarPropForm(){
-  if(_voltarAoImovel && W){ _voltarAoImovel=false; P=null; pFotoCache=null; wStep=1; document.getElementById('mainNav').classList.remove('hidden'); renderWizard(); return; }
+  if(_voltarAoImovel && W){ _voltarAoImovel=false; P=null; pFotoCache=null; wStep=stepOrder.indexOf(1); document.getElementById('mainNav').classList.remove('hidden'); renderWizard(); return; }
   goTab('proprietarios');
 }
 function salvarProprietario(){
@@ -2035,7 +2035,7 @@ function salvarProprietario(){
     _voltarAoImovel = false;
     // volta ao cadastro do imóvel já selecionando o proprietário recém-criado
     escolherProprietario(novoId);
-    wStep = 1;
+    wStep = stepOrder.indexOf(1);
     document.getElementById('mainNav').classList.remove('hidden');
     renderWizard();
     return;
@@ -2067,7 +2067,7 @@ function blankDraft(tipo){
     tipo: tipo, codigo: proximoCodigo(tipo), dataInclusao: isoDate(new Date()), status:'Disponível',
     tipoEndereco:'Rua', endereco:'', numero:'', complemento:'', bairro:'', cidade:'', estado:'', cep:'', certidoes:{},
     proprietarioId:'', nome:'', tel1:'', tel2:'', tel3:'', email1:'', email2:'',
-    terreno:'', construcao:'', medFrente:'', medFundos:'', medEsquerdo:'', medDireito:'', condicao:'Usada', morador:'Não', sacada:false, tipoCasa:({casa:'Térrea',apartamento:'Padrão',chacara:'Lazer',terreno:'Plano'})[tipo]||'Térrea', outroTipo:'',
+    terreno:'', construcao:'', medFrente:'', medFundos:'', medEsquerdo:'', medDireito:'', condicao:'Usada', morador:'Não', sacada:false, casaGerminada:false, temCorredor:false, tipoCasa:({casa:'Térrea',apartamento:'Padrão',chacara:'Lazer',terreno:'Plano'})[tipo]||'Térrea', outroTipo:'',
     vendaExclusiva:'Não', dataInicial:'', dataFinal:'',
     condominio:'0', comissao:'',
     origemCaptacao:'', origemCaptacaoDetalhe:'', valorSolicitado:'', valorMinimo:'', valorNegociado:'', dataProposta:'',
@@ -2107,7 +2107,7 @@ async function editarImovel(id){
   W.proprietarioId = PR.id||''; W.nome = PR.nome||''; W.tel1 = PR.tel1||''; W.tel2 = PR.tel2||''; W.tel3 = PR.tel3||''; W.email1 = PR.email1||''; W.email2 = PR.email2||'';
   const tipoCasaDefault = ({casa:'Térrea',apartamento:'Padrão',chacara:'Lazer',terreno:'Plano'})[W.tipo]||'Térrea';
   W.terreno = cc.terreno||''; W.construcao = cc.construcao||'';
-  W.medFrente = cc.medFrente||''; W.medFundos = cc.medFundos||''; W.medEsquerdo = cc.medEsquerdo||''; W.medDireito = cc.medDireito||''; W.condicao = cc.condicao||'Usada'; W.morador = cc.morador||'Não'; W.sacada = !!cc.sacada; W.tipoCasa = cc.tipoCasa||tipoCasaDefault; W.outroTipo = cc.outroTipo||'';
+  W.medFrente = cc.medFrente||''; W.medFundos = cc.medFundos||''; W.medEsquerdo = cc.medEsquerdo||''; W.medDireito = cc.medDireito||''; W.condicao = cc.condicao||'Usada'; W.morador = cc.morador||'Não'; W.sacada = !!cc.sacada; W.casaGerminada = !!cc.casaGerminada; W.temCorredor = !!cc.temCorredor; W.tipoCasa = cc.tipoCasa||tipoCasaDefault; W.outroTipo = cc.outroTipo||'';
   W.quartos=cc.quartos||''; W.suites=cc.suites||''; W.banheiros=cc.banheiros||''; W.lavanderia=cc.lavanderia||'';
   W.piscina=!!cc.piscina; W.piscinaAquecida=!!cc.piscinaAquecida; W.furo=!!cc.furo; W.sauna=!!cc.sauna; W.churrasqueira=!!cc.churrasqueira;
   W.parquinho=!!cc.parquinho; W.academia=!!cc.academia; W.obsApto=cc.obsApto||'';
@@ -2359,7 +2359,8 @@ function stepPaneHTML(i){
       <div class="field"><label>Quartos simples</label><input type="number" min="0" max="99" value="${esc(W.quartos)}" oninput="W.quartos=this.value.slice(0,2)"></div>
       <div class="field"><label>Suítes</label><input type="number" min="0" max="99" value="${esc(W.suites)}" oninput="W.suites=this.value.slice(0,2)"></div>
     </div>
-    ${(t==='casa'||ehApto)?`<fieldset><legend>Sala com sacada</legend><div class="chip-group">${chipBool('sacada')}</div></fieldset>`:''}
+    ${(t==='casa'||ehApto)?`<fieldset><legend>${(t==='casa'&&W.tipoCasa==='Sobrado')?'Quarto com sacada':'Sala com sacada'}</legend><div class="chip-group">${chipBool('sacada')}</div></fieldset>`:''}
+    ${t==='casa'?`<div class="row2"><fieldset><legend>Casa germinada</legend><div class="chip-group">${chipBool('casaGerminada')}</div></fieldset><fieldset><legend>Tem corredor</legend><div class="chip-group">${chipBool('temCorredor')}</div></fieldset></div>`:''}
     <div class="row2">
       <div class="field"><label>Banheiros</label><input type="number" min="0" max="99" value="${esc(W.banheiros)}" oninput="W.banheiros=this.value.slice(0,2)"></div>
       <div class="field"><label>Lavanderia</label><input type="number" min="0" max="99" value="${esc(W.lavanderia)}" oninput="W.lavanderia=this.value.slice(0,2)"></div>
@@ -2399,6 +2400,8 @@ function stepPaneHTML(i){
     ${linhaPortao}
     <fieldset><legend>Acesso</legend><div class="chip-group">${chip('terrenoAcesso','Portaria c/ vigia','Portaria c/ vigia')}${chip('terrenoAcesso','Controle remoto','Controle remoto')}${chip('terrenoAcesso','Aberto','Aberto')}</div></fieldset>
     <fieldset><legend>Ruas internas</legend><div class="chip-group">${chip('terrenoRuas','Terra (cascalhada)','Terra (cascalhada)')}${chip('terrenoRuas','Asfaltada','Asfaltada')}</div></fieldset>
+    <div class="toggle-row"><div class="lbl">Ruas com sarjetas<span class="d">Guias e sarjetas nas ruas</span></div>${toggle('terrenoSarjeta')}</div>
+    <div class="toggle-row"><div class="lbl">Iluminação nas ruas<span class="d">Iluminação pública</span></div>${toggle('terrenoIluminacao')}</div>
     ${linhaSeguranca}` : `
     <div class="section-title">Garagem e portão</div>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
@@ -2420,8 +2423,6 @@ function stepPaneHTML(i){
       <fieldset><legend>Energia elétrica</legend><div class="chip-group">${chip('energia','Instalado','Instalado')}${chip('energia','A instalar','A instalar')}</div></fieldset>
       <fieldset><legend>Complemento</legend><input maxlength="20" value="${esc(W.energiaInfo||'')}" oninput="W.energiaInfo=this.value" placeholder="solar, eólica…"></fieldset>
     </div>
-    ${ehTerreno?`<div class="toggle-row"><div class="lbl">Ruas com sarjetas<span class="d">Guias e sarjetas nas ruas</span></div>${toggle('terrenoSarjeta')}</div>
-    <div class="toggle-row"><div class="lbl">Iluminação nas ruas<span class="d">Iluminação pública</span></div>${toggle('terrenoIluminacao')}</div>`:''}
     <fieldset><legend>Internet</legend><div class="chip-group">${chip('internet','Instalado','Instalado')}${chip('internet','A instalar','A instalar')}</div></fieldset>`;
 
     return blocoGaragem + blocoInfra;
@@ -2848,7 +2849,7 @@ async function gravarImovel(semSair){
     localizacao:{ tipoEndereco:W.tipoEndereco, endereco:W.endereco, numero:W.numero, complemento:W.complemento, bairro:W.bairro, cidade:W.cidade, estado:W.estado, cep:W.cep },
     proprietario:{ id:W.proprietarioId||'', nome:W.nome, tel1:W.tel1, tel2:W.tel2, tel3:W.tel3, email1:W.email1, email2:W.email2 },
     origemCaptacao:W.origemCaptacao||'', origemCaptacaoDetalhe:W.origemCaptacaoDetalhe||'',
-    caracteristicas:{ terreno:W.terreno, construcao:W.construcao, medFrente:W.medFrente||'', medFundos:W.medFundos||'', medEsquerdo:W.medEsquerdo||'', medDireito:W.medDireito||'', condicao:W.condicao, morador:W.morador, sacada:!!W.sacada, tipoCasa:W.tipoCasa, outroTipo:W.outroTipo,
+    caracteristicas:{ terreno:W.terreno, construcao:W.construcao, medFrente:W.medFrente||'', medFundos:W.medFundos||'', medEsquerdo:W.medEsquerdo||'', medDireito:W.medDireito||'', condicao:W.condicao, morador:W.morador, sacada:!!W.sacada, casaGerminada:!!W.casaGerminada, temCorredor:!!W.temCorredor, tipoCasa:W.tipoCasa, outroTipo:W.outroTipo,
       quartos:W.quartos||'', suites:W.suites||'', banheiros:W.banheiros||'', lavanderia:W.lavanderia||'', piscina:!!W.piscina, piscinaAquecida:!!W.piscinaAquecida, furo:!!W.furo, sauna:!!W.sauna, churrasqueira:!!W.churrasqueira, parquinho:!!W.parquinho, academia:!!W.academia, obsApto:W.obsApto||'' },
     exclusividade:{ exclusiva: W.vendaExclusiva==='Sim', dataInicial:W.dataInicial, dataFinal:W.dataFinal },
     condominio:{ valor: parseFloat(W.condominio)||0 },
@@ -3098,13 +3099,19 @@ function preencherListaImoveis(){
 async function gerarFichaPDF(id){
   const im=DB.imoveis.find(x=>x.id===id); if(!im) return;
   toast('Gerando ficha…');
-  const cor=DB.corretor||{}, L=im.localizacao||{}, c=im.caracteristicas||{};
+  const cor=DB.corretor||{}, L=im.localizacao||{}, c=im.caracteristicas||{}, g=im.garagem||{}, ag=im.agua||{}, en=im.energia||{}, net=im.internet||{}, lo=im.loteamento||{};
   const fotos=[]; const pubs=im.fotosPublicas||[];
   for(let i=0;i<6 && fotos.length<4;i++){ if(pubs[i]){ try{ const d=await idbGet(keyFotoPub(id,i)); if(d) fotos.push(d); }catch(e){} } }
   let creci=''; if(cor.temCreci){ try{ creci=(await idbGet(keyCorretorCreci()))||''; }catch(e){} }
   const sol=(im.valores&&im.valores.solicitado)||0, cond=(im.condominio&&im.condominio.valor)||0;
+  const ehTerr=im.tipo==='terreno', ehChac=im.tipo==='chacara', ehCasaApto=(im.tipo==='casa'||im.tipo==='apartamento');
+  const tt=(c.tipoCasa==='Outro'&&c.outroTipo)?c.outroTipo:c.tipoCasa, med=medidasLoteTxt(c);
   const com=[]; if(+c.quartos>0)com.push(c.quartos+' quarto(s)'); if(+c.suites>0)com.push(c.suites+' suíte(s)'); if(+c.banheiros>0)com.push(c.banheiros+' banh.'); if(+c.lavanderia>0)com.push(c.lavanderia+' lavand.');
-  const laz=[]; if(c.piscina)laz.push('Piscina'); if(c.churrasqueira)laz.push('Churrasqueira'); if(c.academia)laz.push('Academia'); if(c.sauna)laz.push('Sauna'); if(c.furo)laz.push('Furô'); if(c.parquinho)laz.push('Parquinho');
+  const laz=[]; if(c.piscina)laz.push('Piscina'+(c.piscinaAquecida?' (aquecida)':'')); if(c.churrasqueira)laz.push('Churrasqueira'); if(c.academia)laz.push('Academia'); if(c.sauna)laz.push('Sauna'); if(c.furo)laz.push('Furô'); if(c.parquinho)laz.push('Parquinho');
+  const gar=[]; if(g.vagas)gar.push(g.vagas+' vaga(s)'); if(g.coberta)gar.push('coberta'); if(g.disposicao)gar.push(g.disposicao);
+  const seg=[]; if(g.portao)seg.push('Portão eletrônico'); if(g.portariaVigia)seg.push('Portaria c/ vigia'); if(g.segurancaInterna)seg.push('Segurança interna'); if(g.monitoradoCamera)seg.push('Câmera');
+  const aguaTxt=ag.tipo?(ag.tipo+(ag.fonte?' ('+ag.fonte+')':'')+(ag.situacao?' — '+ag.situacao:'')):'';
+  const enTxt=en.situacao?(en.situacao+(en.info?' ('+en.info+')':'')):'';
   const linha=(k,v)=> v? `<tr><td class="k">${k}</td><td class="v">${v}</td></tr>`:'';
   const html=`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ficha ${(im.codigo||'').toUpperCase()}</title>
   <style>*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#1a2332;margin:0;padding:22px}
@@ -3114,7 +3121,7 @@ async function gerarFichaPDF(id){
   .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px}
   .grid img{width:100%;height:150px;object-fit:cover;border-radius:8px;border:1px solid #ddd}
   table{width:100%;border-collapse:collapse;margin-bottom:14px}td{padding:6px 8px;border-bottom:1px solid #eee;font-size:13px}
-  td.k{color:#667;width:42%}td.v{font-weight:600;text-align:right}
+  td.k{color:#667;width:40%}td.v{font-weight:600;text-align:right}
   .ft{border-top:2px solid #1D4ED8;padding-top:10px;margin-top:14px;display:flex;justify-content:space-between;align-items:center}
   .ft .nome{font-weight:bold;font-size:14px}.ft .creci{color:#667;font-size:12px}.cart{height:72px;border-radius:6px;border:1px solid #1D4ED8}
   @media print{body{padding:0}}</style></head><body>
@@ -3122,12 +3129,29 @@ async function gerarFichaPDF(id){
   <p class="addr">${esc(L.endereco||'')}, ${esc(L.numero||'')} — ${esc(L.cidade||'')}/${esc(L.estado||'')}</p>
   ${sol>0?`<div class="price">${fmtBRL(sol)}</div>`:''}
   ${fotos.length?`<div class="grid">${fotos.map(f=>`<img src="${f}">`).join('')}</div>`:''}
-  <table>${linha('Tipo',tipoLabel(im.tipo))}${linha('Área',(c.terreno||'-')+' m²'+(im.tipo!=='terreno'?' / '+(c.construcao||'-')+' m² constr.':''))}${linha('Cômodos',com.join(' · '))}${linha('Lazer',laz.join(', '))}${cond>0?linha('Condomínio',fmtBRL(cond)):''}</table>
+  <table>
+    ${linha('Tipo', tipoLabel(im.tipo)+(tt?' · '+tt:''))}
+    ${linha('Área', (c.terreno||'-')+' m²'+(!ehTerr?' / '+(c.construcao||'-')+' m² constr.':''))}
+    ${(ehTerr||ehChac)&&med?linha('Medidas do lote', med):''}
+    ${c.condicao?linha('Condição', c.condicao):''}
+    ${com.length?linha('Cômodos', com.join(' · ')):''}
+    ${laz.length?linha('Lazer', laz.join(', ')):''}
+    ${ehCasaApto?linha('Sacada', c.sacada?'Sim':'Não'):''}
+    ${gar.length?linha('Garagem', gar.join(' · ')):''}
+    ${seg.length?linha('Segurança', seg.join(' · ')):''}
+    ${(ehChac||ehTerr)&&lo.acesso?linha('Acesso', lo.acesso):''}
+    ${(ehChac||ehTerr)&&lo.ruas?linha('Ruas internas', lo.ruas):''}
+    ${aguaTxt?linha('Água', aguaTxt):''}
+    ${enTxt?linha('Energia', enTxt):''}
+    ${net.situacao?linha('Internet', net.situacao):''}
+    ${cond>0?linha('Condomínio', fmtBRL(cond)):''}
+  </table>
   <div class="ft"><div><div class="nome">${esc(cor.nome||'')}</div><div class="creci">${cor.creci?'CRECI '+esc(cor.creci):''}${cor.whatsapp?' · '+esc(cor.whatsapp):''}</div></div>${creci?`<img class="cart" src="${creci}">`:''}</div>
-  <scr'+'ipt>window.onload=function(){setTimeout(function(){try{window.print();}catch(e){}},500);}<\/scr'+'ipt></body></html>`;
+  </body></html>`;
   const w=window.open('','_blank');
   if(!w){ toast('Permita pop-ups/nova aba para gerar a ficha.'); return; }
   w.document.open(); w.document.write(html); w.document.close();
+  setTimeout(function(){ try{ w.focus(); w.print(); }catch(e){} }, 700);
 }
 function statusCor(s){ return {'Disponível':'#16A34A','Reservado':'#F59E0B','Vendido':'#DC2626'}[s||'Disponível']||'#16A34A'; }
 function statusBadge(s){ s=s||'Disponível'; const c=statusCor(s); return s==='Disponível' ? `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c};margin-right:5px;vertical-align:middle"></span>` : `<span style="color:${c};font-weight:800">● ${s}</span> · `; }
@@ -4014,8 +4038,7 @@ function renderFinanceiro(){
   // Toggle de visão (ordem definida com o Celso): Por mês / Fluxo diário / Semana / Realizado / Todas
   let htop = `<button class="btn gray" style="width:auto;padding:8px 16px;margin-bottom:10px" onclick="goTab('inicio')">‹ Voltar</button><div class="chiprow" style="margin-bottom:10px">
     ${fchip(finExpView==='mes',`${ic('calendar',14)} Por mês em aberto`,"fluxoDiaSel='';finExpView='mes';renderFinanceiro()")}
-    ${fchip(finExpView==='semana',`📆 Semana`,"fluxoDiaSel='';finExpView='semana';renderFinanceiro()")}
-    ${fchip(finExpView==='fluxo',`${ic('chart',14)} Fluxo diário em aberto`,"fluxoDiaSel='';finExpView='fluxo';renderFinanceiro()")}
+    ${fchip(finExpView==='fluxo',`${ic('chart',14)} Fluxo em aberto`,"fluxoDiaSel='';finExpView='fluxo';renderFinanceiro()")}
     ${fchip(finExpView==='realizado',`${ic('check',14)} Realizado`,"fluxoDiaSel='';finExpView='realizado';renderFinanceiro()")}
     ${fchip(finExpView==='all',`${ic('doc',14)} Todas`,"fluxoDiaSel='';finExpView='all';renderFinanceiro()")}
   </div>`;
@@ -4105,7 +4128,7 @@ function fluxoPeriodo(qual){
     fluxoIni = isoDate(hoje);
     const fim = new Date(hoje); fim.setDate(fim.getDate()+7);   // hoje até +7 dias
     fluxoFim = isoDate(fim);
-    finExpView = 'semana';
+    finExpView = 'fluxo';
   } else if(qual==='mes'){
     fluxoIni = isoDate(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
     fluxoFim = isoDate(new Date(hoje.getFullYear(), hoje.getMonth()+1, 0));
@@ -4204,8 +4227,9 @@ function fluxoDiarioHTML(modoSemana){
   let h = `<div class="card" style="margin-bottom:10px">
     ${modoSemana?`<div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:8px">🗓️ Semana — de hoje até +7 dias</div>`:`
     <div class="chiprow" style="margin-bottom:10px">
-      ${fchip(false,'🗓️ Este mês',"fluxoPeriodo('mes')")}
       ${fchip(false,'📆 Hoje',"fluxoPeriodo('hoje')")}
+      ${fchip(false,'🗓️ Semana',"fluxoPeriodo('semana')")}
+      ${fchip(false,'🗓️ Este mês',"fluxoPeriodo('mes')")}
     </div>`}
     <div class="row2">
       <div class="field" style="margin:0"><label>Data inicial</label><input type="date" value="${fluxoIni}" onchange="setFluxoIni(this.value)"></div>
@@ -4570,7 +4594,7 @@ function renderConfig(){
         <div class="lbl">Exigir senha ao abrir<span class="d">Ative para proteger seus dados com senha</span></div>
         <div class="switch" onclick="abrirCriarSenhaAjustes()"></div>
       </div>
-      ${(!window.crypto||!crypto.subtle) ? `<div style="margin-top:10px;font-size:11.5px;color:var(--danger);font-weight:700;line-height:1.5">⚠️ A criptografia NÃO está disponível neste contexto. A senha só funciona abrindo o app por <b>https</b> (com cadeado) ou instalado pelo link https.</div>` : `<div style="margin-top:10px;font-size:11px;color:var(--success)">✓ Criptografia disponível neste aparelho.</div>`}
+      ${(!window.crypto||!crypto.subtle) ? `<div style="margin-top:10px;font-size:11.5px;color:var(--danger);font-weight:700;line-height:1.5">⚠️ A criptografia NÃO está disponível neste contexto. A senha só funciona abrindo o app por <b>https</b> (com cadeado) ou instalado pelo link https.</div>` : `<div style="margin-top:10px;font-size:11px;color:var(--success)">✓ Criptografia disponível neste aparelho.</div><div style="margin-top:6px;font-size:11px;color:var(--muted);line-height:1.5">🔑 Senha: mínimo <b>4 caracteres</b>, sendo 1 maiúscula, 1 minúscula, 1 número e 1 caractere especial.</div>`}
     </div>`}
     <div class="stitle">Dados</div>
     <button class="ptile" onclick="confirmarReset()"><div class="ptile-icon">🗑️</div><div><div class="ptile-title">Apagar todos os dados</div><div class="ptile-sub">Remove imóveis e fotos deste aparelho</div></div></button>

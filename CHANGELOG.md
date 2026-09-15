@@ -1,5 +1,12 @@
 # Cor Sync Imóveis — Histórico de versões
 
+## v1.42.2 — Ajustes de cadastro, financeiro e segurança
+- **Terreno:** "Ruas com sarjetas" e "Iluminação nas ruas" agora ficam logo **abaixo de Ruas internas** (saíram da seção de água/energia).
+- **Casa:** quando o tipo é **Sobrado**, o botão passa a ser **"Quarto com sacada"** (nos demais, "Sala com sacada"). Novos campos **"Casa germinada"** e **"Tem corredor"**.
+- **Cadastro do proprietário:** ao adicionar um proprietário durante o cadastro do imóvel, o app **volta para a etapa Proprietário** (antes voltava para Características).
+- **Financeiro:** a aba **"Semana"** virou um botão dentro do **"Fluxo em aberto"** (antes "Fluxo diário em aberto"); ordem dos botões: **Hoje · Semana · Este mês**.
+- **Segurança:** a seção agora informa as **regras da senha** (mínimo 4 caracteres, com 1 maiúscula, 1 minúscula, 1 número e 1 caractere especial).
+
 ## v1.42.1 — Funil do cliente e lembretes de visita
 - **Funil do cliente:** cada cliente tem um **estágio** (Novo → Qualificado → Visitou → Proposta → Fechado). Em "Meus clientes" há um **resumo por estágio** e botões para **mover no funil** direto no card. O estágio também aparece no cadastro do cliente.
 - **Lembrete de visita:** ao agendar/editar uma visita, escolha **quando ser avisado** (30 min, 1 h, 3 h ou 1 dia antes, ou não lembrar). O app dispara uma **notificação** na hora do lembrete (com o app aberto; em iPhone a notificação com o app fechado é limitada).
