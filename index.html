@@ -346,7 +346,7 @@ header.topbar.home{padding:0;background:transparent;box-shadow:none}
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.41.0';
+const APP_VERSION = '1.42.1';
 // Ajudante para inserir ícones do kit (traço) em qualquer lugar
 function ic(name, size, style){ size=size||18; return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"${style?` style="${style}"`:''}><use href="#i-${name}"/></svg>`; }
 // Logo da marca (usado na splash e nas telas de senha)
@@ -641,7 +641,7 @@ const LS_AUTH = 'corretorimoveis_auth';
 let DB = null;
 let _cryptoKey = null;
 
-function defaultDB(){ return { imoveis: [], proprietarios: [], agendamentos: [], financeiro:{ despesas:[], receitas:[] }, contadores:{cs:0,ap:0,tr:0,ch:0,prop:0}, corretor: { nome:'', creci:'', validadeCreci:'', email:'', temFoto:false, temCreci:false } }; }
+function defaultDB(){ return { imoveis: [], proprietarios: [], agendamentos: [], financeiro:{ despesas:[], receitas:[] }, clientes: [], contadores:{cs:0,ap:0,tr:0,ch:0,prop:0}, corretor: { nome:'', creci:'', validadeCreci:'', email:'', temFoto:false, temCreci:false } }; }
 function getAuth(){ try{ return JSON.parse(localStorage.getItem(LS_AUTH)||'null'); }catch(e){ return null; } }
 
 async function deriveKey(pass, saltU8){
@@ -674,13 +674,13 @@ async function persistDB(){
 }
 
 // ═══ Regras de senha exigidas pelo projeto original ═══
-// No mínimo 10 caracteres, com maiúscula, minúscula, número e especial.
+// No mínimo 4 e até 10 caracteres, com maiúscula, minúscula, número e especial.
 function validatePassword(v){
-  return { len: v.length>=10, up:/[A-Z]/.test(v), low:/[a-z]/.test(v), num:/[0-9]/.test(v), sp:/[^A-Za-z0-9]/.test(v) };
+  return { len: v.length>=4 && v.length<=10, up:/[A-Z]/.test(v), low:/[a-z]/.test(v), num:/[0-9]/.test(v), sp:/[^A-Za-z0-9]/.test(v) };
 }
 function pwRulesHTML(){
   return `<div class="pw-rules" id="pwRules">
-    <div class="pw-rule" data-r="len"><span class="rc"></span>10+ caracteres</div>
+    <div class="pw-rule" data-r="len"><span class="rc"></span>4 a 10 caracteres</div>
     <div class="pw-rule" data-r="up"><span class="rc"></span>1 maiúscula</div>
     <div class="pw-rule" data-r="low"><span class="rc"></span>1 minúscula</div>
     <div class="pw-rule" data-r="num"><span class="rc"></span>1 número</div>
@@ -1108,6 +1108,7 @@ function boot(){
     if(DB.corretor.validadeCreci===undefined) DB.corretor.validadeCreci='';
     if(DB.corretor.email===undefined) DB.corretor.email='';
     if(DB.corretor.whatsapp===undefined) DB.corretor.whatsapp='';
+    if(!Array.isArray(DB.clientes)) DB.clientes=[];
     if(!Array.isArray(DB.proprietarios)) DB.proprietarios = [];
     if(!Array.isArray(DB.agendamentos)) DB.agendamentos = [];
     if(!DB.financeiro || !Array.isArray(DB.financeiro.despesas)) DB.financeiro = { despesas:[], receitas:[] };
@@ -1160,10 +1161,10 @@ function renderPrimeiroAcesso(){
     <div class="auth-title">Bem-vindo(a)! Crie sua senha</div>
     <div class="auth-sub">A senha protege seus imóveis, proprietários e telefones neste aparelho. Durante o teste grátis ela é opcional — mas <b>ao assinar o Pro será obrigatória</b>.</div>
     <div class="auth-box">
-      <div class="pwwrap"><input id="setupPass" type="password" placeholder="Crie sua senha" maxlength="64" oninput="checkPwRules('setupPass','setupBtn');conferirSenhas()">
+      <div class="pwwrap"><input id="setupPass" type="password" placeholder="Crie sua senha" maxlength="10" oninput="checkPwRules('setupPass','setupBtn');conferirSenhas()">
         <button type="button" class="eye" onclick="togglePw('setupPass',this)">👁</button></div>
       ${pwRulesHTML()}
-      <div class="pwwrap" style="margin-top:10px"><input id="setupPass2" type="password" placeholder="Digite a senha de novo" maxlength="64" oninput="conferirSenhas()">
+      <div class="pwwrap" style="margin-top:10px"><input id="setupPass2" type="password" placeholder="Digite a senha de novo" maxlength="10" oninput="conferirSenhas()">
         <button type="button" class="eye" onclick="togglePw('setupPass2',this)">👁</button></div>
       <div id="setupMatch" style="font-size:11.5px;font-weight:700;min-height:16px;margin-top:6px"></div>
       <button class="btn" id="setupBtn" disabled onclick="doPrimeiroAcesso()" style="margin-top:10px">Criar senha e entrar</button>
@@ -1221,10 +1222,10 @@ function pularSenhaPrimeiroAcesso(){
 function exigirSenhaParaPro(depois){
   showSheet('Crie sua senha de acesso', `
     <div style="font-size:13px;color:var(--muted);margin-bottom:12px">O Plano Pro exige senha para proteger seus dados. Digite a senha duas vezes para confirmar.</div>
-    <div class="pwwrap"><input id="proPass" type="password" placeholder="Crie sua senha" maxlength="64" oninput="checkPwRules('proPass','proPassBtn');conferirSenhasPro()">
+    <div class="pwwrap"><input id="proPass" type="password" placeholder="Crie sua senha" maxlength="10" oninput="checkPwRules('proPass','proPassBtn');conferirSenhasPro()">
       <button type="button" class="eye" onclick="togglePw('proPass',this)">👁</button></div>
     ${pwRulesHTML()}
-    <div class="pwwrap" style="margin-top:10px"><input id="proPass2" type="password" placeholder="Digite a senha de novo" maxlength="64" oninput="conferirSenhasPro()">
+    <div class="pwwrap" style="margin-top:10px"><input id="proPass2" type="password" placeholder="Digite a senha de novo" maxlength="10" oninput="conferirSenhasPro()">
       <button type="button" class="eye" onclick="togglePw('proPass2',this)">👁</button></div>
     <div id="proMatch" style="font-size:11.5px;font-weight:700;min-height:16px;margin-top:6px"></div>
     <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.6">⚠️ Guarde bem a senha — sem ela os dados não podem ser recuperados.</div>`,
@@ -1268,7 +1269,7 @@ function renderSetup(){
     <div class="auth-title">Crie sua senha de acesso</div>
     <div class="auth-sub">Seus dados (proprietários, endereços, telefones) ficam criptografados neste aparelho. Guarde bem esta senha — sem ela os dados não podem ser recuperados.</div>
     <div class="auth-box">
-      <div class="pwwrap"><input id="setupPass" type="password" placeholder="Crie sua senha" maxlength="64" oninput="checkPwRules('setupPass','setupBtn')">
+      <div class="pwwrap"><input id="setupPass" type="password" placeholder="Crie sua senha" maxlength="10" oninput="checkPwRules('setupPass','setupBtn')">
         <button type="button" class="eye" onclick="togglePw('setupPass',this)">👁</button></div>
       ${pwRulesHTML()}
       <button class="btn" id="setupBtn" disabled onclick="doSetup()" style="margin-top:16px">Criar e entrar</button>
@@ -1362,6 +1363,8 @@ function enterApp(){
   document.getElementById('mainNav').classList.remove('hidden');
   goTab('inicio');
   try{ scheduleLocalCheck(); }catch(e){}
+  try{ checarLembretesVisita(); }catch(e){}
+  if(!window.__lembreteTimer){ window.__lembreteTimer=setInterval(()=>{ try{ checarLembretesVisita(); }catch(e){} }, 60000); }
   if(!localStorage.getItem('cor_tut_done')){
     setTimeout(()=>openTutorial(parseInt(localStorage.getItem('cor_tut_step')||'0')), 500);
   }
@@ -1505,6 +1508,25 @@ function notify(title, body){
   }
 }
 // Roda no máximo 1x por dia: notifica os compromissos vencidos/hoje/próximos (conforme Ajustes)
+function checarLembretesVisita(){
+  try{
+    if(!('Notification' in window) || Notification.permission!=='granted') return;
+    let fired=[]; try{ fired=JSON.parse(localStorage.getItem('cor_lembretes_fired')||'[]'); }catch(e){}
+    const now=Date.now(); let changed=false;
+    (DB.agendamentos||[]).forEach(a=>{
+      const mins=parseInt(a.lembrete||0)||0; if(!mins||!a.data||!a.hora) return;
+      const vt=new Date(a.data+'T'+a.hora+':00').getTime(); if(isNaN(vt)) return;
+      const rt=vt-mins*60000; const k=a.id+'@'+a.data+'T'+a.hora;
+      if(now>=rt && now<vt+3600000 && fired.indexOf(k)<0){
+        const im=DB.imoveis.find(x=>x.id===a.imovelId);
+        const end=im?((im.localizacao.endereco||'')+', '+(im.localizacao.numero||'')):'';
+        notify('🔔 Visita em breve', `${a.compradorNome||'Cliente'} às ${a.hora}${end?' · '+end:''}`);
+        fired.push(k); changed=true;
+      }
+    });
+    if(changed) localStorage.setItem('cor_lembretes_fired', JSON.stringify(fired.slice(-300)));
+  }catch(e){}
+}
 function scheduleLocalCheck(){
   const key = 'cor_lastcheck';
   if(localStorage.getItem(key) === todayISO()) return;
@@ -2042,7 +2064,7 @@ function blankDraft(tipo){
   tipo = tipo || 'casa';
   return {
     id: uid(), createdAt: Date.now(),
-    tipo: tipo, codigo: proximoCodigo(tipo), dataInclusao: isoDate(new Date()),
+    tipo: tipo, codigo: proximoCodigo(tipo), dataInclusao: isoDate(new Date()), status:'Disponível',
     tipoEndereco:'Rua', endereco:'', numero:'', complemento:'', bairro:'', cidade:'', estado:'', cep:'', certidoes:{},
     proprietarioId:'', nome:'', tel1:'', tel2:'', tel3:'', email1:'', email2:'',
     terreno:'', construcao:'', medFrente:'', medFundos:'', medEsquerdo:'', medDireito:'', condicao:'Usada', morador:'Não', sacada:false, tipoCasa:({casa:'Térrea',apartamento:'Padrão',chacara:'Lazer',terreno:'Plano'})[tipo]||'Térrea', outroTipo:'',
@@ -2366,8 +2388,8 @@ function stepPaneHTML(i){
     const linhaPortao = `<div class="row2">
       <fieldset><legend>Portão eletrônico</legend><div class="chip-group">${chipBool('portao')}</div></fieldset>
       <fieldset><legend>Portaria com vigia</legend><div class="chip-group">${chipBool('portariaVigia')}</div></fieldset>
-    </div>
-    <div class="row2">
+    </div>`;
+    const linhaSeguranca = `<div class="row2">
       <fieldset><legend>Segurança interna</legend><div class="chip-group">${chipBool('segurancaInterna')}</div></fieldset>
       <fieldset><legend>Monitorado por câmera</legend><div class="chip-group">${chipBool('monitoradoCamera')}</div></fieldset>
     </div>`;
@@ -2376,7 +2398,8 @@ function stepPaneHTML(i){
     <fieldset><legend>Tipo do terreno</legend><div class="chip-group">${chip('terrenoCondominio','Condomínio','Condomínio')}${chip('terrenoCondominio','Aberto (sem portaria)','Aberto (sem portaria)')}</div></fieldset>
     ${linhaPortao}
     <fieldset><legend>Acesso</legend><div class="chip-group">${chip('terrenoAcesso','Portaria c/ vigia','Portaria c/ vigia')}${chip('terrenoAcesso','Controle remoto','Controle remoto')}${chip('terrenoAcesso','Aberto','Aberto')}</div></fieldset>
-    <fieldset><legend>Ruas internas</legend><div class="chip-group">${chip('terrenoRuas','Terra (cascalhada)','Terra (cascalhada)')}${chip('terrenoRuas','Asfaltada','Asfaltada')}</div></fieldset>` : `
+    <fieldset><legend>Ruas internas</legend><div class="chip-group">${chip('terrenoRuas','Terra (cascalhada)','Terra (cascalhada)')}${chip('terrenoRuas','Asfaltada','Asfaltada')}</div></fieldset>
+    ${linhaSeguranca}` : `
     <div class="section-title">Garagem e portão</div>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
       <input type="number" min="0" max="99" value="${esc(W.vagas)}" oninput="W.vagas=this.value.slice(0,2)" style="width:58px;text-align:center;flex:none">
@@ -2386,7 +2409,8 @@ function stepPaneHTML(i){
     <fieldset style="margin-top:14px"><legend>Disposição dos carros</legend><div class="chip-group">${chip('disposicao','Lado a lado','Lado a lado')}${chip('disposicao','Em fila','Em fila')}</div></fieldset>
     ${linhaPortao}${W.tipo==='chacara'?`
     <fieldset><legend>Acesso</legend><div class="chip-group">${chip('terrenoAcesso','Portaria c/ vigia','Portaria c/ vigia')}${chip('terrenoAcesso','Controle remoto','Controle remoto')}${chip('terrenoAcesso','Aberto','Aberto')}</div></fieldset>
-    <fieldset><legend>Ruas internas</legend><div class="chip-group">${chip('terrenoRuas','Terra (cascalhada)','Terra (cascalhada)')}${chip('terrenoRuas','Asfaltada','Asfaltada')}</div></fieldset>`:''}`;
+    <fieldset><legend>Ruas internas</legend><div class="chip-group">${chip('terrenoRuas','Terra (cascalhada)','Terra (cascalhada)')}${chip('terrenoRuas','Asfaltada','Asfaltada')}</div></fieldset>`:''}
+    ${linhaSeguranca}`;
 
     const blocoInfra = `
     <div class="section-title" style="margin-top:22px">Água, energia e internet</div>
@@ -2820,7 +2844,7 @@ async function gravarImovel(semSair){
     W.codigo = pref + pad5(prox);
   }
   const imovel = {
-    id: W.id, tipo: W.tipo||'casa', codigo: W.codigo, dataInclusao: W.dataInclusao||isoDate(new Date(W.createdAt||Date.now())), createdAt: W.createdAt, updatedAt: Date.now(),
+    id: W.id, tipo: W.tipo||'casa', codigo: W.codigo, status: (DB.imoveis.find(x=>x.id===W.id)||{}).status || W.status || 'Disponível', dataInclusao: W.dataInclusao||isoDate(new Date(W.createdAt||Date.now())), createdAt: W.createdAt, updatedAt: Date.now(),
     localizacao:{ tipoEndereco:W.tipoEndereco, endereco:W.endereco, numero:W.numero, complemento:W.complemento, bairro:W.bairro, cidade:W.cidade, estado:W.estado, cep:W.cep },
     proprietario:{ id:W.proprietarioId||'', nome:W.nome, tel1:W.tel1, tel2:W.tel2, tel3:W.tel3, email1:W.email1, email2:W.email2 },
     origemCaptacao:W.origemCaptacao||'', origemCaptacaoDetalhe:W.origemCaptacaoDetalhe||'',
@@ -3000,6 +3024,7 @@ function renderResumoPropostas(){
 let imoBuscaModo = 'nome';   // 'nome' | 'cep' | 'cidade'
 let imoBuscaQ = '';
 let imoTipoFiltro = 'todos'; // 'todos' | 'casa' | 'apartamento' | 'chacara' | 'terreno'
+let imoStatusFiltro = 'todos';
 function renderListaImoveis(){
   const total = DB.imoveis.length;
   const ph = imoBuscaModo==='cep' ? '99999-999' : imoBuscaModo==='cidade' ? 'Fragmento da cidade…' : 'Fragmento do nome do proprietário…';
@@ -3023,6 +3048,12 @@ function renderListaImoveis(){
       ${fchip(imoTipoFiltro==='chacara',`Só sítio/chácara`,"imoTipoFiltro='chacara';renderListaImoveis()")}
       ${fchip(imoTipoFiltro==='terreno',`Só terreno`,"imoTipoFiltro='terreno';renderListaImoveis()")}
       </div>
+    <div class="chiprow" style="margin-bottom:10px">
+      ${fchip(imoStatusFiltro==='todos',`Situação: todas`,"imoStatusFiltro='todos';renderListaImoveis()")}
+      ${fchip(imoStatusFiltro==='Disponível',`🟢 Disponível`,"imoStatusFiltro='Disponível';renderListaImoveis()")}
+      ${fchip(imoStatusFiltro==='Reservado',`🟡 Reservado`,"imoStatusFiltro='Reservado';renderListaImoveis()")}
+      ${fchip(imoStatusFiltro==='Vendido',`🔴 Vendido`,"imoStatusFiltro='Vendido';renderListaImoveis()")}
+      </div>
     <div class="ag-search" style="margin-top:0;margin-bottom:12px">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
       <input style="border:none;outline:none;flex:1;background:none;font-size:13.5px;color:var(--text)" placeholder="${ph}" value="${esc(imoBuscaQ)}" ${imoBuscaModo==='cep'?'inputmode="numeric" maxlength="9"':''} oninput="imoBuscaQ=${imoBuscaModo==='cep'?'maskCEP(this)':'this.value'};preencherListaImoveis()">
@@ -3034,6 +3065,7 @@ function renderListaImoveis(){
 function preencherListaImoveis(){
   let items = DB.imoveis.slice().sort((a,b)=>b.updatedAt-a.updatedAt);
   if(imoTipoFiltro && imoTipoFiltro!=='todos'){ items = items.filter(im=>im.tipo===imoTipoFiltro); }
+  if(imoStatusFiltro && imoStatusFiltro!=='todos'){ items = items.filter(im=>(im.status||'Disponível')===imoStatusFiltro); }
   const q = imoBuscaQ.trim().toLowerCase();
   if(q){
     if(imoBuscaModo==='cep'){ const qd=q.replace(/\D/g,''); items = items.filter(im=>(im.localizacao.cep||'').replace(/\D/g,'').includes(qd)); }
@@ -3050,7 +3082,7 @@ function preencherListaImoveis(){
       <button class="ptile" onclick="abrirDetalhe('${im.id}')">
         <div class="ptile-icon" id="thumb_${im.id}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 11.5L12 4l8 7.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
         <div style="min-width:0"><div class="ptile-title">${esc(im.localizacao.endereco||'Sem endereço')}, ${esc(im.localizacao.numero||'')}</div>
-        <div class="ptile-sub"><span class="mono" style="color:var(--primary);font-weight:700">${(im.codigo||'').toUpperCase()}</span> · ${esc(im.localizacao.cidade||'')}${im.localizacao.estado?' / '+esc(im.localizacao.estado):''}${im.proprietario?.nome?' · '+esc(im.proprietario.nome):''}</div></div>
+        <div class="ptile-sub">${statusBadge(im.status)}<span class="mono" style="color:var(--primary);font-weight:700">${(im.codigo||'').toUpperCase()}</span> · ${esc(im.localizacao.cidade||'')}${im.localizacao.estado?' / '+esc(im.localizacao.estado):''}${im.proprietario?.nome?' · '+esc(im.proprietario.nome):''}</div></div>
         <div class="ptile-chev">›</div>
       </button>`).join('');
   items.forEach(im=>{
@@ -3063,6 +3095,43 @@ function preencherListaImoveis(){
   });
 }
 
+async function gerarFichaPDF(id){
+  const im=DB.imoveis.find(x=>x.id===id); if(!im) return;
+  toast('Gerando ficha…');
+  const cor=DB.corretor||{}, L=im.localizacao||{}, c=im.caracteristicas||{};
+  const fotos=[]; const pubs=im.fotosPublicas||[];
+  for(let i=0;i<6 && fotos.length<4;i++){ if(pubs[i]){ try{ const d=await idbGet(keyFotoPub(id,i)); if(d) fotos.push(d); }catch(e){} } }
+  let creci=''; if(cor.temCreci){ try{ creci=(await idbGet(keyCorretorCreci()))||''; }catch(e){} }
+  const sol=(im.valores&&im.valores.solicitado)||0, cond=(im.condominio&&im.condominio.valor)||0;
+  const com=[]; if(+c.quartos>0)com.push(c.quartos+' quarto(s)'); if(+c.suites>0)com.push(c.suites+' suíte(s)'); if(+c.banheiros>0)com.push(c.banheiros+' banh.'); if(+c.lavanderia>0)com.push(c.lavanderia+' lavand.');
+  const laz=[]; if(c.piscina)laz.push('Piscina'); if(c.churrasqueira)laz.push('Churrasqueira'); if(c.academia)laz.push('Academia'); if(c.sauna)laz.push('Sauna'); if(c.furo)laz.push('Furô'); if(c.parquinho)laz.push('Parquinho');
+  const linha=(k,v)=> v? `<tr><td class="k">${k}</td><td class="v">${v}</td></tr>`:'';
+  const html=`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ficha ${(im.codigo||'').toUpperCase()}</title>
+  <style>*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#1a2332;margin:0;padding:22px}
+  .hd{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #1D4ED8;padding-bottom:10px;margin-bottom:14px}
+  .hd h1{font-size:19px;margin:0;color:#1D4ED8}.hd .cod{font-family:monospace;font-weight:bold;color:#1D4ED8}
+  .addr{font-size:15px;font-weight:bold;margin:0 0 4px}.price{font-size:22px;font-weight:bold;color:#16A34A;margin:8px 0 14px}
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px}
+  .grid img{width:100%;height:150px;object-fit:cover;border-radius:8px;border:1px solid #ddd}
+  table{width:100%;border-collapse:collapse;margin-bottom:14px}td{padding:6px 8px;border-bottom:1px solid #eee;font-size:13px}
+  td.k{color:#667;width:42%}td.v{font-weight:600;text-align:right}
+  .ft{border-top:2px solid #1D4ED8;padding-top:10px;margin-top:14px;display:flex;justify-content:space-between;align-items:center}
+  .ft .nome{font-weight:bold;font-size:14px}.ft .creci{color:#667;font-size:12px}.cart{height:72px;border-radius:6px;border:1px solid #1D4ED8}
+  @media print{body{padding:0}}</style></head><body>
+  <div class="hd"><h1>Cor Sync Imóveis</h1><span class="cod">${(im.codigo||'').toUpperCase()}</span></div>
+  <p class="addr">${esc(L.endereco||'')}, ${esc(L.numero||'')} — ${esc(L.cidade||'')}/${esc(L.estado||'')}</p>
+  ${sol>0?`<div class="price">${fmtBRL(sol)}</div>`:''}
+  ${fotos.length?`<div class="grid">${fotos.map(f=>`<img src="${f}">`).join('')}</div>`:''}
+  <table>${linha('Tipo',tipoLabel(im.tipo))}${linha('Área',(c.terreno||'-')+' m²'+(im.tipo!=='terreno'?' / '+(c.construcao||'-')+' m² constr.':''))}${linha('Cômodos',com.join(' · '))}${linha('Lazer',laz.join(', '))}${cond>0?linha('Condomínio',fmtBRL(cond)):''}</table>
+  <div class="ft"><div><div class="nome">${esc(cor.nome||'')}</div><div class="creci">${cor.creci?'CRECI '+esc(cor.creci):''}${cor.whatsapp?' · '+esc(cor.whatsapp):''}</div></div>${creci?`<img class="cart" src="${creci}">`:''}</div>
+  <scr'+'ipt>window.onload=function(){setTimeout(function(){try{window.print();}catch(e){}},500);}<\/scr'+'ipt></body></html>`;
+  const w=window.open('','_blank');
+  if(!w){ toast('Permita pop-ups/nova aba para gerar a ficha.'); return; }
+  w.document.open(); w.document.write(html); w.document.close();
+}
+function statusCor(s){ return {'Disponível':'#16A34A','Reservado':'#F59E0B','Vendido':'#DC2626'}[s||'Disponível']||'#16A34A'; }
+function statusBadge(s){ s=s||'Disponível'; const c=statusCor(s); return s==='Disponível' ? `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c};margin-right:5px;vertical-align:middle"></span>` : `<span style="color:${c};font-weight:800">● ${s}</span> · `; }
+function setImovelStatus(id, st){ const im=DB.imoveis.find(x=>x.id===id); if(!im) return; im.status=st; im.updatedAt=Date.now(); save(); abrirDetalhe(id); toast('Situação: '+st); }
 function abrirDetalhe(id){
   const im = DB.imoveis.find(x=>x.id===id); if(!im) return;
   const condoVal = im.condominio?.valor||0;
@@ -3074,10 +3143,17 @@ function abrirDetalhe(id){
       <button class="btn gray" onclick="editarImovel('${im.id}')">✎ Editar</button>
       <button class="btn green" onclick="abrirTipos()">＋ Incluir imóvel</button>
     </div>
-    <div class="btnrow" style="margin-top:10px">
+    <div style="margin-top:12px">
+      <div style="font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px">Situação do imóvel</div>
+      <div style="display:flex;gap:8px">
+        ${['Disponível','Reservado','Vendido'].map(st=>{ const on=(im.status||'Disponível')===st; const c=statusCor(st); return `<button onclick="setImovelStatus('${im.id}','${st}')" style="flex:1;padding:9px 4px;border-radius:10px;border:1.5px solid ${c};background:${on?c:'#fff'};color:${on?'#fff':c};font-weight:800;font-size:12.5px;cursor:pointer">${st}</button>`; }).join('')}
+      </div>
+    </div>
+    <div class="btnrow" style="margin-top:12px">
       <button class="btn" onclick="abrirCompartilhar('${im.id}')">↗ Compartilhar</button>
       <button class="btn" style="background:#7C3AED;border-color:#7C3AED;color:#fff" onclick="abrirProposta('${im.id}')">📝 Gerar proposta</button>
     </div>
+    <button class="btn" style="margin-top:10px;background:#0EA5E9;border-color:#0EA5E9;color:#fff" onclick="gerarFichaPDF('${im.id}')">📄 Gerar ficha (PDF)</button>
     <button class="btn green" style="margin-top:10px" onclick="abrirExtratoImovel('${im.id}')">${ic('chart',15)} Extrato do imóvel (lançamentos)</button>
     <div class="btnrow" style="margin-top:10px;margin-bottom:16px">
       <button class="btn gray" onclick="goTab('imoveis')">${ic('back',16)} Voltar</button>
@@ -3206,13 +3282,14 @@ async function abrirCompartilhar(id){
   const im = DB.imoveis.find(x=>x.id===id); if(!im) return;
   const texto = montarTextoImovel(im);
   const nFotos = (im.fotosPublicas||[]).filter(Boolean).length;
+  const nFotosShare = nFotos>1 ? nFotos-1 : nFotos; // reduz 1 foto p/ a carteira CRECI caber
   const temVideo = !!(im.video && im.video.compartilhar);
   const videoExisteNaoCompart = !!(im.video && !im.video.compartilhar);
   const temCarteira = !!(DB.corretor && DB.corretor.temCreci);
   _shareData = { texto, files: [], creciFile: null, incluirCreci: false, pronto:false };
   showSheet('Compartilhar imóvel', `
     <div style="font-size:13px;color:var(--muted);margin-bottom:10px">
-      Serão compartilhados: <b>${nFotos} foto(s)</b>${temVideo?' + <b>vídeo</b>':''} + a descrição.
+      Serão compartilhados: <b>${nFotosShare} foto(s)</b>${temVideo?' + <b>vídeo</b>':''} + a descrição.
       ${videoExisteNaoCompart?'<br><span style="font-size:11.5px">O vídeo existe, mas está marcado para <b>não</b> compartilhar (etapa Vídeo do cadastro).</span>':''}
       ${(nFotos||temVideo)?'':'<br><span style="font-size:11.5px">Sem fotos/vídeo marcados — será compartilhado só o texto.</span>'}
       ${(nFotos||temVideo)?'<br><span style="font-size:11.5px">Para enviar as <b>fotos</b>, use <b>Compartilhar com fotos</b> e escolha o WhatsApp na lista. Os botões <b>WhatsApp/E-mail</b> abaixo enviam <b>só o texto</b> (o WhatsApp por link não anexa fotos).</span>':''}
@@ -3232,9 +3309,10 @@ async function abrirCompartilhar(id){
   try{
     const cod = (im.codigo||im.id||'imovel');
     const files = [];
-    for(let i=0;i<6;i++){
+    let _nf=0;
+    for(let i=0;i<6 && _nf<nFotosShare;i++){
       if(im.fotosPublicas && im.fotosPublicas[i]){
-        try{ const du = await idbGet(keyFotoPub(id,i)); if(du) files.push(await dataURLtoFile(du, cod+'_'+(i+1)+'.jpg')); }catch(e){}
+        try{ const du = await idbGet(keyFotoPub(id,i)); if(du){ files.push(await dataURLtoFile(du, cod+'_'+(i+1)+'.jpg')); _nf++; } }catch(e){}
       }
     }
     if(temVideo){
@@ -3299,11 +3377,17 @@ let _propImovel=null, _propCond='À vista';
   function start(){ MO=new MutationObserver(schedule); schedule(); window.addEventListener('resize',function(){ document.querySelectorAll(SEL).forEach(updFade); }); }
   if(document.readyState!=='loading') start(); else document.addEventListener('DOMContentLoaded',start);
 })();
-function abrirConsultaIdeal(){
+let clienteEditId=null;
+function abrirConsultaIdeal(cli){
+  clienteEditId=(cli&&cli.id)||null;
   document.getElementById('appHeader').innerHTML = `<h2>Consulta ideal</h2>`;
+  const nCli=(DB.clientes||[]).length;
   document.getElementById('mainContent').innerHTML = `
     <button class="btn gray" style="width:auto;padding:8px 16px;margin-bottom:10px" onclick="goTab('inicio')">‹ Voltar</button>
-    <div class="hint" style="margin-bottom:12px">Diga o que seu cliente procura — o app mostra os imóveis da <b>sua carteira</b> que combinam.</div>
+    <button class="btn" style="background:#0EA5E9;border-color:#0EA5E9;color:#fff;margin-bottom:12px" onclick="abrirClientes()">👥 Meus clientes${nCli?' ('+nCli+')':''}</button>
+    <div class="hint" style="margin-bottom:12px">Diga o que seu cliente procura — o app mostra os imóveis da <b>sua carteira</b> que combinam. Dá para <b>salvar o cliente</b> e consultar depois.</div>
+    <fieldset><legend>Nome do cliente</legend><input id="ciNome" placeholder="ex.: João da Silva" maxlength="40"></fieldset>
+    <fieldset><legend>Estágio (funil)</legend><select id="ciEstagio"><option>Novo</option><option>Qualificado</option><option>Visitou</option><option>Proposta</option><option>Fechado</option></select></fieldset>
     <fieldset><legend>Tipo</legend>
       <select id="ciTipo"><option value="todos">Todos os tipos</option><option value="casa">Casa</option><option value="apartamento">Apartamento</option><option value="chacara">Sítio / Chácara</option><option value="terreno">Terreno</option></select>
     </fieldset>
@@ -3312,12 +3396,57 @@ function abrirConsultaIdeal(){
       <fieldset><legend>Quartos (mín.)</legend><input id="ciQuartos" type="number" min="0" max="20" placeholder="qualquer"></fieldset>
     </div>
     <div class="row2">
-      <fieldset><legend>Valor de (R$)</legend><input id="ciValorMin" inputmode="numeric" placeholder="0" oninput="maskMoedaG(this)"></fieldset>
-      <fieldset><legend>Valor até (R$)</legend><input id="ciValorMax" inputmode="numeric" placeholder="sem limite" oninput="maskMoedaG(this)"></fieldset>
+      <fieldset><legend>Faixa de investimento — de (R$)</legend><input id="ciValorMin" inputmode="numeric" placeholder="0" oninput="maskMoedaG(this)"></fieldset>
+      <fieldset><legend>até (R$)</legend><input id="ciValorMax" inputmode="numeric" placeholder="sem limite" oninput="maskMoedaG(this)"></fieldset>
     </div>
     <button class="btn green" onclick="buscarConsultaIdeal()">🔍 Buscar imóveis que combinam</button>
+    <button class="btn" style="margin-top:10px" onclick="salvarCliente()">💾 ${clienteEditId?'Atualizar cliente':'Salvar como cliente'}</button>
     <div id="ciResultados" style="margin-top:16px"></div>`;
+  if(cli){ const g=id=>document.getElementById(id);
+    g('ciNome').value=cli.nome||''; g('ciTipo').value=cli.tipo||'todos'; g('ciCidade').value=cli.cidade||''; if(g('ciEstagio'))g('ciEstagio').value=cli.estagio||'Novo';
+    g('ciQuartos').value=cli.quartos||''; g('ciValorMin').value=cli.valorMin||''; g('ciValorMax').value=cli.valorMax||''; }
 }
+function salvarCliente(){
+  const g=id=>document.getElementById(id); const nome=(g('ciNome').value||'').trim();
+  if(!nome){ toast('Informe o nome do cliente para salvar.'); return; }
+  const cli={ id: clienteEditId||uid(), nome, tipo:g('ciTipo').value, cidade:(g('ciCidade').value||'').trim(), quartos:g('ciQuartos').value||'', valorMin:g('ciValorMin').value||'', valorMax:g('ciValorMax').value||'', estagio:(g('ciEstagio')&&g('ciEstagio').value)||'Novo', updatedAt:Date.now() };
+  DB.clientes=DB.clientes||[];
+  const i=DB.clientes.findIndex(x=>x.id===cli.id);
+  if(i>=0){ cli.createdAt=DB.clientes[i].createdAt||Date.now(); DB.clientes[i]=cli; } else { cli.createdAt=Date.now(); DB.clientes.push(cli); }
+  save(); toast('Cliente salvo!'); abrirClientes();
+}
+const FUNIL=['Novo','Qualificado','Visitou','Proposta','Fechado'];
+function estagioCor(e){ return {'Novo':'#64748B','Qualificado':'#0EA5E9','Visitou':'#F59E0B','Proposta':'#7C3AED','Fechado':'#16A34A'}[e||'Novo']||'#64748B'; }
+function setClienteEstagio(id,e){ const c=(DB.clientes||[]).find(x=>x.id===id); if(!c)return; c.estagio=e; c.updatedAt=Date.now(); save(); abrirClientes(); }
+function abrirClientes(){
+  document.getElementById('appHeader').innerHTML = `<h2>Meus clientes</h2>`;
+  const cls=(DB.clientes||[]).slice().sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+  const tl={todos:'Todos os tipos',casa:'Casa',apartamento:'Apartamento',chacara:'Sítio/Chácara',terreno:'Terreno'};
+  const faixa=c=>{ const mn=parseMoeda(c.valorMin||'')||0, mx=parseMoeda(c.valorMax||'')||0; if(mn&&mx)return fmtBRL(mn)+' a '+fmtBRL(mx); if(mx)return 'até '+fmtBRL(mx); if(mn)return 'a partir de '+fmtBRL(mn); return 'qualquer valor'; };
+  const cont={}; FUNIL.forEach(e=>cont[e]=0); cls.forEach(c=>{cont[c.estagio||'Novo']=(cont[c.estagio||'Novo']||0)+1;});
+  const resumo = cls.length ? `<div class="chiprow" style="margin-bottom:12px">${FUNIL.map(e=>`<div style="flex:none;background:${estagioCor(e)};color:#fff;border-radius:10px;padding:6px 10px;font-size:11.5px;font-weight:700">${e}: ${cont[e]}</div>`).join('')}</div>` : '';
+  document.getElementById('mainContent').innerHTML = `
+    <button class="btn gray" style="width:auto;padding:8px 16px;margin-bottom:10px" onclick="abrirConsultaIdeal()">‹ Voltar</button>
+    <button class="btn green" style="margin-bottom:12px" onclick="abrirConsultaIdeal()">＋ Novo cliente</button>
+    ${resumo}
+    ${cls.length? cls.map(c=>`
+      <div class="card" style="margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="font-weight:800;font-size:15px;flex:1;min-width:0">${esc(c.nome)}</div><span style="background:${estagioCor(c.estagio)};color:#fff;border-radius:8px;padding:3px 9px;font-size:11px;font-weight:800;flex:none">${c.estagio||'Novo'}</span></div>
+        <div style="font-size:12.5px;color:var(--muted);line-height:1.6">${tl[c.tipo]||'Todos'}${c.cidade?' · '+esc(c.cidade):''}${c.quartos?' · '+esc(c.quartos)+'+ quartos':''}<br>💰 ${faixa(c)}</div>
+        <div style="font-size:10.5px;font-weight:800;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin:10px 0 5px">Mover no funil</div>
+        <div class="chiprow" style="margin-bottom:2px">${FUNIL.map(e=>{ const on=(c.estagio||'Novo')===e; const col=estagioCor(e); return `<button onclick="setClienteEstagio('${c.id}','${e}')" style="flex:none;padding:6px 10px;border-radius:9px;border:1.5px solid ${col};background:${on?col:'#fff'};color:${on?'#fff':col};font-weight:700;font-size:11.5px;cursor:pointer">${e}</button>`; }).join('')}</div>
+        <div class="btnrow" style="margin-top:10px">
+          <button class="btn green" onclick="usarCliente('${c.id}')">🔍 Buscar imóveis</button>
+          <button class="btn gray" onclick="editarCliente('${c.id}')">✎ Editar</button>
+        </div>
+        <button class="btn danger" style="margin-top:8px" onclick="excluirCliente('${c.id}')">🗑 Excluir</button>
+      </div>`).join('')
+    : `<div class="empty"><div class="big">👥</div>Nenhum cliente salvo ainda.<br><span style="font-size:12px">Use a Consulta ideal e toque em "Salvar como cliente".</span></div>`}`;
+}
+function usarCliente(id){ const c=(DB.clientes||[]).find(x=>x.id===id); if(!c)return; abrirConsultaIdeal(c); setTimeout(buscarConsultaIdeal,60); }
+function editarCliente(id){ const c=(DB.clientes||[]).find(x=>x.id===id); if(!c)return; abrirConsultaIdeal(c); }
+function excluirCliente(id){ confirmar({icon:'🗑', title:'Excluir cliente?', msg:'Esta ação não pode ser desfeita.', noLabel:'Cancelar', yesLabel:'Excluir', yes:`doExcluirCliente('${id}')`}); }
+function doExcluirCliente(id){ DB.clientes=(DB.clientes||[]).filter(x=>x.id!==id); save(); abrirClientes(); toast('Cliente excluído.'); }
 function buscarConsultaIdeal(){
   const g=id=>document.getElementById(id);
   const tipo=g('ciTipo').value;
@@ -3697,7 +3826,7 @@ let V = null;
 function novaVisita(){
   if(bloqueioTrial('agendar uma visita')) return;
   if(DB.imoveis.length===0){ toast('Cadastre um imóvel antes de agendar uma visita.'); return; }
-  V = { id:uid(), tipo:'visita', imovelId:'', data: agSelDate||isoDate(new Date()), hora:'09:00',
+  V = { id:uid(), tipo:'visita', imovelId:'', data: agSelDate||isoDate(new Date()), hora:'09:00', lembrete:60,
         compradorNome:'', compradorTel1:'', compradorTel2:'',
         despesas:{ transporte:'', refeicao:'', gasolina:'', outros:'',
                    outrosLista:[0,1,2,3,4].map(()=>({valor:'',desc:''})) }, createdAt:Date.now() };
@@ -3763,6 +3892,16 @@ function renderVisitaForm(){
     <div class="row2">
       <div class="field"><label>Data confirmada</label><input type="date" value="${esc(V.data)}" oninput="V.data=this.value"></div>
       <div class="field"><label>Hora</label><input type="time" value="${esc(V.hora)}" oninput="V.hora=this.value"></div>
+    </div>
+    <div class="field"><label>🔔 Lembrete da visita</label>
+      <select onchange="V.lembrete=parseInt(this.value)">
+        <option value="0"${(V.lembrete==0)?' selected':''}>Não lembrar</option>
+        <option value="30"${(V.lembrete==30)?' selected':''}>30 minutos antes</option>
+        <option value="60"${(V.lembrete==null||V.lembrete==60)?' selected':''}>1 hora antes</option>
+        <option value="180"${(V.lembrete==180)?' selected':''}>3 horas antes</option>
+        <option value="1440"${(V.lembrete==1440)?' selected':''}>1 dia antes</option>
+      </select>
+      <div class="hint">O aviso aparece com o app aberto; em alguns aparelhos (iPhone) a notificação com o app fechado é limitada.</div>
     </div>
 
     <div class="section-title" style="margin-top:8px">Dados do comprador</div>
@@ -4582,10 +4721,10 @@ function salvarCorretor(){
 function abrirCriarSenhaAjustes(){
   showSheet('🔐 Criar senha de acesso', `
     <div style="font-size:13px;color:var(--muted);margin-bottom:10px">Sua senha <b>criptografa</b> os dados (AES‑256). Guarde bem — sem ela os dados não podem ser recuperados. Digite duas vezes.</div>
-    <div style="font-size:12px;color:var(--text);background:#FFF9E8;border:1px solid #FFD980;border-radius:10px;padding:8px 10px;margin-bottom:12px">A senha deve ter <b>no mínimo 10 caracteres</b>, com <b>1 maiúscula, 1 minúscula, 1 número e 1 símbolo</b>.</div>
-    <div class="pwwrap"><input id="ajPass" type="password" placeholder="Crie sua senha" maxlength="64" oninput="checkPwRules('ajPass','ajPassBtn');conferirSenhasAj()"><button type="button" class="eye" onclick="togglePw('ajPass',this)">👁</button></div>
+    <div style="font-size:12px;color:var(--text);background:#FFF9E8;border:1px solid #FFD980;border-radius:10px;padding:8px 10px;margin-bottom:12px">A senha deve ter <b>de 4 a 10 caracteres</b>, com <b>1 maiúscula, 1 minúscula, 1 número e 1 símbolo</b>.</div>
+    <div class="pwwrap"><input id="ajPass" type="password" placeholder="Crie sua senha" maxlength="10" oninput="checkPwRules('ajPass','ajPassBtn');conferirSenhasAj()"><button type="button" class="eye" onclick="togglePw('ajPass',this)">👁</button></div>
     ${pwRulesHTML()}
-    <div class="pwwrap" style="margin-top:10px"><input id="ajPass2" type="password" placeholder="Digite a senha de novo" maxlength="64" oninput="conferirSenhasAj()"><button type="button" class="eye" onclick="togglePw('ajPass2',this)">👁</button></div>
+    <div class="pwwrap" style="margin-top:10px"><input id="ajPass2" type="password" placeholder="Digite a senha de novo" maxlength="10" oninput="conferirSenhasAj()"><button type="button" class="eye" onclick="togglePw('ajPass2',this)">👁</button></div>
     <div id="ajMatch" style="font-size:11.5px;font-weight:700;min-height:16px;margin-top:6px"></div>`,
     `<button class="btn gray" onclick="closeSheet()">Cancelar</button><button class="btn green" id="ajPassBtn" disabled onclick="doCriarSenhaAjustes()">Criar senha</button>`);
 }
@@ -4629,8 +4768,8 @@ async function doRemoverSenha(){
 function openChangePass(){
   showSheet('Alterar senha', `
     <label>Senha atual</label><div class="pwwrap"><input id="cpOld" type="password"><button type="button" class="eye" onclick="togglePw('cpOld',this)">👁</button></div>
-    <div style="font-size:12px;color:var(--text);background:#FFF9E8;border:1px solid #FFD980;border-radius:10px;padding:8px 10px;margin:10px 0">A nova senha deve ter <b>no mínimo 10 caracteres</b>, com <b>1 maiúscula, 1 minúscula, 1 número e 1 símbolo</b>.</div>
-    <label>Nova senha</label><div class="pwwrap"><input id="cpNew" type="password" maxlength="64" oninput="checkPwRules('cpNew','__nobtn')"><button type="button" class="eye" onclick="togglePw('cpNew',this)">👁</button></div>
+    <div style="font-size:12px;color:var(--text);background:#FFF9E8;border:1px solid #FFD980;border-radius:10px;padding:8px 10px;margin:10px 0">A nova senha deve ter <b>de 4 a 10 caracteres</b>, com <b>1 maiúscula, 1 minúscula, 1 número e 1 símbolo</b>.</div>
+    <label>Nova senha</label><div class="pwwrap"><input id="cpNew" type="password" maxlength="10" oninput="checkPwRules('cpNew','__nobtn')"><button type="button" class="eye" onclick="togglePw('cpNew',this)">👁</button></div>
     ${pwRulesHTML()}`,
     `<button class="btn gray" onclick="closeSheet()">Cancelar</button><button class="btn" onclick="doChangePass()">Salvar</button>`);
 }
@@ -4661,7 +4800,7 @@ async function doChangePass(){
     const oldKey = await deriveKey(val('cpOld'), b64d(auth.salt));
     if(!(await verifyKey(oldKey, auth.check))){ toast('Senha atual incorreta.'); return; }
     const novo = val('cpNew');
-    if(!Object.values(validatePassword(novo)).every(Boolean)){ toast('A nova senha precisa ter 10+ caracteres, com maiúscula, minúscula, número e símbolo.'); return; }
+    if(!Object.values(validatePassword(novo)).every(Boolean)){ toast('A nova senha precisa ter 4 a 10 caracteres, com maiúscula, minúscula, número e símbolo.'); return; }
     const salt = crypto.getRandomValues(new Uint8Array(16));
     const key = await deriveKey(novo, salt);
     const check = await makeCheck(key);

@@ -1,5 +1,15 @@
 # Cor Sync Imóveis — Histórico de versões
 
+## v1.42.1 — Funil do cliente e lembretes de visita
+- **Funil do cliente:** cada cliente tem um **estágio** (Novo → Qualificado → Visitou → Proposta → Fechado). Em "Meus clientes" há um **resumo por estágio** e botões para **mover no funil** direto no card. O estágio também aparece no cadastro do cliente.
+- **Lembrete de visita:** ao agendar/editar uma visita, escolha **quando ser avisado** (30 min, 1 h, 3 h ou 1 dia antes, ou não lembrar). O app dispara uma **notificação** na hora do lembrete (com o app aberto; em iPhone a notificação com o app fechado é limitada).
+
+## v1.42.0 — Status do imóvel, ficha PDF e clientes
+- **Status do imóvel:** cada imóvel agora tem **Disponível / Reservado / Vendido** (seletor no detalhe), **selo colorido** no card da lista e um **filtro** por situação na lista.
+- **Ficha do imóvel em PDF:** botão **"Gerar ficha (PDF)"** no detalhe — monta uma página com fotos, dados públicos, valor e a carteira CRECI para salvar/enviar como PDF.
+- **Clientes (perfil + faixa de investimento):** a **Consulta ideal** agora permite **salvar o cliente** (nome, tipo, cidade, quartos e faixa de valor). Nova tela **"Meus clientes"** para consultar, buscar imóveis que combinam, editar e excluir.
+- **Cadastro:** na Garagem/infra, **Acesso** vem antes de **Segurança interna / Monitorado por câmera**.
+
 ## v1.41.0 — Senha: correção, WhatsApp automático e destaque
 - **Correção importante:** o botão "Criar senha"/"Salvar" agora é **sempre clicável** e mostra na hora o que falta (regras da senha ou confirmação), em vez de parecer travado. Isso resolve o caso em que a senha não era criada e o app não pedia senha ao reabrir.
 - **Senha no WhatsApp automática:** ao **criar** ou **alterar** a senha, o app envia a cópia **direto para o WhatsApp cadastrado** em Dados do corretor (Seu WhatsApp) e mostra o aviso **"Cópia da senha encaminhada ao seu WhatsApp"**. Se ainda não houver número cadastrado, ele pergunta.
