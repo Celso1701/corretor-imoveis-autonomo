@@ -1,5 +1,13 @@
 # Cor Sync Imóveis — Histórico de versões
 
+## v1.43.0 — Ferramentas: financiamento, follow-up, catálogo e produtividade
+Nova seção **Ferramentas** na tela inicial:
+- **Simulador de financiamento:** valor, entrada, prazo e juros → parcelas nos sistemas **PRICE** (fixa) e **SAC** (decrescente), com total pago e total de juros.
+- **Follow-up (retornos):** agende retornos por cliente/assunto e data; o app **avisa** quando chega o dia (pendentes, atrasados e concluídos).
+- **Catálogo / vitrine em PDF:** selecione vários imóveis e gere um **PDF** com foto, dados e valor de cada um (ótimo para enviar ao cliente). Também acessível pelo botão **📚 Catálogo** na lista de imóveis.
+- **Produtividade:** defina uma **meta de vendas** e acompanhe o progresso, além de KPIs da carteira (disponíveis/reservados/vendidos), visitas no mês, propostas e fechados.
+- Extras visuais desta leva: campos de **data inicial/final** em verde claro; **data realizada** verde (receita)/vermelho (despesa); **botão Voltar** cinza‑azulado e **botões +Novo/Incluir** em verde claro em todo o app.
+
 ## v1.42.2 — Ajustes de cadastro, financeiro e segurança
 - **Terreno:** "Ruas com sarjetas" e "Iluminação nas ruas" agora ficam logo **abaixo de Ruas internas** (saíram da seção de água/energia).
 - **Casa:** quando o tipo é **Sobrado**, o botão passa a ser **"Quarto com sacada"** (nos demais, "Sala com sacada"). Novos campos **"Casa germinada"** e **"Tem corredor"**.

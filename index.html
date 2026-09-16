@@ -123,6 +123,11 @@ main{padding:6px 18px 10px}
 .section-title{font-weight:800;font-size:16px;margin:6px 0 14px}
 
 .chip-group{display:flex;flex-wrap:wrap;gap:8px}
+.dtrange{background:#EAF9F0 !important}
+.dtreal-rec{background:#EAF9F0 !important}
+.dtreal-desp{background:#FDEDED !important}
+.btn.btn-voltar{background:#E6ECF4 !important;border-color:#C7D2E0 !important;color:#41506B !important}
+.btn.btn-novo{background:#D1F5DE !important;border-color:#7ED4A0 !important;color:#127A37 !important}
 .hscrollwrap{position:relative}
 .chiprow{display:flex;gap:8px;overflow-x:auto;padding-bottom:7px}
 .chiprow,.wtabs,.weekstrip,.pills,.quick,.cat-row{scrollbar-width:thin;scrollbar-color:var(--primary) var(--border)}
@@ -346,7 +351,7 @@ header.topbar.home{padding:0;background:transparent;box-shadow:none}
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.42.2';
+const APP_VERSION = '1.43.0';
 // Ajudante para inserir ícones do kit (traço) em qualquer lugar
 function ic(name, size, style){ size=size||18; return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"${style?` style="${style}"`:''}><use href="#i-${name}"/></svg>`; }
 // Logo da marca (usado na splash e nas telas de senha)
@@ -641,7 +646,7 @@ const LS_AUTH = 'corretorimoveis_auth';
 let DB = null;
 let _cryptoKey = null;
 
-function defaultDB(){ return { imoveis: [], proprietarios: [], agendamentos: [], financeiro:{ despesas:[], receitas:[] }, clientes: [], contadores:{cs:0,ap:0,tr:0,ch:0,prop:0}, corretor: { nome:'', creci:'', validadeCreci:'', email:'', temFoto:false, temCreci:false } }; }
+function defaultDB(){ return { imoveis: [], proprietarios: [], agendamentos: [], financeiro:{ despesas:[], receitas:[] }, clientes: [], followups: [], meta:{valor:0}, contadores:{cs:0,ap:0,tr:0,ch:0,prop:0}, corretor: { nome:'', creci:'', validadeCreci:'', email:'', temFoto:false, temCreci:false } }; }
 function getAuth(){ try{ return JSON.parse(localStorage.getItem(LS_AUTH)||'null'); }catch(e){ return null; } }
 
 async function deriveKey(pass, saltU8){
@@ -1109,6 +1114,8 @@ function boot(){
     if(DB.corretor.email===undefined) DB.corretor.email='';
     if(DB.corretor.whatsapp===undefined) DB.corretor.whatsapp='';
     if(!Array.isArray(DB.clientes)) DB.clientes=[];
+    if(!Array.isArray(DB.followups)) DB.followups=[];
+    if(!DB.meta) DB.meta={valor:0};
     if(!Array.isArray(DB.proprietarios)) DB.proprietarios = [];
     if(!Array.isArray(DB.agendamentos)) DB.agendamentos = [];
     if(!DB.financeiro || !Array.isArray(DB.financeiro.despesas)) DB.financeiro = { despesas:[], receitas:[] };
@@ -1364,7 +1371,8 @@ function enterApp(){
   goTab('inicio');
   try{ scheduleLocalCheck(); }catch(e){}
   try{ checarLembretesVisita(); }catch(e){}
-  if(!window.__lembreteTimer){ window.__lembreteTimer=setInterval(()=>{ try{ checarLembretesVisita(); }catch(e){} }, 60000); }
+  try{ checarFollowups(); }catch(e){}
+  if(!window.__lembreteTimer){ window.__lembreteTimer=setInterval(()=>{ try{ checarLembretesVisita(); }catch(e){} try{ checarFollowups(); }catch(e){} }, 60000); }
   if(!localStorage.getItem('cor_tut_done')){
     setTimeout(()=>openTutorial(parseInt(localStorage.getItem('cor_tut_step')||'0')), 500);
   }
@@ -1576,6 +1584,13 @@ function renderInicio(){
       <button class="qtile" onclick="goTab('proprietarios')"><div class="qbox qb2">${ic('users',24)}</div><div class="ql">Proprietários</div><div class="qm">${nProp} cadastrado${nProp===1?'':'s'}</div></button>
       <button class="qtile" onclick="goTab('agenda')"><div class="qbox qb3">${ic('calendar',24)}</div><div class="ql">Agenda</div><div class="qm">${visitasHoje} visita${visitasHoje===1?'':'s'} hoje</div></button>
       <button class="qtile" onclick="goTab('financeiro')"><div class="qbox qb4">${ic('wallet',24)}</div><div class="ql">Financeiro</div><div class="qm">Ver resumo</div></button>
+    </div>
+    <div class="sec">Ferramentas</div>
+    <div class="qgrid">
+      <button class="qtile" onclick="abrirSimulador()"><div class="qbox qb2">🧮</div><div class="ql">Financiamento</div><div class="qm">Simular parcelas</div></button>
+      <button class="qtile" onclick="abrirFollowups()"><div class="qbox qb3">📞</div><div class="ql">Follow-up</div><div class="qm">Retornos</div></button>
+      <button class="qtile" onclick="abrirProdutividade()"><div class="qbox qb1">📈</div><div class="ql">Produtividade</div><div class="qm">Metas e KPIs</div></button>
+      <button class="qtile" onclick="abrirCatalogo()"><div class="qbox qb4">📚</div><div class="ql">Catálogo</div><div class="qm">Vitrine PDF</div></button>
     </div>
     ${financeiroAbertoHTML()}
     <div class="sec">Próximas visitas</div>
@@ -2478,8 +2493,8 @@ function stepPaneHTML(i){
       <fieldset style="flex:none;width:120px;margin-bottom:15px"><legend>Comissão (%)</legend><input inputmode="decimal" maxlength="6" value="${esc(W.comissao)}" placeholder="0,0" style="text-align:center" oninput="W.comissao=sanitizarComissao(this)"></fieldset>
     </div>
     <div class="row2">
-      <div class="field"><label>Data inicial</label><input type="date" id="exclIni" value="${esc(W.dataInicial)}" max="${esc(W.dataFinal||'')}" ${W.vendaExclusiva==='Sim'?'':'disabled'} oninput="W.dataInicial=this.value;syncDatasExcl()"></div>
-      <div class="field"><label>Data final</label><input type="date" id="exclFim" value="${esc(W.dataFinal)}" min="${esc(W.dataInicial||'')}" ${W.vendaExclusiva==='Sim'?'':'disabled'} oninput="W.dataFinal=this.value;syncDatasExcl()"></div>
+      <div class="field"><label>Data inicial</label><input type="date" id="exclIni" class="dtrange" value="${esc(W.dataInicial)}" max="${esc(W.dataFinal||'')}" ${W.vendaExclusiva==='Sim'?'':'disabled'} oninput="W.dataInicial=this.value;syncDatasExcl()"></div>
+      <div class="field"><label>Data final</label><input type="date" id="exclFim" class="dtrange" value="${esc(W.dataFinal)}" min="${esc(W.dataInicial||'')}" ${W.vendaExclusiva==='Sim'?'':'disabled'} oninput="W.dataFinal=this.value;syncDatasExcl()"></div>
     </div>
     ${W.vendaExclusiva!=='Sim'?`<div class="hint" style="margin-top:-8px;margin-bottom:12px">As datas só podem ser preenchidas se a venda exclusiva estiver marcada como <b>Sim</b>.</div>`:''}
     <div class="hint">Comissão até 99,9%. O valor aparece na última etapa.</div>`;
@@ -2993,8 +3008,8 @@ function renderResumoPropostas(){
 
     <div class="card" style="margin-bottom:12px">
       <div class="row2">
-        <div class="field" style="margin:0"><label>Data inicial</label><input type="date" value="${resIni}" onchange="setResIni(this.value)"></div>
-        <div class="field" style="margin:0"><label>Data final</label><input type="date" value="${resFim}" min="${resIni}" onchange="setResFim(this.value)"></div>
+        <div class="field" style="margin:0"><label>Data inicial</label><input type="date" class="dtrange" value="${resIni}" onchange="setResIni(this.value)"></div>
+        <div class="field" style="margin:0"><label>Data final</label><input type="date" class="dtrange" value="${resFim}" min="${resIni}" onchange="setResFim(this.value)"></div>
       </div>
     </div>
 
@@ -3031,7 +3046,8 @@ function renderListaImoveis(){
   const ph = imoBuscaModo==='cep' ? '99999-999' : imoBuscaModo==='cidade' ? 'Fragmento da cidade…' : 'Fragmento do nome do proprietário…';
   document.getElementById('mainContent').innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin:8px 0 12px">
-      <div class="stitle" style="margin:0">Imóveis cadastrados (${total})</div>
+      <div class="stitle" style="margin:0;flex:1">Imóveis cadastrados (${total})</div>
+      <button class="btn sm gray" style="width:auto" onclick="abrirCatalogo()">📚 Catálogo</button>
       <button class="btn sm" style="width:auto" onclick="abrirTipos()">+ Novo</button>
     </div>
     <div class="chiprow" style="margin-bottom:8px">
@@ -3397,10 +3413,191 @@ let _propImovel=null, _propCond='À vista';
       updFade(row);
     });
   }
-  function schedule(){ if(MO)MO.disconnect(); requestAnimationFrame(function(){ try{decorate();}catch(e){} if(MO){ var mc=document.getElementById('mainContent'); if(mc)MO.observe(mc,{childList:true,subtree:true}); var md=document.getElementById('modals'); if(md)MO.observe(md,{childList:true,subtree:true}); } }); }
+  function decorarBotoes(){
+    document.querySelectorAll('#mainContent button, #modals button').forEach(function(b){
+      var t=(b.textContent||'').trim();
+      if(/^‹?\s*voltar/i.test(t)){ b.classList.add('btn-voltar'); }
+      else if(/^[+＋]/.test(t)){ b.classList.add('btn-novo'); }
+    });
+  }
+  function schedule(){ if(MO)MO.disconnect(); requestAnimationFrame(function(){ try{decorate();}catch(e){} try{decorarBotoes();}catch(e){} if(MO){ var mc=document.getElementById('mainContent'); if(mc)MO.observe(mc,{childList:true,subtree:true}); var md=document.getElementById('modals'); if(md)MO.observe(md,{childList:true,subtree:true}); } }); }
   function start(){ MO=new MutationObserver(schedule); schedule(); window.addEventListener('resize',function(){ document.querySelectorAll(SEL).forEach(updFade); }); }
   if(document.readyState!=='loading') start(); else document.addEventListener('DOMContentLoaded',start);
 })();
+/* ===== Simulador de financiamento ===== */
+function abrirSimulador(v0){
+  document.getElementById('appHeader').innerHTML = `<h2>Simulador de financiamento</h2>`;
+  document.getElementById('mainContent').innerHTML = `
+    <button class="btn gray" style="width:auto;padding:8px 16px;margin-bottom:12px" onclick="goTab('inicio')">‹ Voltar</button>
+    <div class="hint" style="margin-bottom:12px">Estimativa para conversar com o cliente — não é proposta oficial do banco.</div>
+    <fieldset><legend>Valor do imóvel (R$)</legend><input id="simValor" inputmode="numeric" oninput="maskMoedaG(this)" value="${v0?esc(v0):''}" placeholder="500.000,00"></fieldset>
+    <fieldset><legend>Entrada (R$)</legend><input id="simEntrada" inputmode="numeric" oninput="maskMoedaG(this)" placeholder="100.000,00"></fieldset>
+    <div class="row2">
+      <fieldset><legend>Prazo (meses)</legend><input id="simMeses" type="number" min="1" max="480" value="360"></fieldset>
+      <fieldset><legend>Juros (% ao mês)</legend><input id="simJuros" inputmode="decimal" value="0,80" placeholder="0,80"></fieldset>
+    </div>
+    <fieldset><legend>Sistema</legend><select id="simSist"><option value="price">PRICE — parcela fixa</option><option value="sac">SAC — parcela decrescente</option></select></fieldset>
+    <button class="btn green" onclick="calcularSimulador()">Calcular</button>
+    <div id="simResultado" style="margin-top:16px"></div>`;
+}
+function linhaSim(k,v,destaque){ return `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted);font-size:13px">${k}</span><span style="font-weight:${destaque?'800':'600'};font-size:${destaque?'17px':'13px'};color:${destaque?'var(--success)':'var(--text)'}">${v}</span></div>`; }
+function calcularSimulador(){
+  const valor=parseMoeda(val('simValor')||'')||0, entrada=parseMoeda(val('simEntrada')||'')||0;
+  const n=parseInt(val('simMeses'))||0, i=(parseFloat((val('simJuros')||'').replace(',','.'))||0)/100;
+  const pv=valor-entrada, el=document.getElementById('simResultado'), sist=val('simSist');
+  if(pv<=0||n<=0){ el.innerHTML='<div class="hint" style="color:var(--danger)">Preencha o valor, a entrada (menor que o valor) e o prazo.</div>'; return; }
+  let html='';
+  if(sist==='price'){
+    const parcela = i>0 ? pv*i/(1-Math.pow(1+i,-n)) : pv/n;
+    const total=parcela*n, juros=total-pv;
+    html=`<div class="card"><div class="review-block-title" style="margin-bottom:6px">PRICE — parcela fixa</div>
+      ${linhaSim('Valor financiado',fmtBRL(pv))}
+      ${linhaSim('Parcela mensal (fixa)',fmtBRL(parcela),true)}
+      ${linhaSim('Total pago',fmtBRL(total))}
+      ${linhaSim('Total de juros',fmtBRL(juros))}</div>`;
+  } else {
+    const amort=pv/n; const p1=amort+pv*i;
+    let total=0,saldo=pv,pn=0; for(let k=0;k<n;k++){ const par=amort+saldo*i; total+=par; if(k===n-1)pn=par; saldo-=amort; }
+    const juros=total-pv;
+    html=`<div class="card"><div class="review-block-title" style="margin-bottom:6px">SAC — parcela decrescente</div>
+      ${linhaSim('Valor financiado',fmtBRL(pv))}
+      ${linhaSim('1ª parcela',fmtBRL(p1),true)}
+      ${linhaSim('Última parcela',fmtBRL(pn))}
+      ${linhaSim('Amortização mensal',fmtBRL(amort))}
+      ${linhaSim('Total pago',fmtBRL(total))}
+      ${linhaSim('Total de juros',fmtBRL(juros))}</div>`;
+  }
+  el.innerHTML=html;
+}
+/* ===== Follow-up (retornos) ===== */
+function abrirFollowups(){
+  document.getElementById('appHeader').innerHTML = `<h2>Follow-up (retornos)</h2>`;
+  const hoje=isoDate(new Date());
+  const list=(DB.followups||[]).slice().sort((a,b)=>(a.data||'').localeCompare(b.data||''));
+  const pend=list.filter(f=>!f.feito), feitos=list.filter(f=>f.feito);
+  const cor=f=> f.data<hoje?'#DC2626':(f.data===hoje?'#F59E0B':'#16A34A');
+  const rot=f=> f.data<hoje?'Atrasado':(f.data===hoje?'Hoje':'Agendado');
+  document.getElementById('mainContent').innerHTML = `
+    <button class="btn gray" style="width:auto;padding:8px 16px;margin-bottom:12px" onclick="goTab('inicio')">‹ Voltar</button>
+    <div class="card" style="margin-bottom:14px">
+      <div class="review-block-title" style="margin-bottom:8px">Novo retorno</div>
+      <fieldset><legend>Cliente / assunto</legend><input id="fuNome" maxlength="60" placeholder="ex.: Ligar para João (proposta)"></fieldset>
+      <fieldset><legend>Retornar em</legend><input id="fuData" type="date" value="${hoje}"></fieldset>
+      <fieldset><legend>Observação (opcional)</legend><input id="fuObs" maxlength="120" placeholder="detalhes"></fieldset>
+      <button class="btn green" onclick="salvarFollowup()">+ Adicionar retorno</button>
+    </div>
+    <div class="sec" style="margin:0 0 8px">Pendentes (${pend.length})</div>
+    ${pend.length? pend.map(f=>`
+      <div class="card" style="margin-bottom:8px;border-left:5px solid ${cor(f)}">
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><div style="font-weight:700">${esc(f.nome)}</div><span style="font-size:11px;font-weight:800;color:#fff;background:${cor(f)};padding:2px 9px;border-radius:12px;white-space:nowrap">${rot(f)}</span></div>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px">📅 ${fmtDataBR(f.data)}${f.obs?' · '+esc(f.obs):''}</div>
+        <div class="btnrow" style="margin-top:8px">
+          <button class="btn green" onclick="feitoFollowup('${f.id}')">✓ Feito</button>
+          <button class="btn gray" onclick="excluirFollowup('${f.id}')">🗑 Excluir</button>
+        </div>
+      </div>`).join('') : '<div class="hint">Nenhum retorno pendente.</div>'}
+    ${feitos.length?`<div class="sec" style="margin:14px 0 8px">Concluídos (${feitos.length})</div>${feitos.slice(0,20).map(f=>`<div class="card" style="margin-bottom:6px;opacity:.6"><div style="text-decoration:line-through;font-weight:600">${esc(f.nome)}</div><div style="font-size:11px;color:var(--muted)">${fmtDataBR(f.data)}</div><button class="btn gray" style="margin-top:6px" onclick="excluirFollowup('${f.id}')">🗑 Excluir</button></div>`).join('')}`:''}`;
+}
+function salvarFollowup(){ const nome=(val('fuNome')||'').trim(); if(!nome){toast('Informe o cliente/assunto.');return;} DB.followups=DB.followups||[]; DB.followups.push({id:uid(),nome,data:val('fuData')||isoDate(new Date()),obs:(val('fuObs')||'').trim(),feito:false,createdAt:Date.now()}); save(); toast('Retorno agendado!'); abrirFollowups(); }
+function feitoFollowup(id){ const f=(DB.followups||[]).find(x=>x.id===id); if(f){ f.feito=true; save(); abrirFollowups(); toast('Marcado como feito.'); } }
+function excluirFollowup(id){ DB.followups=(DB.followups||[]).filter(x=>x.id!==id); save(); abrirFollowups(); }
+function checarFollowups(){
+  try{
+    if(!('Notification' in window) || Notification.permission!=='granted') return;
+    let fired=[]; try{ fired=JSON.parse(localStorage.getItem('cor_fu_fired')||'[]'); }catch(e){}
+    const hoje=isoDate(new Date()); let ch=false;
+    (DB.followups||[]).forEach(f=>{ if(f.feito||!f.data) return; if(f.data<=hoje){ const k=f.id+'@'+hoje; if(fired.indexOf(k)<0){ notify('📞 Retorno de cliente', f.nome); fired.push(k); ch=true; } } });
+    if(ch) localStorage.setItem('cor_fu_fired', JSON.stringify(fired.slice(-300)));
+  }catch(e){}
+}
+/* ===== Catálogo / vitrine PDF ===== */
+function abrirCatalogo(){
+  const ims=DB.imoveis||[]; if(!ims.length){ toast('Cadastre imóveis primeiro.'); return; }
+  showSheet('📚 Catálogo / vitrine (PDF)', `
+    <div class="hint" style="margin-bottom:10px">Selecione os imóveis. O PDF traz foto, dados públicos e valor de cada um.</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+      <button class="btn sm gray" style="width:auto" onclick="catSel('disp')">Só disponíveis</button>
+      <button class="btn sm gray" style="width:auto" onclick="catSel('all')">Todos</button>
+      <button class="btn sm gray" style="width:auto" onclick="catSel('none')">Limpar</button>
+    </div>
+    <div style="max-height:44vh;overflow:auto">
+    ${ims.map(im=>`<label style="display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid var(--border)">
+      <input type="checkbox" class="catchk" value="${im.id}" ${(im.status||'Disponível')==='Disponível'?'checked':''} style="width:18px;height:18px;flex:none">
+      <span style="flex:1;font-size:12.5px;min-width:0">${statusBadge(im.status)}<b>${esc((im.codigo||'').toUpperCase())}</b> — ${esc(im.localizacao.endereco||'')}, ${esc(im.localizacao.numero||'')}</span>
+    </label>`).join('')}
+    </div>`,
+    `<button class="btn gray" onclick="closeSheet()">Cancelar</button><button class="btn green" onclick="gerarCatalogoPDF()">Gerar PDF</button>`);
+}
+function catSel(m){ document.querySelectorAll('.catchk').forEach(c=>{ const im=(DB.imoveis||[]).find(x=>x.id===c.value); if(m==='all')c.checked=true; else if(m==='none')c.checked=false; else if(m==='disp')c.checked=!!(im&&(im.status||'Disponível')==='Disponível'); }); }
+async function gerarCatalogoPDF(){
+  const ids=[...document.querySelectorAll('.catchk:checked')].map(c=>c.value);
+  if(!ids.length){ toast('Selecione ao menos 1 imóvel.'); return; }
+  toast('Gerando catálogo…'); closeSheet();
+  const cor=DB.corretor||{}; let cards='';
+  for(const id of ids){
+    const im=(DB.imoveis||[]).find(x=>x.id===id); if(!im) continue;
+    const L=im.localizacao||{}, c=im.caracteristicas||{};
+    let foto=''; const pubs=im.fotosPublicas||[]; for(let i=0;i<6;i++){ if(pubs[i]){ try{ const d=await idbGet(keyFotoPub(id,i)); if(d){ foto=d; break; } }catch(e){} } }
+    const sol=(im.valores&&im.valores.solicitado)||0;
+    const com=[]; if(+c.quartos>0)com.push(c.quartos+' quartos'); if(+c.banheiros>0)com.push(c.banheiros+' banh.');
+    const area=(c.terreno||'-')+' m²'+(im.tipo!=='terreno'?' / '+(c.construcao||'-')+' constr.':'');
+    cards+=`<div class="cx">${foto?`<img src="${foto}">`:`<div class="noimg">sem foto</div>`}<div class="cxb"><div class="cxcod">${(im.codigo||'').toUpperCase()} · ${tipoLabel(im.tipo)}</div><div class="cxad">${esc(L.endereco||'')}, ${esc(L.numero||'')} — ${esc(L.cidade||'')}/${esc(L.estado||'')}</div>${sol>0?`<div class="cxpr">${fmtBRL(sol)}</div>`:''}<div class="cxsp">${area}${com.length?' · '+com.join(' · '):''}</div></div></div>`;
+  }
+  const html=`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Catálogo</title><style>
+    *{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#1a2332;margin:0;padding:20px}
+    h1{color:#1D4ED8;font-size:20px;border-bottom:3px solid #1D4ED8;padding-bottom:8px;margin:0 0 6px}
+    .sub{color:#667;font-size:12px;margin-bottom:14px}
+    .cx{display:flex;gap:12px;border:1px solid #e3e8f0;border-radius:10px;padding:10px;margin-bottom:10px;page-break-inside:avoid}
+    .cx img{width:130px;height:100px;object-fit:cover;border-radius:8px;flex:none}
+    .noimg{width:130px;height:100px;border-radius:8px;background:#eef;display:flex;align-items:center;justify-content:center;color:#99a;font-size:11px;flex:none}
+    .cxb{flex:1;min-width:0}.cxcod{font-family:monospace;color:#1D4ED8;font-weight:bold;font-size:12px}
+    .cxad{font-weight:bold;font-size:14px;margin:2px 0}.cxpr{color:#16A34A;font-weight:bold;font-size:17px;margin:4px 0}.cxsp{color:#667;font-size:12px}
+    .ft{margin-top:16px;border-top:2px solid #1D4ED8;padding-top:8px;font-size:12px;color:#334}
+    @media print{body{padding:0}}
+  </style></head><body>
+    <h1>Cor Sync Imóveis — Catálogo</h1>
+    <div class="sub">${ids.length} imóvel(is)${cor.nome?' · '+esc(cor.nome):''}${cor.creci?' · CRECI '+esc(cor.creci):''}</div>
+    ${cards}
+    <div class="ft"><b>${esc(cor.nome||'')}</b>${cor.creci?' · CRECI '+esc(cor.creci):''}${cor.whatsapp?' · WhatsApp '+esc(cor.whatsapp):''}${cor.email?' · '+esc(cor.email):''}</div>
+  </body></html>`;
+  const w=window.open('','_blank'); if(!w){ toast('Permita pop-ups/nova aba para gerar o catálogo.'); return; }
+  w.document.open(); w.document.write(html); w.document.close();
+  setTimeout(function(){ try{ w.focus(); w.print(); }catch(e){} }, 800);
+}
+/* ===== Produtividade ===== */
+function abrirProdutividade(){
+  document.getElementById('appHeader').innerHTML = `<h2>Produtividade</h2>`;
+  const ims=DB.imoveis||[], ags=DB.agendamentos||[], cls=DB.clientes||[];
+  const nD=ims.filter(i=>(i.status||'Disponível')==='Disponível').length;
+  const nR=ims.filter(i=>i.status==='Reservado').length;
+  const nV=ims.filter(i=>i.status==='Vendido').length;
+  const totalVendido=ims.filter(i=>i.status==='Vendido').reduce((a,i)=>a+((i.valores&&i.valores.solicitado)||0),0);
+  const ym=isoDate(new Date()).slice(0,7);
+  const visMes=ags.filter(a=>a.tipo==='visita'&&(a.data||'').slice(0,7)===ym).length;
+  const propostas=cls.filter(c=>c.estagio==='Proposta').length;
+  const fechados=cls.filter(c=>c.estagio==='Fechado').length;
+  const meta=(DB.meta&&DB.meta.valor)||0;
+  const prog=meta>0?Math.min(100,Math.round(totalVendido/meta*100)):0;
+  const metaTxt = meta? fmtBRL(meta).replace(/R\$\s?/,'') : '';
+  const kpi=(ic,valor,label,cor)=>`<div class="card" style="flex:1;min-width:0;text-align:center;padding:14px 6px;margin:0"><div style="font-size:20px">${ic}</div><div style="font-size:21px;font-weight:800;color:${cor||'var(--text)'}">${valor}</div><div style="font-size:11px;color:var(--muted)">${label}</div></div>`;
+  document.getElementById('mainContent').innerHTML = `
+    <button class="btn gray" style="width:auto;padding:8px 16px;margin-bottom:12px" onclick="goTab('inicio')">‹ Voltar</button>
+    <div class="card" style="margin-bottom:14px">
+      <div class="review-block-title" style="margin-bottom:8px">🎯 Meta de vendas (R$)</div>
+      <div class="row2" style="align-items:flex-end">
+        <fieldset style="margin:0"><legend>Meta do período</legend><input id="metaVal" inputmode="numeric" oninput="maskMoedaG(this)" value="${metaTxt}" placeholder="0,00"></fieldset>
+        <fieldset style="margin:0"><legend>&nbsp;</legend><button class="btn green" onclick="salvarMeta()">Salvar meta</button></fieldset>
+      </div>
+      ${meta>0?`<div style="margin-top:12px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span>Vendido: <b style="color:var(--success)">${fmtBRL(totalVendido)}</b></span><span><b>${prog}%</b></span></div><div style="height:12px;background:var(--border);border-radius:8px;overflow:hidden"><div style="height:100%;width:${prog}%;background:var(--success)"></div></div><div style="font-size:11px;color:var(--muted);margin-top:4px">Meta: ${fmtBRL(meta)}</div></div>`:'<div class="hint" style="margin-top:8px">Defina uma meta para acompanhar o progresso.</div>'}
+    </div>
+    <div class="sec" style="margin:0 0 8px">Carteira</div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">${kpi('🟢',nD,'Disponíveis','#16A34A')}${kpi('🟡',nR,'Reservados','#B7791F')}${kpi('🔴',nV,'Vendidos','#DC2626')}</div>
+    <div class="sec" style="margin:0 0 8px">Atividade</div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">${kpi('📅',visMes,'Visitas no mês','var(--primary)')}${kpi('📝',propostas,'Propostas','#7C3AED')}${kpi('🤝',fechados,'Fechados','var(--success)')}</div>
+    <div class="card"><div style="display:flex;justify-content:space-between;padding:6px 0"><span style="color:var(--muted)">Total vendido</span><b style="color:var(--success)">${fmtBRL(totalVendido)}</b></div><div style="display:flex;justify-content:space-between;padding:6px 0"><span style="color:var(--muted)">Imóveis na carteira</span><b>${ims.length}</b></div><div style="display:flex;justify-content:space-between;padding:6px 0"><span style="color:var(--muted)">Clientes no funil</span><b>${cls.length}</b></div></div>`;
+}
+function salvarMeta(){ DB.meta={valor:parseMoeda(val('metaVal')||'')||0}; save(); toast('Meta salva!'); abrirProdutividade(); }
+
 let clienteEditId=null;
 function abrirConsultaIdeal(cli){
   clienteEditId=(cli&&cli.id)||null;
@@ -4232,8 +4429,8 @@ function fluxoDiarioHTML(modoSemana){
       ${fchip(false,'🗓️ Este mês',"fluxoPeriodo('mes')")}
     </div>`}
     <div class="row2">
-      <div class="field" style="margin:0"><label>Data inicial</label><input type="date" value="${fluxoIni}" onchange="setFluxoIni(this.value)"></div>
-      <div class="field" style="margin:0"><label>Data final</label><input type="date" value="${fluxoFim}" min="${fluxoIni}" onchange="setFluxoFim(this.value)"></div>
+      <div class="field" style="margin:0"><label>Data inicial</label><input type="date" class="dtrange" value="${fluxoIni}" onchange="setFluxoIni(this.value)"></div>
+      <div class="field" style="margin:0"><label>Data final</label><input type="date" class="dtrange" value="${fluxoFim}" min="${fluxoIni}" onchange="setFluxoFim(this.value)"></div>
     </div>
   </div>`;
 
@@ -4349,7 +4546,7 @@ function despForm(ex){
     <label>Valor</label><input id="ndVal" inputmode="numeric" placeholder="99.999,99" value="${ex?fmtMoedaSemRS(ex.valor):''}" oninput="maskMoeda(this)">
     <div class="row2">
       <div class="field" style="margin:0"><label>Data</label><input id="ndData" type="date" value="${ex?esc(ex.data):isoDate(new Date())}" onchange="syncMinReal('ndData','ndDataReal')"></div>
-      <div class="field" style="margin:0"><label>Data realizada</label><input id="ndDataReal" type="date" min="${ex?esc(ex.data):isoDate(new Date())}" value="${esc(ex?.dataRealizada||'')}"><div class="hint" style="display:flex;justify-content:space-between;align-items:center;gap:8px">Pode ficar em branco (em aberto)<button type="button" class="btn sm gray" style="width:auto;padding:4px 12px;font-size:11px;flex:none" onclick="var e=document.getElementById('ndDataReal');e.value='';e.dispatchEvent(new Event('change'))">Limpar</button></div></div>
+      <div class="field" style="margin:0"><label>Data realizada</label><input id="ndDataReal" class="dtreal-desp" type="date" min="${ex?esc(ex.data):isoDate(new Date())}" value="${esc(ex?.dataRealizada||'')}"><div class="hint" style="display:flex;justify-content:space-between;align-items:center;gap:8px">Pode ficar em branco (em aberto)<button type="button" class="btn sm gray" style="width:auto;padding:4px 12px;font-size:11px;flex:none" onclick="var e=document.getElementById('ndDataReal');e.value='';e.dispatchEvent(new Event('change'))">Limpar</button></div></div>
     </div>
     ${selectImovelHTML('ndImovel', ex?.imovelId)}
     <label>Descrição</label><input id="ndDesc" placeholder="Opcional" value="${esc(ex?.descricao||'')}">`;
@@ -4435,7 +4632,7 @@ function recForm(ex){
     <label>Valor</label><input id="nrVal" inputmode="numeric" placeholder="99.999,99" value="${ex?fmtMoedaSemRS(ex.valor):''}" oninput="maskMoeda(this)">
     <div class="row2">
       <div class="field" style="margin:0"><label>Data</label><input id="nrData" type="date" value="${ex?esc(ex.data):isoDate(new Date())}" onchange="syncMinReal('nrData','nrDataReal')"></div>
-      <div class="field" style="margin:0"><label>Data realizada</label><input id="nrDataReal" type="date" min="${ex?esc(ex.data):isoDate(new Date())}" value="${esc(ex?.dataRealizada||'')}"><div class="hint" style="display:flex;justify-content:space-between;align-items:center;gap:8px">Pode ficar em branco (em aberto)<button type="button" class="btn sm gray" style="width:auto;padding:4px 12px;font-size:11px;flex:none" onclick="var e=document.getElementById('nrDataReal');e.value='';e.dispatchEvent(new Event('change'))">Limpar</button></div></div>
+      <div class="field" style="margin:0"><label>Data realizada</label><input id="nrDataReal" class="dtreal-rec" type="date" min="${ex?esc(ex.data):isoDate(new Date())}" value="${esc(ex?.dataRealizada||'')}"><div class="hint" style="display:flex;justify-content:space-between;align-items:center;gap:8px">Pode ficar em branco (em aberto)<button type="button" class="btn sm gray" style="width:auto;padding:4px 12px;font-size:11px;flex:none" onclick="var e=document.getElementById('nrDataReal');e.value='';e.dispatchEvent(new Event('change'))">Limpar</button></div></div>
     </div>
     ${selectImovelHTML('nrImovel', ex?.imovelId)}
     <label>Descrição</label><input id="nrDesc" placeholder="Opcional" value="${esc(ex?.descricao||'')}">`;
