@@ -1,5 +1,13 @@
 # Cor Sync Imóveis — Histórico de versões
 
+## v1.44.0 — Cores, catálogo por WhatsApp/e-mail e mais
+- **Próximas visitas:** destaque por data — **hoje** em amarelo claro e os **próximos 3 dias** em verde claro.
+- **Financeiro em aberto:** **vencidos** em vermelho claro e **vence hoje** em amarelo claro.
+- **Casa:** abaixo de Lavanderia, novos campos **Lavanderia interna** e **Lavanderia externa** (Sim/Não).
+- **Catálogo/vitrine:** depois de selecionar os imóveis, abre a tela para **enviar por WhatsApp, e-mail ou gerar PDF** (como no Compartilhar do imóvel).
+- **Consulta ideal:** os resultados agora mostram a **1ª foto pública** de cada imóvel (como na lista de imóveis).
+- **Fotos:** não é mais permitido incluir as fotos públicas 2 a 6 enquanto a **Foto 1 (principal)** estiver vazia (as demais aparecem bloqueadas com "🔒 Foto 1 primeiro").
+
 ## v1.43.0 — Ferramentas: financiamento, follow-up, catálogo e produtividade
 Nova seção **Ferramentas** na tela inicial:
 - **Simulador de financiamento:** valor, entrada, prazo e juros → parcelas nos sistemas **PRICE** (fixa) e **SAC** (decrescente), com total pago e total de juros.
