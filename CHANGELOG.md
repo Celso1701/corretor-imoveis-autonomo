@@ -1,5 +1,13 @@
 # Cor Sync Imóveis — Histórico de versões
 
+## v1.44.2 — Mensagens padrão, proposta com parcelas e simulador
+- **Ajustes › Mensagens** (novo, entre Corretor e Acessibilidade): textos padrão editáveis de **mensagem ao comprador** (confirmar a visita) e **mensagem ao proprietário**.
+- **WhatsApp da visita:** ao abrir a conversa, já vem a mensagem padrão ao comprador.
+- **Gerar proposta:** **Condição de pagamento** agora vem acima do **Valor da proposta**; abaixo dele, novos campos **Valor de sinal, Entrada, Nº de parcelas, Valor das parcelas** e opção **Fixas / Corrigidas por** (índice). O cabeçalho mostra também o **Valor mínimo** do cadastro.
+- **Enviar proposta:** nova tela para enviar direto ao **WhatsApp ou e-mail do proprietário** (ou compartilhar com fotos), já com a mensagem padrão ao proprietário.
+- **Simulador de financiamento:** dá para **escolher um imóvel cadastrado** e preencher o valor automaticamente.
+- **Ajustes › Sobre** e **tutorial:** aviso de que busca de CEP e rotas (Waze/Google Maps) precisam de internet; o restante funciona offline.
+
 ## v1.44.1 — Botões do cadastro, PDF do catálogo e recurso de PDF
 - **Cadastro de imóvel (todos os tipos):** rodapé com **Voltar · Gravar · Avançar · Sair**. Ao sair, voltar ou avançar, o app **só pergunta se quer gravar quando você estiver editando um imóvel e tiver alterado algum campo** — se não mexeu em nada, passa direto.
 - **Catálogo:** agora dá para **enviar o catálogo em PDF (arquivo) pelo WhatsApp ou e-mail** (com foto, dados e valor de cada imóvel), além da lista em texto e do imprimir/salvar.

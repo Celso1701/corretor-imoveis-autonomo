@@ -754,7 +754,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.44.1';
+const APP_VERSION = '1.44.2';
 // Ajudante para inserir ícones do kit (traço) em qualquer lugar
 function ic(name, size, style){ size=size||18; return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"${style?` style="${style}"`:''}><use href="#i-${name}"/></svg>`; }
 // Logo da marca (usado na splash e nas telas de senha)
@@ -1408,6 +1408,7 @@ const TUT_STEPS = [
   {emo:'🏠', title:'Bem-vindo(a) ao Cor Sync Imóveis!',
    body:`Sua carteira de imóveis completa no bolso.<br><br>
    ✅ Funciona <b>offline</b> — os dados ficam só neste aparelho<br>
+   🌐 Busca de CEP e rotas (Waze/Google Maps) precisam de internet<br>
    ✅ <b>Instale na tela inicial</b> para abrir como um app de verdade<br>
    ✅ Proteja tudo fazendo <b>backups</b> regulares<br><br>
    Este guia mostra rapidinho cada parte do app. Pode pular e rever quando quiser em <b>Ajustes</b>.`,
@@ -2202,7 +2203,7 @@ function proximasVisitasHTML(){
         <div class="vwhenh"><b>${quando}</b><small>${a.hora||''}</small></div>
       </div>
       <div class="vactsh">
-        <div class="vbtnh vwah" ${tel.length>=10?`onclick="window.open('https://wa.me/55${tel}','_blank')"`:`onclick="toast('Telefone do comprador não cadastrado.')" style="opacity:.55"`}>${ic('chat',18)} WhatsApp</div>
+        <div class="vbtnh vwah" ${tel.length>=10?`onclick="window.open('https://wa.me/55${tel}?text='+encodeURIComponent(getMsgComprador()),'_blank')"`:`onclick="toast('Telefone do comprador não cadastrado.')" style="opacity:.55"`}>${ic('chat',18)} WhatsApp</div>
         <div class="vbtnh vrth" onclick="abrirRota('${esc(enderecoFull).replace(/'/g,"\\'")}')">${ic('nav',18)} Rota</div>
       </div>
     </div>`;
@@ -3867,6 +3868,7 @@ function abrirSimulador(v0){
   document.getElementById('mainContent').innerHTML = `
     <button class="btn gray" style="width:auto;padding:8px 16px;margin-bottom:12px" onclick="goTab('inicio')">‹ Voltar</button>
     <div class="hint" style="margin-bottom:12px">Estimativa para conversar com o cliente — não é proposta oficial do banco.</div>
+    <fieldset><legend>Imóvel cadastrado (opcional)</legend><select id="simImovel" onchange="simCarregarImovel()"><option value="">— escolher para preencher o valor —</option>${(DB.imoveis||[]).map(im=>`<option value="${im.id}">${esc((im.codigo||'').toUpperCase())} · ${esc(tipoLabel(im.tipo))}${(im.localizacao&&im.localizacao.cidade)?' · '+esc(im.localizacao.cidade):''}</option>`).join('')}</select></fieldset>
     <fieldset><legend>Valor do imóvel (R$)</legend><input id="simValor" inputmode="numeric" oninput="maskMoedaG(this)" value="${v0?esc(v0):''}" placeholder="500.000,00"></fieldset>
     <fieldset><legend>Entrada (R$)</legend><input id="simEntrada" inputmode="numeric" oninput="maskMoedaG(this)" placeholder="100.000,00"></fieldset>
     <div class="row2">
@@ -3877,6 +3879,7 @@ function abrirSimulador(v0){
     <button class="btn green" onclick="calcularSimulador()">Calcular</button>
     <div id="simResultado" style="margin-top:16px"></div>`;
 }
+function simCarregarImovel(){ const im=(DB.imoveis||[]).find(x=>x.id===val('simImovel')); if(!im) return; const sol=(im.valores&&im.valores.solicitado)||0; const v=document.getElementById('simValor'); if(v) v.value = sol>0 ? sol.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) : ''; }
 function linhaSim(k,v,destaque){ return `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted);font-size:13px">${k}</span><span style="font-weight:${destaque?'800':'600'};font-size:${destaque?'17px':'13px'};color:${destaque?'var(--success)':'var(--text)'}">${v}</span></div>`; }
 function calcularSimulador(){
   const valor=parseMoeda(val('simValor')||'')||0, entrada=parseMoeda(val('simEntrada')||'')||0;
@@ -4214,23 +4217,47 @@ function buscarConsultaIdeal(){
   }).join('');
   items.forEach(async im=>{ try{ const pubs=im.fotosPublicas||[]; const idx=pubs.findIndex(Boolean); if(idx<0) return; const d=await idbGet(keyFotoPub(im.id,idx)); if(d){ const el=document.getElementById('cif_'+im.id); if(el) el.innerHTML=`<img src="${d}" style="width:100%;height:100%;object-fit:cover">`; } }catch(e){} });
 }
+const DEF_MSG_COMPRADOR='Olá! Passando para confirmar nossa visita ao imóvel. Fico à disposição!';
+const DEF_MSG_PROPRIETARIO='Olá! Segue a proposta para o seu imóvel. Fico à disposição para conversarmos.';
+function getMsgComprador(){ return (DB.mensagens&&typeof DB.mensagens.comprador==='string')?DB.mensagens.comprador:DEF_MSG_COMPRADOR; }
+function getMsgProprietario(){ return (DB.mensagens&&typeof DB.mensagens.proprietario==='string')?DB.mensagens.proprietario:DEF_MSG_PROPRIETARIO; }
+function setMsg(kind,v){ if(!DB.mensagens) DB.mensagens={comprador:DEF_MSG_COMPRADOR,proprietario:DEF_MSG_PROPRIETARIO}; DB.mensagens[kind]=v; save(); }
+function donoDoImovel(im){
+  const pr=(im&&im.proprietario)||{};
+  let tel=(pr.tel1||pr.tel2||pr.tel3||'').replace(/\D/g,'');
+  let email=pr.email1||pr.email2||'';
+  if((!tel||!email) && pr.id){ const q=(DB.proprietarios||[]).find(x=>x.id===pr.id); if(q){ tel=tel||(q.tel1||q.tel2||q.tel3||'').replace(/\D/g,''); email=email||q.email1||q.email2||''; } }
+  return { nome:pr.nome||'', tel, email };
+}
 // ═══ Gerar proposta ═══
 function abrirProposta(id){
   const im=DB.imoveis.find(x=>x.id===id); if(!im) return;
-  _propImovel=im; _propCond='À vista';
+  _propImovel=im; _propCond='À vista'; _propCorr='fixas';
   showSheet('📝 Gerar proposta', propForm(im),
     `<button class="btn gray" onclick="closeSheet()">Cancelar</button><button class="btn green" onclick="compartilharProposta()">Compartilhar proposta</button>`);
 }
+let _propCorr='fixas';
 function propForm(im){
-  const sol=(im.valores&&im.valores.solicitado)||0; const L=im.localizacao||{};
+  const sol=(im.valores&&im.valores.solicitado)||0; const min=(im.valores&&im.valores.minimo)||0; const L=im.localizacao||{};
   const conds=['À vista','Financiado','FGTS + financiamento','Parcelado c/ proprietário'];
-  return `<div style="font-size:13px;color:var(--muted);margin-bottom:12px">${tipoLabel(im.tipo)} · <b>${esc((im.codigo||'').toUpperCase())}</b><br>${esc(L.endereco||'')}, ${esc(L.numero||'')} — ${esc(L.cidade||'')}/${esc(L.estado||'')}<br>Valor solicitado: <b>${sol>0?fmtBRL(sol):'—'}</b></div>
+  return `<div style="font-size:13px;color:var(--muted);margin-bottom:12px">${tipoLabel(im.tipo)} · <b>${esc((im.codigo||'').toUpperCase())}</b><br>${esc(L.endereco||'')}, ${esc(L.numero||'')} — ${esc(L.cidade||'')}/${esc(L.estado||'')}<br>Valor solicitado: <b>${sol>0?fmtBRL(sol):'—'}</b>${min>0?` · Valor mínimo: <b>${fmtBRL(min)}</b>`:''}</div>
     <div class="field"><label>Nome do cliente</label><input id="propCliente" placeholder="Quem está fazendo a proposta"></div>
-    <div class="field"><label>Valor da proposta (R$)</label><input id="propValor" inputmode="numeric" placeholder="9.999.999,99" oninput="maskMoedaG(this)"></div>
     <fieldset><legend>Condição de pagamento</legend><div class="chip-group" id="propConds">${conds.map((c,i)=>`<div class="chip ${i===0?'selected':''}" onclick="propSetCond(this,'${c.replace(/'/g,"\\'")}')">${c}</div>`).join('')}</div></fieldset>
+    <div class="field"><label>Valor da proposta (R$)</label><input id="propValor" inputmode="numeric" placeholder="9.999.999,99" oninput="maskMoedaG(this)"></div>
+    <div class="row2">
+      <div class="field"><label>Valor de sinal (R$)</label><input id="propSinal" inputmode="numeric" placeholder="0,00" oninput="maskMoedaG(this)"></div>
+      <div class="field"><label>Entrada (R$)</label><input id="propEntrada" inputmode="numeric" placeholder="0,00" oninput="maskMoedaG(this)"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Nº de parcelas</label><input id="propParcN" inputmode="numeric" maxlength="3" placeholder="000" oninput="this.value=this.value.replace(/\D/g,'').slice(0,3)"></div>
+      <div class="field"><label>Valor das parcelas (R$)</label><input id="propParcV" inputmode="numeric" placeholder="0,00" oninput="maskMoedaG(this)"></div>
+    </div>
+    <fieldset><legend>Parcelas</legend><div class="chip-group" id="propCorr"><div class="chip selected" onclick="propSetCorr(this,'fixas')">Fixas</div><div class="chip" onclick="propSetCorr(this,'corrigidas')">Corrigidas por</div></div></fieldset>
+    <div class="field" id="propIndiceWrap" style="display:none"><label>Índice de correção</label><input id="propIndice" maxlength="15" placeholder="Ex.: INCC, IPCA"></div>
     <div class="field"><label>Validade da proposta</label><input id="propValidade" type="date"><div class="hint">Opcional</div></div>
     <div class="field"><label>Observações</label><textarea id="propObs" maxlength="240" placeholder="Ex.: entrada de R$ 50.000 e o restante financiado…" style="min-height:64px"></textarea></div>`;
 }
+function propSetCorr(el,mode){ _propCorr=mode; const box=document.getElementById('propCorr'); if(box){ Array.from(box.children).forEach(ch=>ch.classList.remove('selected')); el.classList.add('selected'); } const w=document.getElementById('propIndiceWrap'); if(w) w.style.display=(mode==='corrigidas')?'':'none'; }
 function propSetCond(el,c){ _propCond=c; const box=document.getElementById('propConds'); if(box){ Array.from(box.children).forEach(ch=>ch.classList.remove('selected')); el.classList.add('selected'); } }
 function montarTextoProposta(im,p){
   const L=im.localizacao||{}, c=im.caracteristicas||{}, cor=DB.corretor||{};
@@ -4250,6 +4277,9 @@ function montarTextoProposta(im,p){
   if(sol>0) t+=`Valor anunciado: ${fmtBRL(sol)}\n`;
   t+=`💰 Valor da proposta: ${fmtBRL(p.valor)}\n`;
   t+=`Condição: ${p.cond}\n`;
+  if(p.sinal>0) t+=`Sinal: ${fmtBRL(p.sinal)}\n`;
+  if(p.entrada>0) t+=`Entrada: ${fmtBRL(p.entrada)}\n`;
+  if(p.parcN>0) t+=`Parcelas: ${p.parcN}x${p.parcV>0?' de '+fmtBRL(p.parcV):''}${p.corr==='corrigidas'?' (corrigidas'+(p.indice?' por '+p.indice:'')+')':' (fixas)'}\n`;
   if(p.cliente) t+=`Cliente: ${p.cliente}\n`;
   if(p.validade) t+=`Validade da proposta: ${fmtDataBR(p.validade)}\n`;
   if(p.obs) t+=`\nObservações: ${p.obs}\n`;
@@ -4263,16 +4293,38 @@ function montarTextoProposta(im,p){
   }
   return t;
 }
+let _propShare=null;
 async function compartilharProposta(){
   const im=_propImovel; if(!im) return;
   const g=id=>document.getElementById(id);
   const valor=parseMoeda(g('propValor').value||'');
   if(!valor){ toast('Informe o valor da proposta.'); return; }
-  const p={ cliente:(g('propCliente').value||'').trim(), valor:valor, validade:g('propValidade').value||'', obs:(g('propObs').value||'').trim(), cond:_propCond||'À vista' };
-  const txt=montarTextoProposta(im,p);
+  const p={ cliente:(g('propCliente').value||'').trim(), valor:valor, validade:g('propValidade').value||'', obs:(g('propObs').value||'').trim(), cond:_propCond||'À vista',
+    sinal:parseMoeda((g('propSinal')&&g('propSinal').value)||''), entrada:parseMoeda((g('propEntrada')&&g('propEntrada').value)||''),
+    parcN:parseInt((g('propParcN')&&g('propParcN').value)||'0')||0, parcV:parseMoeda((g('propParcV')&&g('propParcV').value)||''),
+    corr:_propCorr||'fixas', indice:((g('propIndice')&&g('propIndice').value)||'').trim() };
+  const msg=getMsgProprietario();
+  const txt=(msg?msg+'\n\n':'')+montarTextoProposta(im,p);
   const files=[];
   try{ if(DB.corretor&&DB.corretor.temCreci){ const dc=await idbGet(keyCorretorCreci()); if(dc) files.push(await dataURLtoFile(dc,'carteira_creci.jpg')); } }catch(e){}
   try{ const pubs=(im.fotosPublicas||[]); let n=0; for(let i=0;i<pubs.length && n<2;i++){ if(pubs[i]){ const d=await idbGet(keyFotoPub(im.id,i)); if(d){ files.push(await dataURLtoFile(d,(im.codigo||'foto')+'_'+(n+1)+'.jpg')); n++; } } } }catch(e){}
+  _propShare={ txt, files, dono:donoDoImovel(im) };
+  propShareSheet();
+}
+function propShareSheet(){
+  const d=(_propShare&&_propShare.dono)||{tel:'',email:'',nome:''};
+  showSheet('📤 Enviar proposta', `
+    <div class="hint" style="margin-bottom:10px">Escolha como enviar a proposta${d.nome?' para <b>'+esc(d.nome)+'</b>':''}:</div>
+    ${d.tel?`<button class="btn green" style="margin-bottom:8px" onclick="propEnviar('whats')">${ic('chat',16)} WhatsApp do proprietário</button>`:''}
+    ${d.email?`<button class="btn" style="margin-bottom:8px" onclick="propEnviar('email')">✉️ E-mail do proprietário</button>`:''}
+    <button class="btn" style="background:#0EA5E9;border-color:#0EA5E9;color:#fff" onclick="propEnviar('share')">📎 Compartilhar com fotos</button>
+    ${(!d.tel&&!d.email)?'<div style="font-size:11.5px;color:var(--danger);margin-top:8px">O proprietário não tem telefone/e-mail cadastrado — use "Compartilhar com fotos".</div>':''}`,
+    `<button class="btn gray" onclick="closeSheet()">Fechar</button>`);
+}
+async function propEnviar(via){
+  if(!_propShare) return; const txt=_propShare.txt, files=_propShare.files, dono=_propShare.dono;
+  if(via==='whats' && dono.tel){ window.open('https://wa.me/55'+dono.tel+'?text='+encodeURIComponent(txt),'_blank'); closeSheet(); return; }
+  if(via==='email' && dono.email){ window.open('mailto:'+encodeURIComponent(dono.email)+'?subject='+encodeURIComponent('Proposta de compra')+'&body='+encodeURIComponent(txt),'_blank'); closeSheet(); return; }
   try{ if(files.length && navigator.canShare && navigator.canShare({files})){ await navigator.share({files, text:txt}); closeSheet(); return; } }catch(e){}
   try{ if(navigator.share){ await navigator.share({text:txt}); closeSheet(); return; } }catch(e){}
   window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank'); closeSheet();
@@ -4492,7 +4544,7 @@ function agCardHTML(a, mostrarData){
       </div>
     </div>
     <div class="acts">
-      <div class="act wa" ${tel.length>=10?`onclick="window.open('https://wa.me/55${tel}','_blank')"`:`onclick="toast('Telefone do comprador não cadastrado.')" style="opacity:.5"`}>${ic('chat',15)} WhatsApp</div>
+      <div class="act wa" ${tel.length>=10?`onclick="window.open('https://wa.me/55${tel}?text='+encodeURIComponent(getMsgComprador()),'_blank')"`:`onclick="toast('Telefone do comprador não cadastrado.')" style="opacity:.5"`}>${ic('chat',15)} WhatsApp</div>
       <div class="act gps" onclick="abrirRota('${esc(enderecoFull).replace(/'/g,"\\'")}')">${ic('nav',15)} Rota</div>
       <div class="act" style="background:#F97316;border-color:#F97316;color:#fff" onclick="editarAgendamento('${a.id}')">${ic('edit',15)} Editar</div>
       <div class="act" style="background:var(--danger);border-color:var(--danger);color:#fff" onclick="excluirAgendamento('${a.id}')">${ic('trash',15)} Cancelar</div>
@@ -5208,6 +5260,12 @@ function renderConfig(){
       <div style="min-width:0"><div class="ptile-title">Dados do corretor</div><div class="ptile-sub" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${resumo}</div></div>
       <div class="ptile-chev">›</div>
     </button>
+    <div class="stitle">Mensagens</div>
+    <div class="card">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Textos padrão enviados ao tocar em <b>WhatsApp</b>. Você pode editar.</div>
+      <div class="field"><label>Mensagem ao comprador (confirmar a visita)</label><textarea maxlength="200" style="min-height:60px" oninput="setMsg('comprador',this.value)">${esc(getMsgComprador())}</textarea></div>
+      <div class="field" style="margin-bottom:0"><label>Mensagem ao proprietário</label><textarea maxlength="200" style="min-height:60px" oninput="setMsg('proprietario',this.value)">${esc(getMsgProprietario())}</textarea></div>
+    </div>
     <div class="stitle">Acessibilidade</div>
     <div class="card">
       <div style="font-size:13.5px;font-weight:800;margin-bottom:2px">Tamanho da tela (zoom)</div>
@@ -5320,7 +5378,8 @@ function renderConfig(){
         <span class="mono" style="color:var(--primary);font-weight:700;background:var(--pblue);padding:3px 10px;border-radius:100px">v${APP_VERSION}</span>
       </div>
       Dados salvos localmente neste aparelho.<br>
-      Módulo ativo: <b>Vender › Casa, Apartamento, Chácara e Terreno</b>.
+      Módulo ativo: <b>Vender › Casa, Apartamento, Chácara e Terreno</b>.<br>
+      <span>🌐 Busca de CEP e rotas (Waze/Google Maps) precisam de internet; o restante funciona offline.</span>
     </div>`;
   if(c.temFoto) idbGet(keyCorretorFoto()).then(d=>{ if(d){ const el=document.getElementById('cfgCorThumb'); if(el){ el.style.overflow='hidden'; el.innerHTML=`<img src="${d}" style="width:100%;height:100%;object-fit:cover">`; } } }).catch(()=>{});
   stopProCountdownTicker();
