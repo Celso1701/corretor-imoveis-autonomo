@@ -1,5 +1,11 @@
 # Cor Sync Imóveis — Histórico de versões
 
+## v1.44.1 — Botões do cadastro, PDF do catálogo e recurso de PDF
+- **Cadastro de imóvel (todos os tipos):** rodapé com **Voltar · Gravar · Avançar · Sair**. Ao sair, voltar ou avançar, o app **só pergunta se quer gravar quando você estiver editando um imóvel e tiver alterado algum campo** — se não mexeu em nada, passa direto.
+- **Catálogo:** agora dá para **enviar o catálogo em PDF (arquivo) pelo WhatsApp ou e-mail** (com foto, dados e valor de cada imóvel), além da lista em texto e do imprimir/salvar.
+- **Recurso de PDF:** o gerador de PDF já vem embutido no app. Na abertura ele verifica o recurso e, se algum dia faltar, avisa que é preciso instalar o recurso de PDF para exportar relatórios.
+- **Ajustes › Ajuda:** após "Suporte e dúvidas", uma linha informa se a exportação em PDF está disponível (e, se faltar, orienta a instalar o recurso).
+
 ## v1.44.0 — Cores, catálogo por WhatsApp/e-mail e mais
 - **Próximas visitas:** destaque por data — **hoje** em amarelo claro e os **próximos 3 dias** em verde claro.
 - **Financeiro em aberto:** **vencidos** em vermelho claro e **vence hoje** em amarelo claro.
