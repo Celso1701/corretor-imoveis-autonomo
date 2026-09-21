@@ -1,5 +1,9 @@
 # Cor Sync Imóveis — Histórico de versões
 
+## v1.44.4 — Histórico do comprador e ajuste na Consulta ideal
+- **Compradores (das visitas):** cada comprador agora mostra, abaixo do cadastro, o **histórico das visitas** (mais recente primeiro): data, código do imóvel e a 1ª foto pública. Toque no item para abrir o imóvel.
+- **Consulta ideal:** rótulo "Faixa de investimento — de (R$)" renomeado para **"Faixa Investimento R$"**, e os campos **de / até** agora ficam alinhados.
+
 ## v1.44.3 — Proposta inteligente, compradores e preenchimento em ordem
 - **Mensagens padrão (Ajustes):** limite de 50 caracteres em cada texto.
 - **Gerar proposta:** o **valor das parcelas é calculado sozinho** (proposta − sinal − entrada ÷ nº de parcelas); campo de Observações com o novo texto de exemplo.

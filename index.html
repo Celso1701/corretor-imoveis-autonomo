@@ -754,7 +754,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.44.3';
+const APP_VERSION = '1.44.4';
 // Ajudante para inserir ícones do kit (traço) em qualquer lugar
 function ic(name, size, style){ size=size||18; return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"${style?` style="${style}"`:''}><use href="#i-${name}"/></svg>`; }
 // Logo da marca (usado na splash e nas telas de senha)
@@ -3863,18 +3863,59 @@ let _propImovel=null, _propCond='À vista';
   function start(){ MO=new MutationObserver(schedule); schedule(); window.addEventListener('resize',function(){ document.querySelectorAll(SEL).forEach(updFade); }); }
   if(document.readyState!=='loading') start(); else document.addEventListener('DOMContentLoaded',start);
 })();
+// Histórico (visitas) de um comprador — mesma chave nome+telefone usada em listaCompradores() —, mais recente primeiro.
+function historicoComprador(nome, tel1){
+  const key=(nome||'').trim().toLowerCase()+'|'+(tel1||'').replace(/\D/g,'');
+  return (DB.agendamentos||[]).filter(a=>{
+    const n=(a.compradorNome||'').trim().toLowerCase(), t=(a.compradorTel1||'').replace(/\D/g,'');
+    return (n+'|'+t)===key;
+  }).sort((a,b)=>(b.data||'').localeCompare(a.data||''));
+}
+// Uma linha resumida do histórico: data, código do imóvel e (carregada à parte) a 1ª foto pública.
+function linhaHistoricoComprador(a){
+  const im=(DB.imoveis||[]).find(x=>x.id===a.imovelId);
+  const cod=esc((a.imovelCodigo||(im&&im.codigo)||'').toUpperCase()||'—');
+  const click=im?` onclick="abrirDetalhe('${im.id}')" style="cursor:pointer"`:'';
+  return `<div${click} style="display:flex;align-items:center;gap:8px;padding:6px 0">
+    <div id="hcf_${a.id}" style="width:34px;height:34px;border-radius:8px;background:var(--pblue);color:var(--primary);flex:none;display:flex;align-items:center;justify-content:center;overflow:hidden">${ic('building',14)}</div>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:11.5px;color:var(--muted)">${fmtDataBR(a.data)}</div>
+      <div style="font-size:12.5px;font-weight:700;color:var(--primary);font-family:monospace">${cod}</div>
+    </div>
+  </div>`;
+}
+// Busca em segundo plano a 1ª foto pública preenchida de cada imóvel do histórico exibido.
+function carregarFotosHistoricoCompradores(lista){
+  lista.forEach(c=>{
+    historicoComprador(c.nome,c.tel1).forEach(async a=>{
+      const im=(DB.imoveis||[]).find(x=>x.id===a.imovelId); if(!im) return;
+      const pubs=im.fotosPublicas||[]; const idx=pubs.findIndex(Boolean); if(idx<0) return;
+      try{
+        const d=await idbGet(keyFotoPub(im.id,idx));
+        if(d){ const el=document.getElementById('hcf_'+a.id); if(el) el.innerHTML=`<img src="${d}" style="width:100%;height:100%;object-fit:cover">`; }
+      }catch(e){}
+    });
+  });
+}
 function abrirCompradores(){
   const lista=listaCompradores();
   document.getElementById('appHeader').innerHTML = `<h2>Compradores (das visitas)</h2>`;
   const body = lista.length ? lista.map(c=>{
     const t1d=(c.tel1||'').replace(/\D/g,'');
+    const hist=historicoComprador(c.nome,c.tel1);
+    const histHTML = hist.length ? `<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
+      <div style="font-size:10.5px;font-weight:800;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:2px">Histórico (${hist.length})</div>
+      ${hist.map(linhaHistoricoComprador).join('')}
+    </div>` : '';
     return `<div class="card" style="margin-bottom:8px">
       <div style="font-weight:800">${esc(c.nome||'Sem nome')}</div>
       <div style="font-size:13px;color:var(--muted);margin-top:2px">${c.tel1?esc(c.tel1):'—'}${c.tel2?' · '+esc(c.tel2):''}</div>
       ${t1d.length>=10?`<div class="btnrow" style="margin-top:8px"><button class="btn green sm" onclick="window.open('https://wa.me/55${t1d}','_blank')">${ic('chat',15)} WhatsApp</button><button class="btn gray sm" onclick="window.open('tel:${t1d}')">📞 Ligar</button></div>`:''}
+      ${histHTML}
     </div>`;
   }).join('') : '<div class="hint">Nenhum comprador ainda. Eles aparecem aqui ao cadastrar as visitas (nome e telefones).</div>';
   document.getElementById('mainContent').innerHTML = `<button class="btn gray" style="width:auto;padding:8px 16px;margin-bottom:12px" onclick="goTab('inicio')">‹ Voltar</button><div class="hint" style="margin-bottom:10px">Compradores cadastrados nas suas visitas.</div>${body}`;
+  carregarFotosHistoricoCompradores(lista);
 }
 /* ===== Simulador de financiamento ===== */
 function abrirSimulador(v0){
@@ -4144,8 +4185,8 @@ function abrirConsultaIdeal(cli){
       <fieldset><legend>Cidade</legend><input id="ciCidade" placeholder="qualquer"></fieldset>
       <fieldset><legend>Quartos (mín.)</legend><input id="ciQuartos" type="number" min="0" max="20" placeholder="qualquer"></fieldset>
     </div>
-    <div class="row2">
-      <fieldset><legend>Faixa de investimento — de (R$)</legend><input id="ciValorMin" inputmode="numeric" placeholder="0" style="background:#EAF9F0" oninput="maskMoedaG(this)"></fieldset>
+    <div class="row2" style="align-items:flex-end">
+      <fieldset><legend>Faixa Investimento R$</legend><input id="ciValorMin" inputmode="numeric" placeholder="0" style="background:#EAF9F0" oninput="maskMoedaG(this)"></fieldset>
       <fieldset><legend>até (R$)</legend><input id="ciValorMax" inputmode="numeric" placeholder="sem limite" style="background:#EAF9F0" oninput="maskMoedaG(this)"></fieldset>
     </div>
     <button class="btn green" onclick="buscarConsultaIdeal()">🔍 Buscar imóveis que combinam</button>
