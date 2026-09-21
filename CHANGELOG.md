@@ -1,5 +1,16 @@
 # Cor Sync Imóveis — Histórico de versões
 
+## v1.44.3 — Proposta inteligente, compradores e preenchimento em ordem
+- **Mensagens padrão (Ajustes):** limite de 50 caracteres em cada texto.
+- **Gerar proposta:** o **valor das parcelas é calculado sozinho** (proposta − sinal − entrada ÷ nº de parcelas); campo de Observações com o novo texto de exemplo.
+- **Nome do cliente (proposta):** busca por **fragmento do nome ou do telefone** entre os compradores das visitas; se não existir, é só digitar para incluir.
+- **Enviar proposta:** opção **Sim/Não** para incluir a **carteira CRECI**, que vai como **1ª imagem** (mesma rotina do compartilhar imóvel). A carteira agora vai em 1º também no compartilhar do imóvel.
+- **Compradores (novo botão na tela inicial, antes do Financeiro):** lista os compradores cadastrados nas visitas (nome + telefones), com WhatsApp e ligar.
+- **Preenchimento em ordem:** nas **fotos** (públicas e privativas) e nos campos **Outros** do financeiro, só libera o próximo depois de preencher o anterior (1, 2, 3…).
+- **Consulta ideal:** campos **de / até** (faixa de investimento) destacados em verde.
+
+> Observação: a carteira CRECI só pode ser anexada no envio **"Compartilhar com fotos"**. Pelo link do WhatsApp ou por e-mail (mailto) vai apenas o texto — anexos não são possíveis por esses caminhos.
+
 ## v1.44.2 — Mensagens padrão, proposta com parcelas e simulador
 - **Ajustes › Mensagens** (novo, entre Corretor e Acessibilidade): textos padrão editáveis de **mensagem ao comprador** (confirmar a visita) e **mensagem ao proprietário**.
 - **WhatsApp da visita:** ao abrir a conversa, já vem a mensagem padrão ao comprador.

@@ -754,7 +754,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.44.2';
+const APP_VERSION = '1.44.3';
 // Ajudante para inserir ícones do kit (traço) em qualquer lugar
 function ic(name, size, style){ size=size||18; return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"${style?` style="${style}"`:''}><use href="#i-${name}"/></svg>`; }
 // Logo da marca (usado na splash e nas telas de senha)
@@ -1988,6 +1988,7 @@ function renderInicio(){
       <button class="qtile" onclick="goTab('imoveis')"><div class="qbox qb1">${ic('building',24)}</div><div class="ql">Imóveis</div><div class="qm">${nImo} cadastrado${nImo===1?'':'s'}</div></button>
       <button class="qtile" onclick="goTab('proprietarios')"><div class="qbox qb2">${ic('users',24)}</div><div class="ql">Proprietários</div><div class="qm">${nProp} cadastrado${nProp===1?'':'s'}</div></button>
       <button class="qtile" onclick="goTab('agenda')"><div class="qbox qb3">${ic('calendar',24)}</div><div class="ql">Agenda</div><div class="qm">${visitasHoje} visita${visitasHoje===1?'':'s'} hoje</div></button>
+      <button class="qtile" onclick="abrirCompradores()"><div class="qbox qb1">${ic('user',24)}</div><div class="ql">Compradores</div><div class="qm">Das visitas</div></button>
       <button class="qtile" onclick="goTab('financeiro')"><div class="qbox qb4">${ic('wallet',24)}</div><div class="ql">Financeiro</div><div class="qm">Ver resumo</div></button>
     </div>
     <div class="sec">Ferramentas</div>
@@ -3014,11 +3015,11 @@ function nomeContratoArq(){ return `${(W?.codigo||'').toLowerCase()}_contrato`; 
 function fotoSlotHTML(kind, i, existingKey, allowPublic, isPublic){
   const cacheHit = existingKey && wCache[existingKey];
   const nome = nomeFotoArq(kind, i);
-  const locked = (kind==='pub' && i>0 && !existingKey && !(W.fotosPublicas&&W.fotosPublicas[0]));
+  const _arrPrev = kind==='pub'?(W.fotosPublicas||[]):(kind==='add'?(W.fotosAdicionais||[]):null); const locked = (_arrPrev && i>0 && !existingKey && !_arrPrev[i-1]);
   const inner = cacheHit
     ? `<img src="${cacheHit}">${allowPublic?`<div class="badge" onclick="event.stopPropagation();toggleFotoPublica(${i})">${isPublic?'Pública':'Privada'}</div>`:''}<div class="remove" onclick="event.stopPropagation();removerFoto('${kind}',${i})">✕</div><div style="position:absolute;left:0;right:0;bottom:0;background:rgba(15,20,40,.72);color:#fff;font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:600;padding:2px 4px;text-align:center;letter-spacing:.02em">${esc(nome)}</div>`
-    : (existingKey ? `<span data-needload="${existingKey}">carregando…</span>` : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7H8l1-2h6l1 2h2.5A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5v-9Z" stroke="currentColor" stroke-width="1.4"/><circle cx="12" cy="12.5" r="3" stroke="currentColor" stroke-width="1.4"/></svg><span>${locked?'🔒 Foto 1 primeiro':('Foto '+(i+1))}</span>`);
-  return `<div class="photo-slot ${existingKey?'filled':''}" style="${locked?'opacity:.5':''}" onclick="${existingKey?`editarFoto('${kind}',${i})`:(locked?`toast('Inclua primeiro a Foto 1 (principal).')`:`escolherOrigemFoto('${kind}',${i})`)}">
+    : (existingKey ? `<span data-needload="${existingKey}">carregando…</span>` : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7H8l1-2h6l1 2h2.5A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5v-9Z" stroke="currentColor" stroke-width="1.4"/><circle cx="12" cy="12.5" r="3" stroke="currentColor" stroke-width="1.4"/></svg><span>${locked?('🔒 Foto '+i+' primeiro'):('Foto '+(i+1))}</span>`);
+  return `<div class="photo-slot ${existingKey?'filled':''}" style="${locked?'opacity:.5':''}" onclick="${existingKey?`editarFoto('${kind}',${i})`:(locked?`toast('Inclua a foto '+i+' antes.')`:`escolherOrigemFoto('${kind}',${i})`)}">
     ${inner}
     <input type="file" id="inpCam_${kind}${i}" accept="image/*" capture="environment" class="filein" onclick="event.stopPropagation()" onchange="onFotoSelected('${kind}',${i},this)">
     <input type="file" id="inpGal_${kind}${i}" accept="image/*" class="filein" onclick="event.stopPropagation()" onchange="onFotoSelected('${kind}',${i},this)">
@@ -3035,7 +3036,7 @@ function editarFoto(kind, i){
 }
 // Pergunta se o usuário quer usar a câmera ou a galeria naquele campo específico.
 function escolherOrigemFoto(kind, i){
-  if(kind==='pub' && i>0 && !(W.fotosPublicas&&W.fotosPublicas[0])){ toast('Inclua primeiro a Foto 1 (principal) antes das demais.'); return; }
+  if(i>0){ const _a=kind==='pub'?(W.fotosPublicas||[]):(kind==='add'?(W.fotosAdicionais||[]):null); if(_a && !_a[i-1]){ toast('Inclua a foto '+i+' antes.'); return; } }
   const nome = nomeFotoArq(kind, i);
   showSheet('Adicionar foto', `<div style="font-size:13px;color:var(--muted);margin-bottom:6px">Foto <b>${esc(nome)}</b> — como você quer adicionar?</div>`,
     `<button class="btn gray" onclick="closeSheet()">Cancelar</button>
@@ -3102,7 +3103,7 @@ async function hydratarFotos(){
   if(changed) renderWizard();
 }
 async function onFotoSelected(kind, i, input){
-  if(kind==='pub' && i>0 && !(W.fotosPublicas&&W.fotosPublicas[0])){ toast('Inclua primeiro a Foto 1 (principal) antes das demais.'); return; }
+  if(i>0){ const _a=kind==='pub'?(W.fotosPublicas||[]):(kind==='add'?(W.fotosAdicionais||[]):null); if(_a && !_a[i-1]){ toast('Inclua a foto '+i+' antes.'); return; } }
   const file = (input && input.files) ? input.files[0] : input; if(!file) return;
   const reader = new FileReader();
   reader.onload = (ev)=>{ downscaleImage(ev.target.result, 1280, 0.82, function(d){ storeFotoDataUrl(kind, i, d); input.value=''; }); };
@@ -3811,7 +3812,7 @@ function alternarCreciShare(el){
 async function fazerCompartilhamento(){
   const d = _shareData; if(!d){ closeSheet(); return; }
   const files = (d.files || []).slice();
-  if(d.incluirCreci && d.creciFile) files.push(d.creciFile);
+  if(d.incluirCreci && d.creciFile) files.unshift(d.creciFile);
   // 1) compartilhamento nativo COM arquivos (chamado de forma síncrona p/ preservar o gesto no iPhone)
   if(files.length && navigator.canShare){
     let ok = false; try{ ok = navigator.canShare({ files }); }catch(e){ ok = false; }
@@ -3862,6 +3863,19 @@ let _propImovel=null, _propCond='À vista';
   function start(){ MO=new MutationObserver(schedule); schedule(); window.addEventListener('resize',function(){ document.querySelectorAll(SEL).forEach(updFade); }); }
   if(document.readyState!=='loading') start(); else document.addEventListener('DOMContentLoaded',start);
 })();
+function abrirCompradores(){
+  const lista=listaCompradores();
+  document.getElementById('appHeader').innerHTML = `<h2>Compradores (das visitas)</h2>`;
+  const body = lista.length ? lista.map(c=>{
+    const t1d=(c.tel1||'').replace(/\D/g,'');
+    return `<div class="card" style="margin-bottom:8px">
+      <div style="font-weight:800">${esc(c.nome||'Sem nome')}</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:2px">${c.tel1?esc(c.tel1):'—'}${c.tel2?' · '+esc(c.tel2):''}</div>
+      ${t1d.length>=10?`<div class="btnrow" style="margin-top:8px"><button class="btn green sm" onclick="window.open('https://wa.me/55${t1d}','_blank')">${ic('chat',15)} WhatsApp</button><button class="btn gray sm" onclick="window.open('tel:${t1d}')">📞 Ligar</button></div>`:''}
+    </div>`;
+  }).join('') : '<div class="hint">Nenhum comprador ainda. Eles aparecem aqui ao cadastrar as visitas (nome e telefones).</div>';
+  document.getElementById('mainContent').innerHTML = `<button class="btn gray" style="width:auto;padding:8px 16px;margin-bottom:12px" onclick="goTab('inicio')">‹ Voltar</button><div class="hint" style="margin-bottom:10px">Compradores cadastrados nas suas visitas.</div>${body}`;
+}
 /* ===== Simulador de financiamento ===== */
 function abrirSimulador(v0){
   document.getElementById('appHeader').innerHTML = `<h2>Simulador de financiamento</h2>`;
@@ -4131,8 +4145,8 @@ function abrirConsultaIdeal(cli){
       <fieldset><legend>Quartos (mín.)</legend><input id="ciQuartos" type="number" min="0" max="20" placeholder="qualquer"></fieldset>
     </div>
     <div class="row2">
-      <fieldset><legend>Faixa de investimento — de (R$)</legend><input id="ciValorMin" inputmode="numeric" placeholder="0" oninput="maskMoedaG(this)"></fieldset>
-      <fieldset><legend>até (R$)</legend><input id="ciValorMax" inputmode="numeric" placeholder="sem limite" oninput="maskMoedaG(this)"></fieldset>
+      <fieldset><legend>Faixa de investimento — de (R$)</legend><input id="ciValorMin" inputmode="numeric" placeholder="0" style="background:#EAF9F0" oninput="maskMoedaG(this)"></fieldset>
+      <fieldset><legend>até (R$)</legend><input id="ciValorMax" inputmode="numeric" placeholder="sem limite" style="background:#EAF9F0" oninput="maskMoedaG(this)"></fieldset>
     </div>
     <button class="btn green" onclick="buscarConsultaIdeal()">🔍 Buscar imóveis que combinam</button>
     <button class="btn" style="margin-top:10px" onclick="salvarCliente()">💾 ${clienteEditId?'Atualizar cliente':'Salvar como cliente'}</button>
@@ -4229,6 +4243,34 @@ function donoDoImovel(im){
   if((!tel||!email) && pr.id){ const q=(DB.proprietarios||[]).find(x=>x.id===pr.id); if(q){ tel=tel||(q.tel1||q.tel2||q.tel3||'').replace(/\D/g,''); email=email||q.email1||q.email2||''; } }
   return { nome:pr.nome||'', tel, email };
 }
+function listaCompradores(){
+  const seen={}, out=[];
+  (DB.agendamentos||[]).slice().sort((a,b)=>(b.data||'').localeCompare(a.data||'')).forEach(a=>{
+    const nome=(a.compradorNome||'').trim(), t1=(a.compradorTel1||'').trim(), t2=(a.compradorTel2||'').trim();
+    if(!nome && !t1) return;
+    const key=nome.toLowerCase()+'|'+t1.replace(/\D/g,'');
+    if(seen[key]) return; seen[key]=1; out.push({nome,tel1:t1,tel2:t2});
+  });
+  return out;
+}
+function filtrarClienteInline(){
+  const el=document.getElementById('propCliente'), box=document.getElementById('propCliList'); if(!el||!box) return;
+  const q=(el.value||'').trim().toLowerCase(), qd=q.replace(/\D/g,'');
+  if(q.length<1){ box.innerHTML=''; return; }
+  const lista=listaCompradores().filter(c=> (c.nome||'').toLowerCase().includes(q) || (qd.length>=3 && ((c.tel1||'').replace(/\D/g,'').includes(qd) || (c.tel2||'').replace(/\D/g,'').includes(qd))) ).slice(0,6);
+  box.innerHTML = lista.length ? lista.map(c=>`<div style="padding:9px 12px;border-bottom:1px solid var(--border);cursor:pointer" onmousedown="selCliInline('${esc((c.nome||'').replace(/'/g,"\\'"))}')"><b>${esc(c.nome||'Sem nome')}</b><div style="font-size:11.5px;color:var(--muted)">${esc(c.tel1||'')}${c.tel2?' · '+esc(c.tel2):''}</div></div>`).join('') : '<div style="padding:9px 12px;font-size:12px;color:var(--muted)">Nenhum encontrado — digite para incluir novo.</div>';
+}
+function selCliInline(nome){ const el=document.getElementById('propCliente'); if(el) el.value=nome; const box=document.getElementById('propCliList'); if(box) box.innerHTML=''; }
+function propCalcParcela(){
+  const g=id=>document.getElementById(id);
+  const v=parseMoeda((g('propValor')&&g('propValor').value)||'')||0;
+  const si=parseMoeda((g('propSinal')&&g('propSinal').value)||'')||0;
+  const e=parseMoeda((g('propEntrada')&&g('propEntrada').value)||'')||0;
+  const n=parseInt((g('propParcN')&&g('propParcN').value)||'0')||0;
+  const pv=g('propParcV'); if(!pv) return;
+  const saldo=v-si-e;
+  pv.value = (n>0 && saldo>0) ? (saldo/n).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) : '';
+}
 // ═══ Gerar proposta ═══
 function abrirProposta(id){
   const im=DB.imoveis.find(x=>x.id===id); if(!im) return;
@@ -4241,21 +4283,21 @@ function propForm(im){
   const sol=(im.valores&&im.valores.solicitado)||0; const min=(im.valores&&im.valores.minimo)||0; const L=im.localizacao||{};
   const conds=['À vista','Financiado','FGTS + financiamento','Parcelado c/ proprietário'];
   return `<div style="font-size:13px;color:var(--muted);margin-bottom:12px">${tipoLabel(im.tipo)} · <b>${esc((im.codigo||'').toUpperCase())}</b><br>${esc(L.endereco||'')}, ${esc(L.numero||'')} — ${esc(L.cidade||'')}/${esc(L.estado||'')}<br>Valor solicitado: <b>${sol>0?fmtBRL(sol):'—'}</b>${min>0?` · Valor mínimo: <b>${fmtBRL(min)}</b>`:''}</div>
-    <div class="field"><label>Nome do cliente</label><input id="propCliente" placeholder="Quem está fazendo a proposta"></div>
+    <div class="field" style="position:relative"><label>Nome do cliente</label><input id="propCliente" autocomplete="off" placeholder="Nome ou telefone do cliente" oninput="filtrarClienteInline()" onblur="setTimeout(()=>{const l=document.getElementById('propCliList');if(l)l.innerHTML='';},220)"><div id="propCliList" style="position:absolute;left:0;right:0;top:100%;z-index:40;background:var(--card,#fff);border:1px solid var(--border);border-radius:10px;max-height:190px;overflow:auto;box-shadow:0 8px 22px rgba(0,0,0,.14)"></div></div>
     <fieldset><legend>Condição de pagamento</legend><div class="chip-group" id="propConds">${conds.map((c,i)=>`<div class="chip ${i===0?'selected':''}" onclick="propSetCond(this,'${c.replace(/'/g,"\\'")}')">${c}</div>`).join('')}</div></fieldset>
-    <div class="field"><label>Valor da proposta (R$)</label><input id="propValor" inputmode="numeric" placeholder="9.999.999,99" oninput="maskMoedaG(this)"></div>
+    <div class="field"><label>Valor da proposta (R$)</label><input id="propValor" inputmode="numeric" placeholder="9.999.999,99" oninput="maskMoedaG(this);propCalcParcela()"></div>
     <div class="row2">
-      <div class="field"><label>Valor de sinal (R$)</label><input id="propSinal" inputmode="numeric" placeholder="0,00" oninput="maskMoedaG(this)"></div>
-      <div class="field"><label>Entrada (R$)</label><input id="propEntrada" inputmode="numeric" placeholder="0,00" oninput="maskMoedaG(this)"></div>
+      <div class="field"><label>Valor de sinal (R$)</label><input id="propSinal" inputmode="numeric" placeholder="0,00" oninput="maskMoedaG(this);propCalcParcela()"></div>
+      <div class="field"><label>Entrada (R$)</label><input id="propEntrada" inputmode="numeric" placeholder="0,00" oninput="maskMoedaG(this);propCalcParcela()"></div>
     </div>
     <div class="row2">
-      <div class="field"><label>Nº de parcelas</label><input id="propParcN" inputmode="numeric" maxlength="3" placeholder="000" oninput="this.value=this.value.replace(/\D/g,'').slice(0,3)"></div>
+      <div class="field"><label>Nº de parcelas</label><input id="propParcN" inputmode="numeric" maxlength="3" placeholder="000" oninput="this.value=this.value.replace(/\D/g,'').slice(0,3);propCalcParcela()"></div>
       <div class="field"><label>Valor das parcelas (R$)</label><input id="propParcV" inputmode="numeric" placeholder="0,00" oninput="maskMoedaG(this)"></div>
     </div>
     <fieldset><legend>Parcelas</legend><div class="chip-group" id="propCorr"><div class="chip selected" onclick="propSetCorr(this,'fixas')">Fixas</div><div class="chip" onclick="propSetCorr(this,'corrigidas')">Corrigidas por</div></div></fieldset>
     <div class="field" id="propIndiceWrap" style="display:none"><label>Índice de correção</label><input id="propIndice" maxlength="15" placeholder="Ex.: INCC, IPCA"></div>
     <div class="field"><label>Validade da proposta</label><input id="propValidade" type="date"><div class="hint">Opcional</div></div>
-    <div class="field"><label>Observações</label><textarea id="propObs" maxlength="240" placeholder="Ex.: entrada de R$ 50.000 e o restante financiado…" style="min-height:64px"></textarea></div>`;
+    <div class="field"><label>Observações</label><textarea id="propObs" maxlength="240" placeholder="ex.: entrada de:     e o restante...." style="min-height:64px"></textarea></div>`;
 }
 function propSetCorr(el,mode){ _propCorr=mode; const box=document.getElementById('propCorr'); if(box){ Array.from(box.children).forEach(ch=>ch.classList.remove('selected')); el.classList.add('selected'); } const w=document.getElementById('propIndiceWrap'); if(w) w.style.display=(mode==='corrigidas')?'':'none'; }
 function propSetCond(el,c){ _propCond=c; const box=document.getElementById('propConds'); if(box){ Array.from(box.children).forEach(ch=>ch.classList.remove('selected')); el.classList.add('selected'); } }
@@ -4305,24 +4347,28 @@ async function compartilharProposta(){
     corr:_propCorr||'fixas', indice:((g('propIndice')&&g('propIndice').value)||'').trim() };
   const msg=getMsgProprietario();
   const txt=(msg?msg+'\n\n':'')+montarTextoProposta(im,p);
-  const files=[];
-  try{ if(DB.corretor&&DB.corretor.temCreci){ const dc=await idbGet(keyCorretorCreci()); if(dc) files.push(await dataURLtoFile(dc,'carteira_creci.jpg')); } }catch(e){}
+  const files=[]; let creciFile=null;
+  try{ if(DB.corretor&&DB.corretor.temCreci){ const dc=await idbGet(keyCorretorCreci()); if(dc) creciFile=await dataURLtoFile(dc,'carteira_creci.jpg'); } }catch(e){}
   try{ const pubs=(im.fotosPublicas||[]); let n=0; for(let i=0;i<pubs.length && n<2;i++){ if(pubs[i]){ const d=await idbGet(keyFotoPub(im.id,i)); if(d){ files.push(await dataURLtoFile(d,(im.codigo||'foto')+'_'+(n+1)+'.jpg')); n++; } } } }catch(e){}
-  _propShare={ txt, files, dono:donoDoImovel(im) };
+  _propShare={ txt, files, creciFile, incluirCreci:true, temCreci:!!(DB.corretor&&DB.corretor.temCreci), dono:donoDoImovel(im) };
   propShareSheet();
 }
 function propShareSheet(){
-  const d=(_propShare&&_propShare.dono)||{tel:'',email:'',nome:''};
+  const S=_propShare||{}; const d=S.dono||{tel:'',email:'',nome:''};
   showSheet('📤 Enviar proposta', `
     <div class="hint" style="margin-bottom:10px">Escolha como enviar a proposta${d.nome?' para <b>'+esc(d.nome)+'</b>':''}:</div>
+    ${S.temCreci?`<div class="toggle-row" style="margin-bottom:10px;border:2px solid var(--primary);border-radius:14px;padding:12px 14px;background:var(--pblue)"><div class="lbl">Incluir a carteira CRECI<span class="d">Vai como 1ª imagem em "Compartilhar com fotos"</span></div><div class="switch${S.incluirCreci?' on':''}" id="swCreciProp" onclick="propToggleCreci(this)"></div></div>`:''}
     ${d.tel?`<button class="btn green" style="margin-bottom:8px" onclick="propEnviar('whats')">${ic('chat',16)} WhatsApp do proprietário</button>`:''}
     ${d.email?`<button class="btn" style="margin-bottom:8px" onclick="propEnviar('email')">✉️ E-mail do proprietário</button>`:''}
     <button class="btn" style="background:#0EA5E9;border-color:#0EA5E9;color:#fff" onclick="propEnviar('share')">📎 Compartilhar com fotos</button>
     ${(!d.tel&&!d.email)?'<div style="font-size:11.5px;color:var(--danger);margin-top:8px">O proprietário não tem telefone/e-mail cadastrado — use "Compartilhar com fotos".</div>':''}`,
     `<button class="btn gray" onclick="closeSheet()">Fechar</button>`);
 }
+function propToggleCreci(el){ if(!_propShare) return; _propShare.incluirCreci=!_propShare.incluirCreci; el.classList.toggle('on', _propShare.incluirCreci); }
 async function propEnviar(via){
-  if(!_propShare) return; const txt=_propShare.txt, files=_propShare.files, dono=_propShare.dono;
+  if(!_propShare) return; const txt=_propShare.txt, dono=_propShare.dono;
+  let files=(_propShare.files||[]).slice();
+  if(_propShare.incluirCreci && _propShare.creciFile) files.unshift(_propShare.creciFile);
   if(via==='whats' && dono.tel){ window.open('https://wa.me/55'+dono.tel+'?text='+encodeURIComponent(txt),'_blank'); closeSheet(); return; }
   if(via==='email' && dono.email){ window.open('mailto:'+encodeURIComponent(dono.email)+'?subject='+encodeURIComponent('Proposta de compra')+'&body='+encodeURIComponent(txt),'_blank'); closeSheet(); return; }
   try{ if(files.length && navigator.canShare && navigator.canShare({files})){ await navigator.share({files, text:txt}); closeSheet(); return; } }catch(e){}
@@ -4608,6 +4654,9 @@ function outroVal(i){ return outrosArr()[i]?.valor || ''; }
 function outroDesc(i){ return outrosArr()[i]?.desc || ''; }
 function setOutroVal(i, v){ outrosArr()[i].valor = v; }
 function setOutroDesc(i, v){ outrosArr()[i].desc = (v||'').slice(0,15); }
+function _outroBloq(i){ return i>0 && !(outrosArr()[i-1] && outrosArr()[i-1].valor); }
+function outroValInput(i, el){ if(_outroBloq(i)){ el.value=''; toast('Preencha "Outros '+i+'" antes.'); return; } setOutroVal(i, maskMoeda(el)); }
+function outroDescInput(i, el){ if(_outroBloq(i)){ el.value=''; toast('Preencha "Outros '+i+'" antes.'); return; } setOutroDesc(i, el.value); }
 
 // ── Formulário de Visita ──
 let V = null;
@@ -4709,8 +4758,8 @@ function renderVisitaForm(){
     <div class="public-note" style="margin-top:4px">Outros gastos: informe o valor e, ao lado, um nome curto (até 15 caracteres) para saber do que se trata.</div>
     ${[0,1,2,3,4].map(i=>`
     <div class="row2">
-      <div class="field"><label>Outros ${i+1}</label><input inputmode="numeric" placeholder="99.999,99" value="${esc(outroVal(i))}" oninput="setOutroVal(${i}, maskMoeda(this))"></div>
-      <div class="field"><label>Descrição</label><input maxlength="15" placeholder="Ex.: Estacionamento" value="${esc(outroDesc(i))}" oninput="setOutroDesc(${i}, this.value)"></div>
+      <div class="field"><label>Outros ${i+1}</label><input inputmode="numeric" placeholder="99.999,99" ${i>0&&!outroVal(i-1)?'style="opacity:.5"':''} value="${esc(outroVal(i))}" oninput="outroValInput(${i}, this)"></div>
+      <div class="field"><label>Descrição</label><input maxlength="15" placeholder="Ex.: Estacionamento" ${i>0&&!outroVal(i-1)?'style="opacity:.5"':''} value="${esc(outroDesc(i))}" oninput="outroDescInput(${i}, this)"></div>
     </div>`).join('')}
     <div style="height:150px"></div>
     <div class="wizfooter"><div class="btnrow">
@@ -5263,8 +5312,8 @@ function renderConfig(){
     <div class="stitle">Mensagens</div>
     <div class="card">
       <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Textos padrão enviados ao tocar em <b>WhatsApp</b>. Você pode editar.</div>
-      <div class="field"><label>Mensagem ao comprador (confirmar a visita)</label><textarea maxlength="200" style="min-height:60px" oninput="setMsg('comprador',this.value)">${esc(getMsgComprador())}</textarea></div>
-      <div class="field" style="margin-bottom:0"><label>Mensagem ao proprietário</label><textarea maxlength="200" style="min-height:60px" oninput="setMsg('proprietario',this.value)">${esc(getMsgProprietario())}</textarea></div>
+      <div class="field"><label>Mensagem ao comprador (confirmar a visita)</label><textarea maxlength="50" style="min-height:60px" oninput="setMsg('comprador',this.value)">${esc(getMsgComprador())}</textarea></div>
+      <div class="field" style="margin-bottom:0"><label>Mensagem ao proprietário</label><textarea maxlength="50" style="min-height:60px" oninput="setMsg('proprietario',this.value)">${esc(getMsgProprietario())}</textarea></div>
     </div>
     <div class="stitle">Acessibilidade</div>
     <div class="card">
