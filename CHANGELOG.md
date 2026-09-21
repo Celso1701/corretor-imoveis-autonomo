@@ -1,5 +1,11 @@
 # Cor Sync Imóveis — Histórico de versões
 
+## v1.44.5 — Comprador na visita, menu inferior e tela de abertura
+- **Editar visita › Dados do comprador:** novo campo "Escolher comprador cadastrado" — mesmo padrão de busca do proprietário — que preenche nome e telefones automaticamente; pede confirmação antes de substituir dados já digitados.
+- **Sair sem gravar (visita):** corrigido — antes sempre voltava para a Agenda; agora volta para a tela de onde a visita foi aberta (Início, Agenda, Imóveis, ou o sino de Avisos em qualquer aba), tanto ao salvar quanto ao descartar.
+- **Menu inferior:** visual redesenhado — cada botão ganhou uma caixa visível ao redor do ícone; o botão ativo agora é um destaque azul sólido com sombra; toque com efeito de resposta.
+- **Tela de abertura (splash/bloqueio/criar senha):** fundo com foto leve e clara por trás do gradiente azul, mantendo a identidade visual da marca.
+
 ## v1.44.4 — Histórico do comprador e ajuste na Consulta ideal
 - **Compradores (das visitas):** cada comprador agora mostra, abaixo do cadastro, o **histórico das visitas** (mais recente primeiro): data, código do imóvel e a 1ª foto pública. Toque no item para abrir o imóvel.
 - **Consulta ideal:** rótulo "Faixa de investimento — de (R$)" renomeado para **"Faixa Investimento R$"**, e os campos **de / até** agora ficam alinhados.
