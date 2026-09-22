@@ -1,5 +1,12 @@
 # Cor Sync Imóveis — Histórico de versões
 
+## v1.46.0 — Regras do teste grátis, proteção do backup e padronizações
+- **Teste grátis, ao vencer:** por **1 dia** após o vencimento, o app libera só **Agenda, Financeiro e Ajustes** para consulta (nada pode ser incluído/alterado). Depois desse 1 dia, o app **não abre mais** — mostra só uma tela com o **ID do aparelho** e o campo para digitar o código do Pro (ou assinar pelo WhatsApp).
+- **Proteção do backup:** ao restaurar um backup, a **licença Pro nunca é copiada** junto — ela é sempre removida por segurança. Se o backup for de **outro aparelho**, aparece um aviso específico.
+- **Campo WhatsApp padronizado:** os campos de WhatsApp (Dados do corretor, dados obrigatórios do Pro, guardar senha) agora usam a mesma máscara `(99)99999.9999` dos outros telefones do app.
+- **Botões "Cancelar"/"Agora não" unificados:** todas as telas de senha e assinatura agora usam sempre **"Cancelar"**.
+- **Correções encontradas na auditoria:** janelas de confirmação/senha que ficavam escondidas atrás das telas de login (bug de sobreposição), e o checklist de regras da senha que era quase invisível em fundo branco — ambos corrigidos.
+
 ## v1.45.0 — Marcas d'água nos botões do início
 - Cada botão do início ganhou uma **figura em marca d'água** (bem clara, atrás do texto): 🏠 Imóveis, 👥 Proprietários, 🤝 Compradores, 💰 Financeiro, 🏦 Financiamento, 📞 Follow-up, 📈 Produtividade, 📚 Catálogo.
 - O botão **Agenda** mostra a **data atual** (dia e mês) como marca d'água.
