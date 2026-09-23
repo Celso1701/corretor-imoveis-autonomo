@@ -764,7 +764,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.47.1';
+const APP_VERSION = '1.47.2';
 // Ajudante para inserir ícones do kit (traço) em qualquer lugar
 function ic(name, size, style){ size=size||18; return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"${style?` style="${style}"`:''}><use href="#i-${name}"/></svg>`; }
 // Logo da marca (usado na splash e nas telas de senha)
@@ -4762,9 +4762,10 @@ function doExcluirAgendamento(id){
 function outrosArr(){
   if(!V.despesas.outrosLista){
     const antigo = V.despesas.outros || '';
-    V.despesas.outrosLista = [0,1,2,3,4].map(i=>({ valor: i===0?antigo:'', desc: i===0&&antigo?'Outros':'' }));
+    V.despesas.outrosLista = [0,1,2,3,4].map(i=>({ valor: i===0?antigo:'', desc: i===0&&antigo?'Outros':'', formaPag:'vista' }));
     V.despesas.outros = '';   // o valor migrou para a lista — não pode contar duas vezes
   }
+  V.despesas.outrosLista.forEach(o=>{ if(!o.formaPag) o.formaPag='vista'; });
   return V.despesas.outrosLista;
 }
 function outroVal(i){ return outrosArr()[i]?.valor || ''; }
@@ -4772,6 +4773,18 @@ function outroDesc(i){ return outrosArr()[i]?.desc || ''; }
 function setOutroVal(i, v){ outrosArr()[i].valor = v; }
 function setOutroDesc(i, v){ outrosArr()[i].desc = (v||'').slice(0,15); }
 function _outroBloq(i){ return i>0 && !(outrosArr()[i-1] && outrosArr()[i-1].valor); }
+function clicarFormaPagVisita(el){
+  const box=el.parentElement; Array.from(box.children).forEach(ch=>ch.classList.remove('selected')); el.classList.add('selected');
+  const modo=el.getAttribute('data-modo'), grupo=box.id;
+  if(grupo==='vPagTR'){ V.despesas.formaPagTR=modo; }
+  else if(grupo.indexOf('vPagOutro')===0){ const i=parseInt(grupo.replace('vPagOutro','')); outrosArr()[i].formaPag=modo; }
+}
+function pagVisitaHTML(id, modoAtual, bloqueado){
+  return `<div class="chip-group" id="${id}" ${bloqueado?'style="opacity:.5;pointer-events:none"':''}>
+    <div class="chip ${modoAtual==='vista'?'selected':''}" data-modo="vista" onclick="clicarFormaPagVisita(this)">À vista</div>
+    <div class="chip ${modoAtual==='cartao'?'selected':''}" data-modo="cartao" onclick="clicarFormaPagVisita(this)">💳 Cartão de crédito</div>
+  </div>`;
+}
 function outroValInput(i, el){ if(_outroBloq(i)){ el.value=''; toast('Preencha "Outros '+i+'" antes.'); return; } setOutroVal(i, maskMoeda(el)); }
 function outroDescInput(i, el){ if(_outroBloq(i)){ el.value=''; toast('Preencha "Outros '+i+'" antes.'); return; } setOutroDesc(i, el.value); }
 
@@ -4782,8 +4795,8 @@ function novaVisita(){
   if(DB.imoveis.length===0){ toast('Cadastre um imóvel antes de agendar uma visita.'); return; }
   V = { id:uid(), tipo:'visita', imovelId:'', data: agSelDate||isoDate(new Date()), hora:'09:00', lembrete:60,
         compradorNome:'', compradorTel1:'', compradorTel2:'',
-        despesas:{ transporte:'', refeicao:'', gasolina:'', outros:'',
-                   outrosLista:[0,1,2,3,4].map(()=>({valor:'',desc:''})) }, createdAt:Date.now() };
+        despesas:{ transporte:'', refeicao:'', gasolina:'', outros:'', formaPagTR:'vista',
+                   outrosLista:[0,1,2,3,4].map(()=>({valor:'',desc:'',formaPag:'vista'})) }, createdAt:Date.now() };
   V._novo = true;
   renderVisitaForm();
 }
@@ -4792,7 +4805,7 @@ function editarAgendamento(id){
   const a = DB.agendamentos.find(x=>x.id===id);
   if(!a){ toast('Compromisso não encontrado.'); return; }
   V = JSON.parse(JSON.stringify(a));
-  V.despesas = Object.assign({ transporte:'', refeicao:'', gasolina:'', outros:'' }, V.despesas||{});
+  V.despesas = Object.assign({ transporte:'', refeicao:'', gasolina:'', outros:'', formaPagTR:'vista' }, V.despesas||{});
   // compat: se a visita não tiver terreno/construída, busca do imóvel
   if(V.terreno===undefined || V.construida===undefined){
     const im = DB.imoveis.find(x=>x.id===V.imovelId);
@@ -4866,18 +4879,22 @@ function renderVisitaForm(){
     </div>
 
     <div class="section-title" style="margin-top:8px">Despesas da visita</div>
-    <div class="public-note">Os valores lançados aqui vão para o <b>Financeiro › Despesas</b>, com a data confirmada da visita.</div>
+    <div class="public-note">Os valores lançados aqui vão para o <b>Financeiro › Despesas</b>.</div>
+    <label>Pagamento (Transporte e Refeição)</label>
+    ${pagVisitaHTML('vPagTR', V.despesas.formaPagTR||'vista', false)}
     <div class="row2">
       <div class="field"><label>Transporte</label><input inputmode="numeric" placeholder="99.999,99" value="${esc(V.despesas.transporte)}" oninput="V.despesas.transporte=maskMoeda(this)"></div>
       <div class="field"><label>Refeição</label><input inputmode="numeric" placeholder="99.999,99" value="${esc(V.despesas.refeicao)}" oninput="V.despesas.refeicao=maskMoeda(this)"></div>
     </div>
     <div class="field"><label>Gasolina</label><input inputmode="numeric" placeholder="99.999,99" value="${esc(V.despesas.gasolina)}" oninput="V.despesas.gasolina=maskMoeda(this)"></div>
     <div class="public-note" style="margin-top:4px">Outros gastos: informe o valor e, ao lado, um nome curto (até 15 caracteres) para saber do que se trata.</div>
-    ${[0,1,2,3,4].map(i=>`
+    ${[0,1,2,3,4].map(i=>{ const bloq=i>0&&!outroVal(i-1); return `
+    <label style="margin-top:10px">Pagamento (Outros ${i+1})</label>
+    ${pagVisitaHTML('vPagOutro'+i, outrosArr()[i].formaPag||'vista', bloq)}
     <div class="row2">
-      <div class="field"><label>Outros ${i+1}</label><input inputmode="numeric" placeholder="99.999,99" ${i>0&&!outroVal(i-1)?'style="opacity:.5"':''} value="${esc(outroVal(i))}" oninput="outroValInput(${i}, this)"></div>
-      <div class="field"><label>Descrição</label><input maxlength="15" placeholder="Ex.: Estacionamento" ${i>0&&!outroVal(i-1)?'style="opacity:.5"':''} value="${esc(outroDesc(i))}" oninput="outroDescInput(${i}, this)"></div>
-    </div>`).join('')}
+      <div class="field"><label>Outros ${i+1}</label><input inputmode="numeric" placeholder="99.999,99" ${bloq?'style="opacity:.5"':''} value="${esc(outroVal(i))}" oninput="outroValInput(${i}, this)"></div>
+      <div class="field"><label>Descrição</label><input maxlength="15" placeholder="Ex.: Estacionamento" ${bloq?'style="opacity:.5"':''} value="${esc(outroDesc(i))}" oninput="outroDescInput(${i}, this)"></div>
+    </div>`; }).join('')}
     <div style="height:150px"></div>
     <div class="wizfooter"><div class="btnrow">
       <button class="btn gray" onclick="goTab('agenda')">Voltar</button>
@@ -4905,24 +4922,38 @@ function salvarVisita(){
   DB.financeiro.despesas = DB.financeiro.despesas.filter(d=>d.agendamentoId!==V.id);
   const im = DB.imoveis.find(x=>x.id===V.imovelId);
   const reg = (im?.codigo||'').toUpperCase();  // ex.: CS00001
-  const cats = { transporte:'Transporte', refeicao:'Refeição', gasolina:'Gasolina' };
-  Object.keys(cats).forEach(k=>{
+  // Transporte e Refeição: usam a forma de pagamento escolhida (à vista = hoje; cartão = vencimento)
+  const dtTR = dataEDataRealizadaPorForma(V.despesas.formaPagTR||'vista');
+  const catsTR = { transporte:'Transporte', refeicao:'Refeição' };
+  Object.keys(catsTR).forEach(k=>{
     const valor = parseMoeda(V.despesas[k]||'');
     if(valor>0){
       DB.financeiro.despesas.push({
-        id: uid(), categoria: cats[k], valor, data: V.data,
+        id: uid(), categoria: catsTR[k], valor, data: dtTR.data, dataRealizada: dtTR.dataRealizada,
+        formaPagamento: V.despesas.formaPagTR||'vista',
         origem:'agenda', agendamentoId: V.id, imovelId: V.imovelId, imovelCodigo: reg,
         descricao: `Visita ${reg} — ${V.compradorNome}`.trim(), createdAt: Date.now()
       });
     }
   });
-  // os 5 campos de "Outros": cada um vira uma despesa própria, levando a descrição digitada
+  // Gasolina: mantém o comportamento anterior (data da visita confirmada)
+  const valorGas = parseMoeda(V.despesas.gasolina||'');
+  if(valorGas>0){
+    DB.financeiro.despesas.push({
+      id: uid(), categoria:'Gasolina', valor: valorGas, data: V.data,
+      origem:'agenda', agendamentoId: V.id, imovelId: V.imovelId, imovelCodigo: reg,
+      descricao: `Visita ${reg} — ${V.compradorNome}`.trim(), createdAt: Date.now()
+    });
+  }
+  // os 5 campos de "Outros": cada um vira uma despesa própria, com a forma de pagamento própria
   (V.despesas.outrosLista||[]).forEach(o=>{
     const valor = parseMoeda(o.valor||'');
     if(valor>0){
       const nome = (o.desc||'').trim();
+      const dtO = dataEDataRealizadaPorForma(o.formaPag||'vista');
       DB.financeiro.despesas.push({
-        id: uid(), categoria:'Outros', valor, data: V.data,
+        id: uid(), categoria:'Outros', valor, data: dtO.data, dataRealizada: dtO.dataRealizada,
+        formaPagamento: o.formaPag||'vista',
         origem:'agenda', agendamentoId: V.id, imovelId: V.imovelId, imovelCodigo: reg,
         descricao: `Visita ${reg} — ${V.compradorNome}${nome?' — '+nome:''}`.trim(), createdAt: Date.now()
       });
@@ -5280,6 +5311,11 @@ function selectImovelHTML(id, sel){
     <select id="${id}"><option value="">— nenhum —</option>
       ${DB.imoveis.map(im=>`<option value="${im.id}" ${sel===im.id?'selected':''}>${(im.codigo||'').toUpperCase()} · ${esc(im.localizacao.endereco||'')}, ${esc(im.localizacao.numero||'')}</option>`).join('')}
     </select>`;
+}
+function dataEDataRealizadaPorForma(modo){
+  if(modo==='cartao'){ const d=calcDataCartao(); return { data: d||isoDate(new Date()), dataRealizada:'' }; }
+  const hoje = isoDate(new Date());
+  return { data: hoje, dataRealizada: hoje };
 }
 function calcDataCartao(){
   const dvRaw = (DB.corretor && DB.corretor.diaVencCartao) || '';

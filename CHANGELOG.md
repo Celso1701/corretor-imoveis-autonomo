@@ -1,5 +1,12 @@
 # Cor Sync Imóveis — Histórico de versões
 
+## v1.47.2 — Cartão de crédito nas despesas da visita
+- **Nova/Editar visita:** botão **Pagamento: À vista / Cartão de crédito** antes de Transporte e Refeição (um só, valendo para os dois), e mais um antes de cada campo **Outros 1 a 5** (independentes entre si).
+  - **À vista** grava no Financeiro Data e Data realizada com o dia de hoje.
+  - **Cartão de crédito** calcula a Data pelo dia de vencimento cadastrado em Ajustes › Dados do corretor (mesma regra da tela de despesas), gravando só no campo Data.
+  - Gasolina continua usando a data confirmada da visita, sem alteração.
+- O total de **💳 Cartão de crédito** no Financeiro agora também soma as despesas geradas pela visita.
+
 ## v1.47.1 — Cartão de crédito nas despesas
 - **Dados do corretor:** novo campo **"Dia do vencimento do cartão de crédito"** (1 a 31, opcional), logo após a Validade da carteira CRECI.
 - **Nova/Editar despesa:** botão **Pagamento: À vista / Cartão de crédito**, na mesma linha.
