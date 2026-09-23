@@ -1,5 +1,10 @@
 # Cor Sync Imóveis — Histórico de versões
 
+## v1.47.0 — Ajustes de tela inicial e Financeiro
+- **Marca d'água retirada** das telas azuis (abertura, login, senha do Pro, teste grátis vencido) — ficaram só o logo e os textos.
+- **Botão Financeiro** movido: agora fica depois dos 4 botões de Ferramentas (Financiamento, Follow-up, Produtividade, Catálogo), não mais junto com Imóveis/Proprietários/Agenda/Compradores.
+- **Tela do Financeiro:** o resumo (Receitas/Despesas/Saldo + gráfico por categoria) agora fica **fixo no topo**; só a lista de lançamentos rola por baixo.
+
 ## v1.46.0 — Regras do teste grátis, proteção do backup e padronizações
 - **Teste grátis, ao vencer:** por **1 dia** após o vencimento, o app libera só **Agenda, Financeiro e Ajustes** para consulta (nada pode ser incluído/alterado). Depois desse 1 dia, o app **não abre mais** — mostra só uma tela com o **ID do aparelho** e o campo para digitar o código do Pro (ou assinar pelo WhatsApp).
 - **Proteção do backup:** ao restaurar um backup, a **licença Pro nunca é copiada** junto — ela é sempre removida por segurança. Se o backup for de **outro aparelho**, aparece um aviso específico.
