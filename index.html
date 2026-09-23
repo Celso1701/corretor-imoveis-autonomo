@@ -764,7 +764,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.47.0';
+const APP_VERSION = '1.47.1';
 // Ajudante para inserir ícones do kit (traço) em qualquer lugar
 function ic(name, size, style){ size=size||18; return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"${style?` style="${style}"`:''}><use href="#i-${name}"/></svg>`; }
 // Logo da marca (usado na splash e nas telas de senha)
@@ -1059,7 +1059,7 @@ const LS_AUTH = 'corretorimoveis_auth';
 let DB = null;
 let _cryptoKey = null;
 
-function defaultDB(){ return { imoveis: [], proprietarios: [], agendamentos: [], financeiro:{ despesas:[], receitas:[] }, clientes: [], followups: [], meta:{valor:0}, contadores:{cs:0,ap:0,tr:0,ch:0,prop:0}, corretor: { nome:'', creci:'', validadeCreci:'', email:'', temFoto:false, temCreci:false } }; }
+function defaultDB(){ return { imoveis: [], proprietarios: [], agendamentos: [], financeiro:{ despesas:[], receitas:[] }, clientes: [], followups: [], meta:{valor:0}, contadores:{cs:0,ap:0,tr:0,ch:0,prop:0}, corretor: { nome:'', creci:'', validadeCreci:'', diaVencCartao:'', email:'', temFoto:false, temCreci:false } }; }
 function getAuth(){ try{ return JSON.parse(localStorage.getItem(LS_AUTH)||'null'); }catch(e){ return null; } }
 
 async function deriveKey(pass, saltU8){
@@ -5010,6 +5010,7 @@ function renderFinanceiro(){
       <button class="btn sm gray" style="width:auto" ${finExpM>=0?'disabled style="opacity:.4;width:auto"':''} onclick="finExpM++;renderFinanceiro()">›</button></div>`;
   }
   // Resumo Receitas / Despesas / Saldo (fica fixo no topo; só os lançamentos rolam)
+  const totCartao = despBase.filter(e=>e.formaPagamento==='cartao').reduce((s,e)=>s+(e.valor||0),0);
   topo += `<div class="card" style="margin-bottom:12px">
     <div style="display:flex;gap:8px;text-align:center">
       <div style="flex:1"><div style="font-size:9.5px;font-weight:700;color:var(--muted);text-transform:uppercase">Receitas</div><b style="color:var(--success);font-size:15px">${fmtBRL(totRec)}</b></div>
@@ -5017,6 +5018,7 @@ function renderFinanceiro(){
       <div style="flex:1"><div style="font-size:9.5px;font-weight:700;color:var(--muted);text-transform:uppercase">Saldo</div><b style="color:${saldo>=0?'var(--success)':'var(--danger)'};font-size:15px">${fmtBRL(saldo)}</b></div>
     </div>
     ${Object.keys(byCat).length?cartaoCategorias(byCat, maxCat):''}
+    ${totCartao>0?`<div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--border);display:flex;justify-content:space-between;align-items:center;font-size:12px"><span>💳 Total no cartão de crédito</span><b style="color:var(--danger)">${fmtBRL(totCartao)}</b></div>`:''}
   </div>`;
 
   // Lista combinada (receitas verdes + despesas vermelhas)
@@ -5279,8 +5281,34 @@ function selectImovelHTML(id, sel){
       ${DB.imoveis.map(im=>`<option value="${im.id}" ${sel===im.id?'selected':''}>${(im.codigo||'').toUpperCase()} · ${esc(im.localizacao.endereco||'')}, ${esc(im.localizacao.numero||'')}</option>`).join('')}
     </select>`;
 }
+function calcDataCartao(){
+  const dvRaw = (DB.corretor && DB.corretor.diaVencCartao) || '';
+  const dv = parseInt(dvRaw);
+  if(!dv || dv<1 || dv>31){ toast('Cadastre o "Dia do vencimento do cartão" em Ajustes › Dados do corretor.'); return null; }
+  const hoje = new Date(); const diaHoje = hoje.getDate();
+  let ano = hoje.getFullYear(), mes = hoje.getMonth();
+  if(diaHoje >= dv){ mes += 1; if(mes>11){ mes=0; ano+=1; } }
+  const ultimoDia = new Date(ano, mes+1, 0).getDate();
+  const dia = Math.min(dv, ultimoDia);
+  return `${ano}-${String(mes+1).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
+}
+function setFormaPagDespesa(el){
+  const box=el.parentElement; Array.from(box.children).forEach(ch=>ch.classList.remove('selected')); el.classList.add('selected');
+  const modo=el.getAttribute('data-modo');
+  const dData=document.getElementById('ndData'), dReal=document.getElementById('ndDataReal');
+  if(modo==='vista'){
+    const hoje=isoDate(new Date());
+    if(dData) dData.value=hoje;
+    if(dReal){ dReal.min=hoje; dReal.value=hoje; }
+  } else {
+    const d=calcDataCartao();
+    if(d && dData) dData.value=d;
+    if(d && dReal) dReal.min=d;
+  }
+}
 function despForm(ex){
   const catConhecida = !ex || DESP_CATS.includes(ex.categoria);
+  const modoPag = (ex&&ex.formaPagamento==='cartao') ? 'cartao' : 'vista';
   return `
     <label>Categoria</label>
     <select id="ndCat" onchange="var n=(this.value==='__nova__');document.getElementById('ndCatNova').style.display=n?'block':'none';if(n)document.getElementById('ndCatNova').focus()">
@@ -5290,6 +5318,11 @@ function despForm(ex){
     </select>
     <input id="ndCatNova" placeholder="Digite uma nova categoria de despesa" value="${!catConhecida?esc(ex.categoria):''}" style="display:${!catConhecida?'block':'none'};margin-top:8px">
     <label>Valor</label><input id="ndVal" inputmode="numeric" placeholder="99.999,99" value="${ex?fmtMoedaSemRS(ex.valor):''}" oninput="maskMoeda(this)">
+    <label>Pagamento</label>
+    <div class="chip-group" id="ndPagGroup">
+      <div class="chip ${modoPag==='vista'?'selected':''}" data-modo="vista" onclick="setFormaPagDespesa(this)">À vista</div>
+      <div class="chip ${modoPag==='cartao'?'selected':''}" data-modo="cartao" onclick="setFormaPagDespesa(this)">💳 Cartão de crédito</div>
+    </div>
     <div class="row2">
       <div class="field" style="margin:0"><label>Data</label><input id="ndData" type="date" value="${ex?esc(ex.data):isoDate(new Date())}" onchange="syncMinReal('ndData','ndDataReal')"></div>
       <div class="field" style="margin:0"><label>Data realizada</label><input id="ndDataReal" class="dtreal-desp" type="date" min="${ex?esc(ex.data):isoDate(new Date())}" value="${esc(ex?.dataRealizada||'')}"><div class="hint" style="display:flex;justify-content:space-between;align-items:center;gap:8px">Pode ficar em branco (em aberto)<button type="button" class="btn sm gray" style="width:auto;padding:4px 12px;font-size:11px;flex:none" onclick="var e=document.getElementById('ndDataReal');e.value='';e.dispatchEvent(new Event('change'))">Limpar</button></div></div>
@@ -5339,10 +5372,11 @@ function salvarDespesaManual(editId){
   if(!categoria){ toast('Selecione ou digite uma categoria.'); return; }
   const imovelId = document.getElementById('ndImovel')?.value || '';
   const imovelCodigo = imovelId ? (DB.imoveis.find(im=>im.id===imovelId)?.codigo||'').toUpperCase() : '';
+  const formaPagamento = document.querySelector('#ndPagGroup .chip.selected')?.getAttribute('data-modo') || 'vista';
   const dados = { categoria, valor,
     data:document.getElementById('ndData').value||isoDate(new Date()),
     dataRealizada:document.getElementById('ndDataReal')?.value||'',
-    imovelId, imovelCodigo,
+    imovelId, imovelCodigo, formaPagamento,
     descricao:document.getElementById('ndDesc').value||'' };
   if(dados.dataRealizada && dados.dataRealizada < dados.data){ toast('A data realizada não pode ser anterior à data.'); return; }
   const commit = ()=>{
@@ -5611,6 +5645,10 @@ function renderDadosCorretor(){
         <input id="corValidade" type="date" min="${todayISO()}" value="${esc(c.validadeCreci)}" oninput="atualizarAvisoValidadeCreci()" onchange="atualizarAvisoValidadeCreci()">
         <div id="corValidadeAviso">${avisoValidadeCreciHTML(c.validadeCreci)}</div></div>
 
+      <div class="field" style="margin-bottom:12px"><label>Dia do vencimento do cartão de crédito</label>
+        <input id="corDiaVenc" type="number" inputmode="numeric" min="1" max="31" placeholder="Ex.: 10" value="${esc(c.diaVencCartao||'')}" oninput="this.value=this.value.replace(/\D/g,'').slice(0,2); if(parseInt(this.value)>31)this.value='31';">
+        <div class="hint">Dia do vencimento do cartão de crédito utilizado nos lançamentos de despesas. Pode ficar em branco.</div></div>
+
       <div class="field" style="margin-bottom:12px"><label>E-mail</label>
         <input id="corEmail" type="email" maxlength="35" value="${esc(c.email||'')}" placeholder="seuemail@exemplo.com">
         <div class="hint">Até 35 caracteres. Aparece no compartilhamento do imóvel.</div></div>
@@ -5686,9 +5724,12 @@ function salvarCorretor(){
   const validade = val('corValidade');
   // O campo pode ficar vazio (o corretor só não recebe o aviso de vencimento).
   if(validade && validade < todayISO()){ toast('A validade do CRECI não pode ser anterior a hoje.'); return; }
+  const diaVenc = val('corDiaVenc');
+  if(diaVenc && (parseInt(diaVenc)<1 || parseInt(diaVenc)>31)){ toast('O dia do vencimento deve ser de 1 a 31.'); return; }
   DB.corretor.nome = val('corNome');
   DB.corretor.creci = val('corCreci');
   DB.corretor.validadeCreci = validade;
+  DB.corretor.diaVencCartao = diaVenc || '';
   DB.corretor.email = (document.getElementById('corEmail')?document.getElementById('corEmail').value:DB.corretor.email)||'';
   DB.corretor.whatsapp = (document.getElementById('corWhats')?document.getElementById('corWhats').value:DB.corretor.whatsapp)||'';
   save();

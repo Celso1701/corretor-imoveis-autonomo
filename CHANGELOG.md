@@ -1,5 +1,12 @@
 # Cor Sync Imóveis — Histórico de versões
 
+## v1.47.1 — Cartão de crédito nas despesas
+- **Dados do corretor:** novo campo **"Dia do vencimento do cartão de crédito"** (1 a 31, opcional), logo após a Validade da carteira CRECI.
+- **Nova/Editar despesa:** botão **Pagamento: À vista / Cartão de crédito**, na mesma linha.
+  - **À vista** preenche Data e Data realizada com o dia de hoje (continua editável).
+  - **Cartão de crédito** calcula a Data automaticamente a partir do dia de vencimento cadastrado: se hoje ainda não chegou no dia do vencimento, usa o vencimento deste mês; se já chegou ou passou, usa o vencimento do mês seguinte. Só a Data é preenchida — Data realizada não é alterada.
+- **Financeiro:** o resumo com o gráfico agora mostra também o **total pago no cartão de crédito** no período.
+
 ## v1.47.0 — Ajustes de tela inicial e Financeiro
 - **Marca d'água retirada** das telas azuis (abertura, login, senha do Pro, teste grátis vencido) — ficaram só o logo e os textos.
 - **Botão Financeiro** movido: agora fica depois dos 4 botões de Ferramentas (Financiamento, Follow-up, Produtividade, Catálogo), não mais junto com Imóveis/Proprietários/Agenda/Compradores.
