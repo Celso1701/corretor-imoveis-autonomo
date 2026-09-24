@@ -764,7 +764,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.47.2';
+const APP_VERSION = '1.47.3';
 // Ajudante para inserir ícones do kit (traço) em qualquer lugar
 function ic(name, size, style){ size=size||18; return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"${style?` style="${style}"`:''}><use href="#i-${name}"/></svg>`; }
 // Logo da marca (usado na splash e nas telas de senha)
@@ -5339,7 +5339,7 @@ function setFormaPagDespesa(el){
   } else {
     const d=calcDataCartao();
     if(d && dData) dData.value=d;
-    if(d && dReal) dReal.min=d;
+    if(dReal){ dReal.value=''; dReal.min=d||''; }
   }
 }
 function despForm(ex){

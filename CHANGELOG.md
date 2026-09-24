@@ -1,5 +1,8 @@
 # Cor Sync Imóveis — Histórico de versões
 
+## v1.47.3 — Correção: Data realizada ao trocar para cartão
+- **Nova/Editar despesa:** corrigido — ao trocar de "À vista" para "Cartão de crédito" no meio do preenchimento (sem salvar ainda), o campo **Data realizada** agora é limpo corretamente (antes ficava com o valor antigo do "À vista").
+
 ## v1.47.2 — Cartão de crédito nas despesas da visita
 - **Nova/Editar visita:** botão **Pagamento: À vista / Cartão de crédito** antes de Transporte e Refeição (um só, valendo para os dois), e mais um antes de cada campo **Outros 1 a 5** (independentes entre si).
   - **À vista** grava no Financeiro Data e Data realizada com o dia de hoje.
