@@ -1,5 +1,18 @@
 # Cor Sync Imóveis — Histórico de versões
 
+## v1.47.4 — Busca por celular, Follow-up completo e Produtividade por período
+- **Proprietários:** botão "‹ Voltar" volta pra aba de onde você veio (Início, Financeiro, Agenda, etc.); busca por nome agora também acha por fragmento de celular.
+- **Compradores (das visitas):** mesma busca por nome ou celular, com toggle Nome/Celular.
+- **Follow-up (retornos), reformulado:**
+  - Botão **📞 Retorno** no card da visita (Agenda) já abre o Follow-up preenchido com nome, celular e imóvel daquela visita.
+  - Botão **+ Novo** para começar um retorno em branco quando os dados já vieram preenchidos.
+  - Campo **Cliente** separado do **Assunto**, com busca por fragmento de nome ou celular (autocompleta o celular ao escolher).
+  - Novo campo **Imóvel** (opcional).
+  - Botão **Cancelar** ao lado de "+ Adicionar retorno".
+  - Pendentes agora mostram o **celular** e ganharam botão **✎ Editar** (ao lado de Feito/Excluir).
+  - O botão Follow-up no Início agora mostra **quantos retornos vencem hoje** (igual a Agenda mostra as visitas).
+- **Produtividade:** a Meta do período ganhou **Data inicial** e **Data final** (padrão: mês atual, editável). Vendidos, Total vendido, Despesas, Visitas, Propostas e Fechados agora são calculados **dentro desse período** — com o total de despesas em vermelho, do mesmo jeito que aparece no Financeiro.
+
 ## v1.47.3 — Correção: Data realizada ao trocar para cartão
 - **Nova/Editar despesa:** corrigido — ao trocar de "À vista" para "Cartão de crédito" no meio do preenchimento (sem salvar ainda), o campo **Data realizada** agora é limpo corretamente (antes ficava com o valor antigo do "À vista").
 

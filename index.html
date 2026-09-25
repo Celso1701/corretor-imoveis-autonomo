@@ -764,7 +764,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.47.3';
+const APP_VERSION = '1.47.4';
 // Ajudante para inserir ícones do kit (traço) em qualquer lugar
 function ic(name, size, style){ size=size||18; return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"${style?` style="${style}"`:''}><use href="#i-${name}"/></svg>`; }
 // Logo da marca (usado na splash e nas telas de senha)
@@ -1896,6 +1896,7 @@ function enterApp(){
   }
 }
 let currentTab = 'inicio';
+let telaAntesDeProprietarios = 'inicio';
 function goTab(tab, forcado){
   // Saindo de um cadastro pela metade (imóvel ou visita), pergunta antes de perder o que foi digitado.
   if(!forcado && (W || V)){ perguntarGravarAntesDeSair(tab); return; }
@@ -1903,6 +1904,7 @@ function goTab(tab, forcado){
     toast('Teste grátis encerrado — só Agenda, Financeiro e Ajustes por mais 1 dia. Assine o Pro para liberar tudo.');
     tab = 'financeiro';
   }
+  if(tab==='proprietarios' && currentTab!=='proprietarios') telaAntesDeProprietarios = currentTab;
   currentTab = tab;
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on', b.dataset.tab===tab));
   document.getElementById('mainNav').classList.remove('hidden');
@@ -2076,6 +2078,7 @@ function renderInicio(){
   const nome = (DB.corretor?.nome||'').trim().split(' ')[0] || 'corretor(a)';
   const hojeISO = isoDate(new Date());
   const visitasHoje = (DB.agendamentos||[]).filter(a=>a.data===hojeISO).length;
+  const nFuHoje = (DB.followups||[]).filter(f=>!f.feito && f.data===hojeISO).length;
   const nAvisos = contarAvisosPendentes();
   document.getElementById('appHeader').innerHTML = `
     <div class="hhero">
@@ -2110,7 +2113,7 @@ function renderInicio(){
     <div class="sec">Ferramentas</div>
     <div class="qgrid">
       <button class="qtile" onclick="abrirSimulador()"><div class="qwm">🏦</div><div class="qbox qb2">🧮</div><div class="ql">Financiamento</div><div class="qm">Simular parcelas</div></button>
-      <button class="qtile" onclick="abrirFollowups()"><div class="qwm">📞</div><div class="qbox qb3">📞</div><div class="ql">Follow-up</div><div class="qm">Retornos</div></button>
+      <button class="qtile" onclick="abrirFollowups()"><div class="qwm">📞</div><div class="qbox qb3">📞</div><div class="ql">Follow-up</div><div class="qm">${nFuHoje} retorno${nFuHoje===1?'':'s'} hoje</div></button>
       <button class="qtile" onclick="abrirProdutividade()"><div class="qwm">📈</div><div class="qbox qb1">📈</div><div class="ql">Produtividade</div><div class="qm">Metas e KPIs</div></button>
       <button class="qtile" onclick="abrirCatalogo()"><div class="qwm">📚</div><div class="qbox qb4">📚</div><div class="ql">Catálogo</div><div class="qm">Vitrine PDF</div></button>
       <button class="qtile" onclick="goTab('financeiro')"><div class="qwm">💰</div><div class="qbox qb4">${ic('wallet',24)}</div><div class="ql">Financeiro</div><div class="qm">Ver resumo</div></button>
@@ -2387,6 +2390,7 @@ let propBuscaQ = '';
 function renderListaProprietarios(){
   const total = DB.proprietarios.length;
   document.getElementById('mainContent').innerHTML = `
+    <button class="btn gray" style="width:auto;padding:8px 16px;margin-bottom:12px" onclick="goTab(telaAntesDeProprietarios==='proprietarios'?'inicio':telaAntesDeProprietarios)">‹ Voltar</button>
     <div style="display:flex;align-items:center;justify-content:space-between;margin:8px 0 12px">
       <div class="stitle" style="margin:0">Proprietários (${total})</div>
       <button class="btn sm" style="width:auto" onclick="novoProprietario()">+ Novo</button>
@@ -2397,7 +2401,7 @@ function renderListaProprietarios(){
     </div>
     <div class="ag-search" style="margin-top:0;margin-bottom:12px">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-      <input style="border:none;outline:none;flex:1;background:none;font-size:13.5px;color:var(--text)" placeholder="${propBuscaModo==='celular'?'Fragmento do celular…':'Fragmento do nome…'}" value="${esc(propBuscaQ)}" ${propBuscaModo==='celular'?'inputmode="numeric"':''} oninput="propBuscaQ=this.value;preencherListaProprietarios()">
+      <input style="border:none;outline:none;flex:1;background:none;font-size:13.5px;color:var(--text)" placeholder="${propBuscaModo==='celular'?'Fragmento do celular…':'Fragmento do nome ou celular…'}" value="${esc(propBuscaQ)}" ${propBuscaModo==='celular'?'inputmode="numeric"':''} oninput="propBuscaQ=this.value;preencherListaProprietarios()">
       ${propBuscaQ?`<button style="background:none;color:var(--muted);font-size:15px" onclick="propBuscaQ='';renderListaProprietarios()">✕</button>`:''}
     </div>
     <div id="propListContainer"></div>`;
@@ -2411,7 +2415,12 @@ function preencherListaProprietarios(){
       const qd = q.replace(/\D/g,'');
       items = items.filter(p=>[p.tel1,p.tel2,p.tel3].some(t=>(t||'').replace(/\D/g,'').includes(qd)) );
     } else {
-      items = items.filter(p=>(p.nome||'').toLowerCase().includes(q));
+      const qd = q.replace(/\D/g,'');
+      items = items.filter(p=>{
+        const nomeBate = (p.nome||'').toLowerCase().includes(q);
+        const celularBate = qd.length>0 && [p.tel1,p.tel2,p.tel3].some(t=>(t||'').replace(/\D/g,'').includes(qd));
+        return nomeBate || celularBate;
+      });
     }
   }
   const cont = document.getElementById('propListContainer');
@@ -3980,18 +3989,49 @@ let _propImovel=null, _propCond='À vista';
   function start(){ MO=new MutationObserver(schedule); schedule(); window.addEventListener('resize',function(){ document.querySelectorAll(SEL).forEach(updFade); }); }
   if(document.readyState!=='loading') start(); else document.addEventListener('DOMContentLoaded',start);
 })();
+let compBuscaModo = 'nome';   // 'nome' | 'celular'
+let compBuscaQ = '';
 function abrirCompradores(){
-  const lista=listaCompradores();
   document.getElementById('appHeader').innerHTML = `<h2>Compradores (das visitas)</h2>`;
-  const body = lista.length ? lista.map(c=>{
+  document.getElementById('mainContent').innerHTML = `
+    <button class="btn gray" style="width:auto;padding:8px 16px;margin-bottom:12px" onclick="goTab('inicio')">‹ Voltar</button>
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      ${fchip(compBuscaModo==='nome',`${ic('search',14)} Nome`,"compBuscaModo='nome';preencherListaCompradores()")}
+      ${fchip(compBuscaModo==='celular',`${ic('phone',14)} Celular`,"compBuscaModo='celular';preencherListaCompradores()")}
+    </div>
+    <div class="ag-search" style="margin-top:0;margin-bottom:12px">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <input style="border:none;outline:none;flex:1;background:none;font-size:13.5px;color:var(--text)" placeholder="${compBuscaModo==='celular'?'Fragmento do celular…':'Fragmento do nome ou celular…'}" value="${esc(compBuscaQ)}" ${compBuscaModo==='celular'?'inputmode="numeric"':''} oninput="compBuscaQ=this.value;preencherListaCompradores()">
+      ${compBuscaQ?`<button style="background:none;color:var(--muted);font-size:15px" onclick="compBuscaQ='';preencherListaCompradores()">✕</button>`:''}
+    </div>
+    <div id="compListContainer"></div>`;
+  preencherListaCompradores();
+}
+function preencherListaCompradores(){
+  let lista = listaCompradores();
+  const q = compBuscaQ.trim().toLowerCase();
+  if(q){
+    const qd = q.replace(/\D/g,'');
+    if(compBuscaModo==='celular'){
+      lista = lista.filter(c=>[c.tel1,c.tel2].some(t=>(t||'').replace(/\D/g,'').includes(qd)));
+    } else {
+      lista = lista.filter(c=>{
+        const nomeBate = (c.nome||'').toLowerCase().includes(q);
+        const celularBate = qd.length>0 && [c.tel1,c.tel2].some(t=>(t||'').replace(/\D/g,'').includes(qd));
+        return nomeBate || celularBate;
+      });
+    }
+  }
+  const cont = document.getElementById('compListContainer');
+  if(!cont) return;
+  cont.innerHTML = lista.length ? lista.map(c=>{
     const t1d=(c.tel1||'').replace(/\D/g,'');
     return `<div class="card" style="margin-bottom:8px">
       <div style="font-weight:800">${esc(c.nome||'Sem nome')}</div>
       <div style="font-size:13px;color:var(--muted);margin-top:2px">${c.tel1?esc(c.tel1):'—'}${c.tel2?' · '+esc(c.tel2):''}</div>
       ${t1d.length>=10?`<div class="btnrow" style="margin-top:8px"><button class="btn green sm" onclick="window.open('https://wa.me/55${t1d}','_blank')">${ic('chat',15)} WhatsApp</button><button class="btn gray sm" onclick="window.open('tel:${t1d}')">📞 Ligar</button></div>`:''}
     </div>`;
-  }).join('') : '<div class="hint">Nenhum comprador ainda. Eles aparecem aqui ao cadastrar as visitas (nome e telefones).</div>';
-  document.getElementById('mainContent').innerHTML = `<button class="btn gray" style="width:auto;padding:8px 16px;margin-bottom:12px" onclick="goTab('inicio')">‹ Voltar</button><div class="hint" style="margin-bottom:10px">Compradores cadastrados nas suas visitas.</div>${body}`;
+  }).join('') : (compBuscaQ ? `<div class="empty"><div class="big">${ic('search',40)}</div>Nenhum comprador encontrado.</div>` : '<div class="hint">Nenhum comprador ainda. Eles aparecem aqui ao cadastrar as visitas (nome e telefones).</div>');
 }
 /* ===== Simulador de financiamento ===== */
 function abrirSimulador(v0){
@@ -4041,35 +4081,88 @@ function calcularSimulador(){
   el.innerHTML=html;
 }
 /* ===== Follow-up (retornos) ===== */
-function abrirFollowups(){
+let _fuPrefill = null;   // {cliente, celular, imovelId} quando vem da Agenda
+let _fuEditId = null;    // id do retorno em edição (null = criando novo)
+function agendarRetornoDaVisita(agendamentoId){
+  const a=(DB.agendamentos||[]).find(x=>x.id===agendamentoId); if(!a) return;
+  abrirFollowups({ cliente:a.compradorNome||'', celular:a.compradorTel1||'', imovelId:a.imovelId||'' });
+}
+function novoRetornoEmBranco(){ _fuPrefill=null; _fuEditId=null; abrirFollowups(); }
+function cancelarNovoFollowup(){ _fuPrefill=null; _fuEditId=null; abrirFollowups(); toast('Cancelado.'); }
+function abrirFollowups(prefill){
+  if(prefill!==undefined) _fuPrefill = prefill;
   document.getElementById('appHeader').innerHTML = `<h2>Follow-up (retornos)</h2>`;
   const hoje=isoDate(new Date());
   const list=(DB.followups||[]).slice().sort((a,b)=>(a.data||'').localeCompare(b.data||''));
   const pend=list.filter(f=>!f.feito), feitos=list.filter(f=>f.feito);
   const cor=f=> f.data<hoje?'#DC2626':(f.data===hoje?'#F59E0B':'#16A34A');
   const rot=f=> f.data<hoje?'Atrasado':(f.data===hoje?'Hoje':'Agendado');
+  const editando = _fuEditId ? (DB.followups||[]).find(f=>f.id===_fuEditId) : null;
+  const pre = editando ? { cliente:editando.cliente||'', celular:editando.celular||'', assunto:editando.assunto||'', imovelId:editando.imovelId||'', data:editando.data||hoje, obs:editando.obs||'' }
+            : (_fuPrefill || { cliente:'', celular:'', assunto:'', imovelId:'', data:hoje, obs:'' });
   document.getElementById('mainContent').innerHTML = `
     <button class="btn gray" style="width:auto;padding:8px 16px;margin-bottom:12px" onclick="goTab('inicio')">‹ Voltar</button>
     <div class="card" style="margin-bottom:14px">
-      <div class="review-block-title" style="margin-bottom:8px">Novo retorno</div>
-      <fieldset><legend>Cliente / assunto</legend><input id="fuNome" maxlength="60" placeholder="ex.: Ligar para João (proposta)"></fieldset>
-      <fieldset><legend>Retornar em</legend><input id="fuData" type="date" value="${hoje}"></fieldset>
-      <fieldset><legend>Observação (opcional)</legend><input id="fuObs" maxlength="120" placeholder="detalhes"></fieldset>
-      <button class="btn green" onclick="salvarFollowup()">+ Adicionar retorno</button>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div class="review-block-title" style="margin:0">${editando?'Editar retorno':'Novo retorno'}</div>
+        ${(_fuPrefill||editando)?`<button class="btn sm" style="width:auto" onclick="novoRetornoEmBranco()">+ Novo</button>`:''}
+      </div>
+      <div class="field" style="position:relative"><label>Cliente</label>
+        <input id="fuCliente" autocomplete="off" placeholder="Nome ou celular do cliente" value="${esc(pre.cliente)}" oninput="filtrarClienteFollowup()" onblur="setTimeout(()=>{const l=document.getElementById('fuCliList');if(l)l.innerHTML='';},220)">
+        <div id="fuCliList" style="position:absolute;left:0;right:0;top:100%;z-index:40;background:var(--card,#fff);border:1px solid var(--border);border-radius:10px;max-height:190px;overflow:auto;box-shadow:0 8px 22px rgba(0,0,0,.14)"></div>
+      </div>
+      <fieldset><legend>Celular</legend><input id="fuCelular" inputmode="numeric" placeholder="(99)99999.9999" value="${esc(pre.celular)}" oninput="maskTelefone(this)"></fieldset>
+      <fieldset><legend>Assunto</legend><input id="fuAssunto" maxlength="60" placeholder="ex.: Ligar sobre a proposta" value="${esc(pre.assunto)}"></fieldset>
+      <fieldset>${selectImovelHTML('fuImovel', pre.imovelId)}</fieldset>
+      <fieldset><legend>Retornar em</legend><input id="fuData" type="date" value="${pre.data}"></fieldset>
+      <fieldset><legend>Observação (opcional)</legend><input id="fuObs" maxlength="120" placeholder="detalhes" value="${esc(pre.obs)}"></fieldset>
+      <div class="btnrow">
+        <button class="btn green" onclick="salvarFollowup()">${editando?'💾 Atualizar retorno':'+ Adicionar retorno'}</button>
+        <button class="btn gray" onclick="cancelarNovoFollowup()">Cancelar</button>
+      </div>
     </div>
     <div class="sec" style="margin:0 0 8px">Pendentes (${pend.length})</div>
     ${pend.length? pend.map(f=>`
       <div class="card" style="margin-bottom:8px;border-left:5px solid ${cor(f)}">
-        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><div style="font-weight:700">${esc(f.nome)}</div><span style="font-size:11px;font-weight:800;color:#fff;background:${cor(f)};padding:2px 9px;border-radius:12px;white-space:nowrap">${rot(f)}</span></div>
-        <div style="font-size:12px;color:var(--muted);margin-top:3px">📅 ${fmtDataBR(f.data)}${f.obs?' · '+esc(f.obs):''}</div>
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><div style="font-weight:700">${esc(f.cliente||f.nome||'Sem nome')}${f.assunto?' — '+esc(f.assunto):''}</div><span style="font-size:11px;font-weight:800;color:#fff;background:${cor(f)};padding:2px 9px;border-radius:12px;white-space:nowrap">${rot(f)}</span></div>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px">📅 ${fmtDataBR(f.data)}${f.celular?' · 📱 '+esc(f.celular):''}${f.obs?' · '+esc(f.obs):''}</div>
         <div class="btnrow" style="margin-top:8px">
           <button class="btn green" onclick="feitoFollowup('${f.id}')">✓ Feito</button>
+          <button class="btn" style="background:#F97316;border-color:#F97316;color:#fff" onclick="editarFollowup('${f.id}')">✎ Editar</button>
           <button class="btn gray" onclick="excluirFollowup('${f.id}')">🗑 Excluir</button>
         </div>
       </div>`).join('') : '<div class="hint">Nenhum retorno pendente.</div>'}
-    ${feitos.length?`<div class="sec" style="margin:14px 0 8px">Concluídos (${feitos.length})</div>${feitos.slice(0,20).map(f=>`<div class="card" style="margin-bottom:6px;opacity:.6"><div style="text-decoration:line-through;font-weight:600">${esc(f.nome)}</div><div style="font-size:11px;color:var(--muted)">${fmtDataBR(f.data)}</div><button class="btn gray" style="margin-top:6px" onclick="excluirFollowup('${f.id}')">🗑 Excluir</button></div>`).join('')}`:''}`;
+    ${feitos.length?`<div class="sec" style="margin:14px 0 8px">Concluídos (${feitos.length})</div>${feitos.slice(0,20).map(f=>`<div class="card" style="margin-bottom:6px;opacity:.6"><div style="text-decoration:line-through;font-weight:600">${esc(f.cliente||f.nome||'Sem nome')}${f.assunto?' — '+esc(f.assunto):''}</div><div style="font-size:11px;color:var(--muted)">${fmtDataBR(f.data)}</div><button class="btn gray" style="margin-top:6px" onclick="excluirFollowup('${f.id}')">🗑 Excluir</button></div>`).join('')}`:''}`;
 }
-function salvarFollowup(){ const nome=(val('fuNome')||'').trim(); if(!nome){toast('Informe o cliente/assunto.');return;} DB.followups=DB.followups||[]; DB.followups.push({id:uid(),nome,data:val('fuData')||isoDate(new Date()),obs:(val('fuObs')||'').trim(),feito:false,createdAt:Date.now()}); save(); toast('Retorno agendado!'); abrirFollowups(); }
+function filtrarClienteFollowup(){
+  const el=document.getElementById('fuCliente'), box=document.getElementById('fuCliList'); if(!el||!box) return;
+  const q=(el.value||'').trim().toLowerCase(), qd=q.replace(/\D/g,'');
+  if(q.length<1){ box.innerHTML=''; return; }
+  const lista=listaCompradores().filter(c=> (c.nome||'').toLowerCase().includes(q) || (qd.length>=3 && ((c.tel1||'').replace(/\D/g,'').includes(qd) || (c.tel2||'').replace(/\D/g,'').includes(qd))) ).slice(0,6);
+  box.innerHTML = lista.length ? lista.map(c=>`<div style="padding:9px 12px;border-bottom:1px solid var(--border);cursor:pointer" onmousedown="selCliFollowup('${esc((c.nome||'').replace(/'/g,"\\'"))}','${esc((c.tel1||'').replace(/'/g,"\\'"))}')"><b>${esc(c.nome||'Sem nome')}</b><div style="font-size:11.5px;color:var(--muted)">${esc(c.tel1||'')}${c.tel2?' · '+esc(c.tel2):''}</div></div>`).join('') : '<div style="padding:9px 12px;font-size:12px;color:var(--muted)">Nenhum encontrado — digite para incluir novo.</div>';
+}
+function selCliFollowup(nome, tel){
+  const el=document.getElementById('fuCliente'); if(el) el.value=nome;
+  const t=document.getElementById('fuCelular'); if(t && tel){ t.value=tel; maskTelefone(t); }
+  const box=document.getElementById('fuCliList'); if(box) box.innerHTML='';
+}
+function editarFollowup(id){ _fuEditId=id; _fuPrefill=null; abrirFollowups(); window.scrollTo(0,0); }
+function salvarFollowup(){
+  const cliente=(val('fuCliente')||'').trim(), assunto=(val('fuAssunto')||'').trim();
+  if(!cliente && !assunto){ toast('Informe o cliente ou o assunto.'); return; }
+  const celular=(val('fuCelular')||'').trim(), imovelId=val('fuImovel')||'', data=val('fuData')||isoDate(new Date()), obs=(val('fuObs')||'').trim();
+  const nome = cliente + (assunto?' — '+assunto:'');
+  DB.followups=DB.followups||[];
+  if(_fuEditId){
+    const f=DB.followups.find(x=>x.id===_fuEditId);
+    if(f){ f.cliente=cliente; f.assunto=assunto; f.celular=celular; f.imovelId=imovelId; f.nome=nome; f.data=data; f.obs=obs; }
+    toast('Retorno atualizado!');
+  } else {
+    DB.followups.push({id:uid(), cliente, assunto, celular, imovelId, nome, data, obs, feito:false, createdAt:Date.now()});
+    toast('Retorno agendado!');
+  }
+  save(); _fuPrefill=null; _fuEditId=null; abrirFollowups();
+}
 function feitoFollowup(id){ const f=(DB.followups||[]).find(x=>x.id===id); if(f){ f.feito=true; save(); abrirFollowups(); toast('Marcado como feito.'); } }
 function excluirFollowup(id){ DB.followups=(DB.followups||[]).filter(x=>x.id!==id); save(); abrirFollowups(); }
 function checarFollowups(){
@@ -4210,18 +4303,25 @@ async function gerarCatalogoPDF(){
   setTimeout(function(){ try{ w.focus(); w.print(); }catch(e){} }, 800);
 }
 /* ===== Produtividade ===== */
+function primeiroDiaMesAtual(){ const d=new Date(); return isoDate(new Date(Date.UTC(d.getFullYear(), d.getMonth(), 1))); }
+function ultimoDiaMesAtual(){ const d=new Date(); return isoDate(new Date(Date.UTC(d.getFullYear(), d.getMonth()+1, 0))); }
 function abrirProdutividade(){
   document.getElementById('appHeader').innerHTML = `<h2>Produtividade</h2>`;
   const ims=DB.imoveis||[], ags=DB.agendamentos||[], cls=DB.clientes||[];
+  const M = DB.meta||{};
+  const dataIni = M.dataIni || primeiroDiaMesAtual();
+  const dataFim = M.dataFim || ultimoDiaMesAtual();
+  const noPeriodo = ts => { const iso=isoDate(new Date(ts||0)); return iso>=dataIni && iso<=dataFim; };
   const nD=ims.filter(i=>(i.status||'Disponível')==='Disponível').length;
   const nR=ims.filter(i=>i.status==='Reservado').length;
-  const nV=ims.filter(i=>i.status==='Vendido').length;
-  const totalVendido=ims.filter(i=>i.status==='Vendido').reduce((a,i)=>a+((i.valores&&i.valores.solicitado)||0),0);
-  const ym=isoDate(new Date()).slice(0,7);
-  const visMes=ags.filter(a=>a.tipo==='visita'&&(a.data||'').slice(0,7)===ym).length;
-  const propostas=cls.filter(c=>c.estagio==='Proposta').length;
-  const fechados=cls.filter(c=>c.estagio==='Fechado').length;
-  const meta=(DB.meta&&DB.meta.valor)||0;
+  const vendidosPeriodo = ims.filter(i=>i.status==='Vendido' && noPeriodo(i.updatedAt));
+  const nV = vendidosPeriodo.length;
+  const totalVendido = vendidosPeriodo.reduce((a,i)=>a+((i.valores&&i.valores.solicitado)||0),0);
+  const visPeriodo = ags.filter(a=>a.tipo==='visita' && (a.data||'')>=dataIni && (a.data||'')<=dataFim).length;
+  const propostas = cls.filter(c=>c.estagio==='Proposta' && noPeriodo(c.updatedAt)).length;
+  const fechados = cls.filter(c=>c.estagio==='Fechado' && noPeriodo(c.updatedAt)).length;
+  const totalDespesas = ((DB.financeiro&&DB.financeiro.despesas)||[]).filter(d=>(d.data||'')>=dataIni && (d.data||'')<=dataFim).reduce((s,d)=>s+(d.valor||0),0);
+  const meta=(M.valor)||0;
   const prog=meta>0?Math.min(100,Math.round(totalVendido/meta*100)):0;
   const metaTxt = meta? fmtBRL(meta).replace(/R\$\s?/,'') : '';
   const kpi=(ic,valor,label,cor)=>`<div class="card" style="flex:1;min-width:0;text-align:center;padding:14px 6px;margin:0"><div style="font-size:20px">${ic}</div><div style="font-size:21px;font-weight:800;color:${cor||'var(--text)'}">${valor}</div><div style="font-size:11px;color:var(--muted)">${label}</div></div>`;
@@ -4229,19 +4329,30 @@ function abrirProdutividade(){
     <button class="btn gray" style="width:auto;padding:8px 16px;margin-bottom:12px" onclick="goTab('inicio')">‹ Voltar</button>
     <div class="card" style="margin-bottom:14px">
       <div class="review-block-title" style="margin-bottom:8px">🎯 Meta de vendas (R$)</div>
-      <div class="row2" style="align-items:flex-end">
-        <fieldset style="margin:0"><legend>Meta do período</legend><input id="metaVal" inputmode="numeric" oninput="maskMoedaG(this)" value="${metaTxt}" placeholder="0,00"></fieldset>
-        <fieldset style="margin:0"><legend>&nbsp;</legend><button class="btn green" onclick="salvarMeta()">Salvar meta</button></fieldset>
+      <fieldset style="margin:0 0 10px"><legend>Meta do período</legend><input id="metaVal" inputmode="numeric" oninput="maskMoedaG(this)" value="${metaTxt}" placeholder="0,00"></fieldset>
+      <div class="row2">
+        <fieldset style="margin:0"><legend>Data inicial</legend><input id="metaDataIni" type="date" value="${dataIni}"></fieldset>
+        <fieldset style="margin:0"><legend>Data final</legend><input id="metaDataFim" type="date" value="${dataFim}"></fieldset>
       </div>
-      ${meta>0?`<div style="margin-top:12px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span>Vendido: <b style="color:var(--success)">${fmtBRL(totalVendido)}</b></span><span><b>${prog}%</b></span></div><div style="height:12px;background:var(--border);border-radius:8px;overflow:hidden"><div style="height:100%;width:${prog}%;background:var(--success)"></div></div><div style="font-size:11px;color:var(--muted);margin-top:4px">Meta: ${fmtBRL(meta)}</div></div>`:'<div class="hint" style="margin-top:8px">Defina uma meta para acompanhar o progresso.</div>'}
+      <button class="btn green" style="margin-top:10px" onclick="salvarMeta()">Salvar meta</button>
+      ${meta>0?`<div style="margin-top:12px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span>Vendido no período: <b style="color:var(--success)">${fmtBRL(totalVendido)}</b></span><span><b>${prog}%</b></span></div><div style="height:12px;background:var(--border);border-radius:8px;overflow:hidden"><div style="height:100%;width:${prog}%;background:var(--success)"></div></div><div style="font-size:11px;color:var(--muted);margin-top:4px">Meta: ${fmtBRL(meta)}</div></div>`:'<div class="hint" style="margin-top:8px">Defina uma meta para acompanhar o progresso.</div>'}
     </div>
-    <div class="sec" style="margin:0 0 8px">Carteira</div>
-    <div style="display:flex;gap:8px;margin-bottom:12px">${kpi('🟢',nD,'Disponíveis','#16A34A')}${kpi('🟡',nR,'Reservados','#B7791F')}${kpi('🔴',nV,'Vendidos','#DC2626')}</div>
-    <div class="sec" style="margin:0 0 8px">Atividade</div>
-    <div style="display:flex;gap:8px;margin-bottom:12px">${kpi('📅',visMes,'Visitas no mês','var(--primary)')}${kpi('📝',propostas,'Propostas','#7C3AED')}${kpi('🤝',fechados,'Fechados','var(--success)')}</div>
-    <div class="card"><div style="display:flex;justify-content:space-between;padding:6px 0"><span style="color:var(--muted)">Total vendido</span><b style="color:var(--success)">${fmtBRL(totalVendido)}</b></div><div style="display:flex;justify-content:space-between;padding:6px 0"><span style="color:var(--muted)">Imóveis na carteira</span><b>${ims.length}</b></div><div style="display:flex;justify-content:space-between;padding:6px 0"><span style="color:var(--muted)">Clientes no funil</span><b>${cls.length}</b></div></div>`;
+    <div class="sec" style="margin:0 0 4px">Carteira</div>
+    <div class="hint" style="margin-bottom:8px">Disponíveis e Reservados mostram a carteira agora; Vendidos é filtrado pelo período acima.</div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">${kpi('🟢',nD,'Disponíveis','#16A34A')}${kpi('🟡',nR,'Reservados','#B7791F')}${kpi('🔴',nV,'Vendidos no período','#DC2626')}</div>
+    <div class="sec" style="margin:0 0 8px">Atividade (no período)</div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">${kpi('📅',visPeriodo,'Visitas','var(--primary)')}${kpi('📝',propostas,'Propostas','#7C3AED')}${kpi('🤝',fechados,'Fechados','var(--success)')}</div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;padding:6px 0"><span style="color:var(--muted)">Total vendido (período)</span><b style="color:var(--success)">${fmtBRL(totalVendido)}</b></div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0"><span style="color:var(--muted)">Despesas (período)</span><b style="color:var(--danger)">${fmtBRL(totalDespesas)}</b></div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0"><span style="color:var(--muted)">Imóveis na carteira</span><b>${ims.length}</b></div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0"><span style="color:var(--muted)">Clientes no funil</span><b>${cls.length}</b></div>
+    </div>`;
 }
-function salvarMeta(){ DB.meta={valor:parseMoeda(val('metaVal')||'')||0}; save(); toast('Meta salva!'); abrirProdutividade(); }
+function salvarMeta(){
+  DB.meta = { valor:parseMoeda(val('metaVal')||'')||0, dataIni: val('metaDataIni')||primeiroDiaMesAtual(), dataFim: val('metaDataFim')||ultimoDiaMesAtual() };
+  save(); toast('Meta salva!'); abrirProdutividade();
+}
 
 let clienteEditId=null;
 function abrirConsultaIdeal(cli){
@@ -4709,6 +4820,7 @@ function agCardHTML(a, mostrarData){
     <div class="acts">
       <div class="act wa" ${tel.length>=10?`onclick="window.open('https://wa.me/55${tel}?text='+encodeURIComponent(getMsgComprador()),'_blank')"`:`onclick="toast('Telefone do comprador não cadastrado.')" style="opacity:.5"`}>${ic('chat',15)} WhatsApp</div>
       <div class="act gps" onclick="abrirRota('${esc(enderecoFull).replace(/'/g,"\\'")}')">${ic('nav',15)} Rota</div>
+      <div class="act" style="background:#7C3AED;border-color:#7C3AED;color:#fff" onclick="agendarRetornoDaVisita('${a.id}')">📞 Retorno</div>
       <div class="act" style="background:#F97316;border-color:#F97316;color:#fff" onclick="editarAgendamento('${a.id}')">${ic('edit',15)} Editar</div>
       <div class="act" style="background:var(--danger);border-color:var(--danger);color:#fff" onclick="excluirAgendamento('${a.id}')">${ic('trash',15)} Cancelar</div>
     </div>
