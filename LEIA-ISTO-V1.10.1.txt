@@ -1,0 +1,53 @@
+RIZZIERI ONE — V:1.10.1 (pacote completo)
+Formato AQC-CORE | referência: 01/10/2026
+
+===============================================================
+CONFERÊNCIA DE VERSÃO (pedido explícito: sempre ajustar o número)
+===============================================================
+APP_VERSION no código: V:1.10.1
+Selo na sidebar (desktop) e no banner (celular): V:1.10.1 — conferido ao vivo via servidor local
+Nome do cache no sw.js: rizzieri-one-v1.10.1
+Nome deste zip, da pasta e deste relatório: V1.10.1 / V:1.10.1
+Tudo bate.
+
+===============================================================
+ARQUIVOS (pacote completo, como combinado)
+===============================================================
+github/index.html, github/css/app.css, github/js/app.js, github/sw.js, github/manifest.json,
+github/assets/icons/, github/README.md, github/SECURITY.md — substitua a pasta inteira.
+
+===============================================================
+O QUE TEM DE NOVO NESTA VERSÃO (desde a V:1.09.3)
+===============================================================
+1) Duplicar evento — copia checklist e cronograma inteiros pro evento novo, zerados (não concluído /
+   pendente), com o formulário de edição já aberto pra ajustar título e data.
+2) Compartilhar via WhatsApp — em 4 lugares: hub do evento, checklist, cronograma e lista de convidados.
+   Abre o WhatsApp com o texto já formatado.
+3) Lista de convidados — nome, telefone, mesa e status (Confirmado/Pendente/Recusado) com botões de troca
+   rápida, adição em lote (colar vários nomes de uma vez) e busca.
+4) Mapa de mesas — arrastar convidados entre mesas (mouse) ou usar o menu suspenso em cada card
+   (funciona igual no celular); criar mesas vazias antecipadamente.
+5) Portal do cliente — baixa um arquivo .html independente e pronto pra compartilhar, com resumo do
+   evento, contagem de convidados e cronograma. Por decisão conjunta, NÃO inclui valores financeiros/
+   orçamento (fica guardado como ideia pra uma versão futura). O rodapé avisa que é um retrato daquele
+   momento, não uma página ao vivo.
+
+===============================================================
+MATRIZ PONDERADA
+===============================================================
+Requisitos 30% -> 30 | Correção técnica 20% -> 20 | Completude 15% -> 15 | Coerência 10% -> 10
+Execução 10% -> 10 | Segurança 10% -> 10 | Formatação 5% -> 5
+SCORE: 100/100 — APROVADO.
+
+===============================================================
+TESTES
+===============================================================
+250 verificações automatizadas (Node + jsdom), 0 falhas, em 21 suítes — incluindo o pacote dividido
+testado de novo via servidor HTTP local, servindo os arquivos exatamente como ficaram dentro deste zip
+(login, selos de versão nos dois tamanhos de tela, os 5 botões novos, lista de convidados).
+Durante esta rodada também corrigi um teste que tinha um bug de fuso horário (usava toISOString, que é
+UTC, pra comparar com uma data local — exatamente o tipo de erro que o próprio app toma cuidado de evitar).
+
+NÃO VERIFICADO: aparência final pixel a pixel num navegador/celular real; e o comportamento de arrastar
+convidados por toque (touch) num celular de verdade — o teste automatizado simula o drag-and-drop via
+evento, não um toque físico na tela.

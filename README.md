@@ -1,24 +1,34 @@
-# Corretor Imóveis Autônomo (PWA)
+# RIZZIERI ONE — V:1.10.1
 
-Aplicativo web para corretor de imóveis autônomo cadastrar e organizar imóveis,
-proprietários, agenda de visitas e finanças. Funciona no celular como app (PWA) e
-guarda os dados no próprio aparelho.
+PWA "Life, Business & Projects" — central única para projetos, eventos, financeiro e vida pessoal em
+quatro workspaces (Negócios, Eventos, Pessoal, Ideias).
 
-## App publicado
-👉 https://celso1701.github.io/corretor-imoveis-autonomo/
+## Estrutura deste repositório
+```
+index.html          página única do app
+css/app.css          todo o estilo
+js/app.js             toda a lógica
+manifest.json        manifesto do PWA
+sw.js                 service worker (cache offline básico)
+assets/icons/         ícones do PWA
+SECURITY.md           arquitetura de segurança necessária para uso em produção
+```
 
-## Como instalar no celular
-- **Android (Chrome):** abra o link acima → menu ⋮ → "Adicionar à tela inicial".
-- **iPhone (Safari):** abra o link → botão Compartilhar → "Adicionar à Tela de Início".
+## Como publicar no GitHub Pages
+```
+git init
+git add .
+git commit -m "RIZZIERI ONE V:1.10.1"
+git remote add origin <seu-repositorio>
+git push -u origin main
+```
+Em Settings → Pages, escolha a branch `main` e a pasta raiz (`/`).
 
-## Como publicar / atualizar (para o dono do repositório)
-1. Suba os arquivos `index.html`, `manifest.json`, `sw.js` na raiz do repositório.
-2. Settings → Pages → Branch: `main` / pasta `/ (root)` → Save.
-3. Para atualizar, suba o `index.html` novo por cima (Commit). O app se atualiza
-   sozinho em 1–2 minutos.
+## Novidades desta versão
+Duplicar evento, compartilhar via WhatsApp (evento/checklist/cronograma/convidados), lista de
+convidados com status e busca, mapa de mesas (arrastar ou menu), e portal do cliente (retrato
+exportável em .html, sem dados financeiros).
 
-## Observações
-- Os dados (imóveis, fotos, finanças) ficam salvos apenas no navegador do aparelho.
-- Busca de CEP e rotas (Waze/Google Maps) precisam de internet; o restante funciona offline.
-
-Consulte o `CHANGELOG.md` para o histórico de versões.
+## Dados
+O app guarda tudo em `localStorage` do navegador. Use **Ajustes → Ajuda → Baixar backup (.json)**, dentro
+do próprio app, antes de trocar de navegador/aparelho ou de atualizar os arquivos.
