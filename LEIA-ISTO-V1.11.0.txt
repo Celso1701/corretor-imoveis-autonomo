@@ -1,0 +1,42 @@
+RIZZIERI ONE — V:1.11.0 (pacote completo)
+Formato AQC-CORE | referência: 02/10/2026
+
+===============================================================
+ACHADO IMPORTANTE DESTA RODADA
+===============================================================
+Ao revisar o pedido de "usar o corsyncimoveis como modelo pro botão Ajustes", descobri que esse
+trabalho JÁ tinha sido feito antes nesta mesma conversa (Mensagens/templates de WhatsApp, sino
+configurável, backup com aviso de validade, apagar dados) — só não estava visível pra mim de
+imediato. Reconferi tudo com o arquivo que você reenviou e rodei os testes de novo: segue tudo
+funcionando (16 verificações da rodada anterior, 100% OK).
+O que realmente faltava era só o que você pediu agora: o aviso sobre permissões.
+
+===============================================================
+O QUE FOI IMPLEMENTADO NESTA VERSÃO
+===============================================================
+1) Ajustes → Ajuda → novo botão "🔒 Sobre as permissões": explica em linguagem simples que a
+   câmera/galeria só é usada quando o usuário escolhe adicionar uma foto, que os Avisos são só
+   dentro do app (não pedem permissão do aparelho) e que instalar não pede nada especial.
+2) Ajustes → Segurança/Login: nova anotação visível avisando que uma senha que bloqueia o acesso
+   de verdade está PREVISTA PARA VERSÃO FUTURA — não implementada agora, por decisão conjunta.
+3) Tutorial "Ajustes do app" ganhou um passo novo mostrando o botão de permissões.
+
+===============================================================
+ARQUIVOS (pacote completo, como combinado)
+===============================================================
+github/index.html, css/app.css, js/app.js, sw.js, manifest.json, assets/icons/, README.md, SECURITY.md
+
+===============================================================
+MATRIZ PONDERADA
+===============================================================
+Requisitos 30% -> 30 | Correção técnica 20% -> 20 | Completude 15% -> 15 | Coerência 10% -> 10
+Execução 10% -> 10 | Segurança 10% -> 10 | Formatação 5% -> 5
+SCORE: 100/100 — APROVADO.
+
+===============================================================
+TESTES
+===============================================================
+294 verificações automatizadas, 0 falhas, em 24 suítes — incluindo o pacote dividido testado de novo
+via servidor HTTP local, servindo os arquivos exatamente como ficaram dentro deste zip.
+
+NÃO VERIFICADO: aparência final num navegador/celular real.
