@@ -1,5 +1,9 @@
 # Cor Sync Imóveis — Histórico de versões
 
+## v1.47.5 — Pacote completo + correção dos nomes dos ícones
+- **Corrigido um nome de ícone inconsistente** no index.html: a notificação de lembrete usava `icon192.png` (sem hífen) enquanto o restante do app usa `icon-192.png` (com hífen, igual ao manifest.json e ao service worker). Agora todas as referências usam o mesmo nome.
+- **ZIP completo para recuperação do GitHub**: desta vez inclui também os 3 arquivos de ícone (`icon-192.png`, `icon-512.png`, `icon-512-maskable.png`), além de index.html, manifest.json, sw.js, CHANGELOG.md e CNAME — tudo que precisa estar na raiz do repositório.
+
 ## v1.47.4 — Busca por celular, Follow-up completo e Produtividade por período
 - **Proprietários:** botão "‹ Voltar" volta pra aba de onde você veio (Início, Financeiro, Agenda, etc.); busca por nome agora também acha por fragmento de celular.
 - **Compradores (das visitas):** mesma busca por nome ou celular, com toggle Nome/Celular.

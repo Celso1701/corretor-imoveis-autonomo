@@ -764,7 +764,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.47.4';
+const APP_VERSION = '1.47.5';
 // Ajudante para inserir ícones do kit (traço) em qualquer lugar
 function ic(name, size, style){ size=size||18; return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"${style?` style="${style}"`:''}><use href="#i-${name}"/></svg>`; }
 // Logo da marca (usado na splash e nas telas de senha)
@@ -2036,7 +2036,7 @@ function abrirAvisos(){
 // Notificação nativa do aparelho (só dispara se a permissão já foi concedida)
 function notify(title, body){
   if('Notification' in window && Notification.permission==='granted'){
-    try{ new Notification(title, {body, icon:'icon192.png', badge:'icon192.png'}); }catch(e){}
+    try{ new Notification(title, {body, icon:'icon-192.png', badge:'icon-192.png'}); }catch(e){}
   }
 }
 // Roda no máximo 1x por dia: notifica os compromissos vencidos/hoje/próximos (conforme Ajustes)
