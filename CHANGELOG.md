@@ -1,5 +1,17 @@
 # Cor Sync Imóveis — Histórico de versões
 
+## v1.48.0 — Manual com dados de exemplo, tour guiado e direitos autorais
+- **📖 Manual com dados de exemplo (novo):** o app abre preenchido com dados **fictícios** — 6 imóveis com fotos de exemplo (casa, apartamento, terreno, chácara; disponível, reservado e vendido), 4 proprietários, 5 visitas (hoje, amanhã, semana e passada), compradores em todas as etapas do funil, retornos (hoje, atrasado, futuro e feito), despesas e receitas do mês e meta de vendas — para o prospecto entender cada tela.
+  - Barra roxa fixa no topo com **✕ Sair do manual** e **🧭 Tour** sempre à mão.
+  - **Seus dados reais não são tocados:** o manual roda só na memória (nada é gravado) — sair, recarregar a página ou fechar o app devolve tudo como estava.
+  - WhatsApp, e-mail, mapas, backup, apagar tudo, senha e ativação do Pro ficam **desligados** dentro do manual (ninguém é contatado por engano).
+  - Pode cadastrar, editar e apagar à vontade dentro do manual: some ao sair.
+  - Onde abrir: **Ajustes → 📖 Manual com dados de exemplo**, e nos passos **Bem-vindo** e **Tudo pronto** do tutorial.
+- **🧭 Tour guiado pelos botões:** destaca na tela de verdade os botões de cada rotina (Início, Ferramentas, Imóveis, Cadastro, Proprietários, Agenda, Financeiro, Ajustes) com passo a passo. Abre em **Ajustes → Tour guiado** e nos passos do tutorial (🧭).
+- **🧰 Novo passo "Ferramentas"** no tutorial.
+- **© Direitos autorais:** aviso no cartão "Sobre" e na meta do app.
+- **Corrigido:** títulos de Produtividade, Compradores, Follow-up, Extrato, Dados do corretor e outras telas abertas a partir do Início ficavam colados na borda esquerda.
+
 ## v1.47.5 — Pacote completo + correção dos nomes dos ícones
 - **Corrigido um nome de ícone inconsistente** no index.html: a notificação de lembrete usava `icon192.png` (sem hífen) enquanto o restante do app usa `icon-192.png` (com hífen, igual ao manifest.json e ao service worker). Agora todas as referências usam o mesmo nome.
 - **ZIP completo para recuperação do GitHub**: desta vez inclui também os 3 arquivos de ícone (`icon-192.png`, `icon-512.png`, `icon-512-maskable.png`), além de index.html, manifest.json, sw.js, CHANGELOG.md e CNAME — tudo que precisa estar na raiz do repositório.

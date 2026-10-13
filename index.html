@@ -7,6 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Cor Sync Imóveis">
+<meta name="copyright" content="© 2026 Cor Sync Imóveis. Todos os direitos reservados.">
 <title>Cor Sync Imóveis — Gestão de Imóveis</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
@@ -76,6 +77,13 @@ h2{font-size:19px;font-weight:800;letter-spacing:-.3px}
 
 /* ---- header / topbar ---- */
 header.topbar{padding:18px 18px 6px;position:sticky;top:0;background:var(--bg);z-index:10}
+#demoBar{position:fixed;top:0;left:0;right:0;height:40px;z-index:2100;background:#7C3AED;color:#fff;display:flex;align-items:center;gap:6px;padding:0 8px 0 12px;font-size:12px;box-shadow:0 2px 10px rgba(0,0,0,.25)}
+#demoBar .dtx{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#demoBar button{border:none;border-radius:14px;padding:7px 11px;font-size:12px;font-weight:800;cursor:pointer;flex:none}
+#demoBar .dbt{background:rgba(255,255,255,.22);color:#fff}
+#demoBar .dbx{background:#fff;color:#7C3AED}
+body.demo-on{padding-top:40px}
+body.demo-on header.topbar{top:40px}
 .greet{display:flex;align-items:center;justify-content:space-between}
 .eyebrow{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--primary);font-weight:700}
 .bell{width:38px;height:38px;border-radius:12px;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow)}
@@ -764,7 +772,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.47.5';
+const APP_VERSION = '1.48.0';
 // Ajudante para inserir ícones do kit (traço) em qualquer lugar
 function ic(name, size, style){ size=size||18; return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"${style?` style="${style}"`:''}><use href="#i-${name}"/></svg>`; }
 // Logo da marca (usado na splash e nas telas de senha)
@@ -993,6 +1001,7 @@ function idbOpen(){
   });
 }
 async function idbPut(key, value){
+  if(window.__DEMO){ _demoMidia[key]=value; return true; }
   const db = await idbOpen();
   return new Promise((res,rej)=>{
     const tx = db.transaction('midia','readwrite');
@@ -1002,6 +1011,7 @@ async function idbPut(key, value){
   });
 }
 async function idbGet(key){
+  if(window.__DEMO) return _demoMidia[key];
   const db = await idbOpen();
   return new Promise((res,rej)=>{
     const tx = db.transaction('midia','readonly');
@@ -1011,6 +1021,7 @@ async function idbGet(key){
   });
 }
 async function idbDel(key){
+  if(window.__DEMO){ delete _demoMidia[key]; return true; }
   const db = await idbOpen();
   return new Promise((res,rej)=>{
     const tx = db.transaction('midia','readwrite');
@@ -1020,6 +1031,7 @@ async function idbDel(key){
   });
 }
 async function idbAll(){
+  if(window.__DEMO) return Object.assign({}, _demoMidia);
   const db = await idbOpen();
   return new Promise((res,rej)=>{
     const out = {};
@@ -1031,6 +1043,7 @@ async function idbAll(){
   });
 }
 async function idbPutAll(obj){
+  if(window.__DEMO){ Object.assign(_demoMidia, obj||{}); return true; }
   const db = await idbOpen();
   return new Promise((res,rej)=>{
     const tx = db.transaction('midia','readwrite');
@@ -1081,6 +1094,7 @@ async function verifyKey(key, check){
 let _saveTimer=null;
 function save(){ clearTimeout(_saveTimer); _saveTimer=setTimeout(persistDB, 150); }
 async function persistDB(){
+  if(window.__DEMO) return;   // manual com dados fictícios: nunca grava
   const raw = JSON.stringify(DB);
   if(_cryptoKey){
     const iv = crypto.getRandomValues(new Uint8Array(12));
@@ -1416,6 +1430,7 @@ function leituraDiasRestantes(){
 // Porteiro das ações de escrita. Uso: if(bloqueioTrial('cadastrar imóvel')) return;
 // Devolve true (e explica ao corretor) quando a ação deve ser barrada.
 function bloqueioTrial(acao){
+  if(window.__DEMO) return false;
   if(!modoSomenteLeitura()) return false;
   const dias = leituraDiasRestantes();
   confirmar({ icon:'🔒', title:'Teste grátis encerrado',
@@ -1516,7 +1531,8 @@ const TUT_STEPS = [
    ✅ <b>Instale na tela inicial</b> para abrir como um app de verdade<br>
    ✅ Proteja tudo fazendo <b>backups</b> regulares<br><br>
    Este guia mostra rapidinho cada parte do app. Pode pular e rever quando quiser em <b>Ajustes</b>.`,
-   action:{label:'📲 Instalar o app agora', fn:'promptInstall()'}},
+   action:{label:'📲 Instalar o app agora', fn:'promptInstall()'},
+   action2:{label:'📖 Ver o app com dados de exemplo', fn:'finishTutorial(true);entrarManual()'}},
   {emo:'🔠', title:'Tamanho da letra',
    body:`O app abre em <b>100%</b>. Se quiser a letra <b>maior</b> ou <b>menor</b>, é só ir em <b>Ajustes → Acessibilidade → Tamanho da tela (zoom)</b> e tocar em <b>−</b> ou <b>+</b>. O app lembra do seu ajuste.`},
   {emo:'🎁', title:'Teste grátis por 30 dias!',
@@ -1528,35 +1544,50 @@ const TUT_STEPS = [
    body:`Ao abrir, você vê:<br><br>
    • O <b>sino 🔔</b> no topo — muda de cor e mostra um número quando há visitas vencidas ou marcadas para hoje<br>
    • O status da sua <b>carteira CRECI</b> (avisa quando estiver perto de vencer)<br>
-   • Atalhos para <b>Imóveis, Proprietários, Agenda e Financeiro</b><br>
-   • Suas <b>próximas visitas</b>`},
+   • <b>Cadastrar imóvel</b> e <b>Consulta ideal</b> (achar o imóvel certo para o cliente)<br>
+   • Atalhos para <b>Imóveis, Proprietários, Agenda, Compradores e Financeiro</b><br>
+   • <b>Ferramentas</b>: Financiamento, Follow-up, Produtividade e Catálogo<br>
+   • Suas <b>próximas visitas</b>`,
+   action:{label:'🧭 Mostrar os botões na tela', fn:"finishTutorial(true);tourStart('inicio')"}},
   {emo:'🏘️', title:'Cadastrar um imóvel',
    body:`Toque em <b>➕ Cadastrar imóvel</b> na tela inicial:<br><br>
    • Escolha o tipo: casa, apartamento, chácara ou terreno<br>
    • Preencha localização, valores e características em poucos passos<br>
    • Envie fotos pela <b>📷 câmera</b> ou pela galeria<br>
    • Um código único é gerado automaticamente para cada imóvel`,
-   action:{label:'🏘️ Cadastrar meu primeiro imóvel', fn:'finishTutorial(true);abrirTipos()'}},
+   action:{label:'🏘️ Cadastrar meu primeiro imóvel', fn:'finishTutorial(true);abrirTipos()'},
+   action2:{label:'🧭 Mostrar o passo a passo na tela', fn:"finishTutorial(true);tourStart('cadastro')"}},
   {emo:'👤', title:'Proprietários',
    body:`Em <b>Proprietários</b>, cadastre quem é dono de cada imóvel:<br><br>
    • Nome, telefone e documentos<br>
    • Vincule um ou mais imóveis a cada proprietário<br>
    • O telefone vira botão de <b>WhatsApp</b> direto no perfil`,
-   action:{label:'👤 Ir para Proprietários', fn:'finishTutorial(true);goTab(\'proprietarios\')'}},
+   action:{label:'👤 Ir para Proprietários', fn:'finishTutorial(true);goTab(\'proprietarios\')'},
+   action2:{label:'🧭 Mostrar os botões na tela', fn:"finishTutorial(true);tourStart('proprietarios')"}},
   {emo:'📅', title:'Agenda — visitas de qualquer mês',
    body:`Em <b>Agenda</b>, um calendário completo:<br><br>
    • Navegue mês a mês com <b>‹ ›</b> ou toque no nome do mês para <b>digitar direto</b> o mês que quiser — vigente, futuro ou passado<br>
    • Toque num dia para ver ou marcar visitas<br>
    • Cada visita tem <b>WhatsApp</b>, <b>Rota (GPS)</b> até o imóvel, edição e uma <b>avaliação do interesse</b> do comprador de 0 a 10<br>
    • Use a busca para achar uma visita por cliente, código ou endereço`,
-   action:{label:'📅 Ir para a Agenda', fn:'finishTutorial(true);goTab(\'agenda\')'}},
+   action:{label:'📅 Ir para a Agenda', fn:'finishTutorial(true);goTab(\'agenda\')'},
+   action2:{label:'🧭 Mostrar os botões na tela', fn:"finishTutorial(true);tourStart('agenda')"}},
   {emo:'🔔', title:'Avisos — nunca perca um compromisso',
    body:`O sino 🔔 na tela inicial avisa sobre visitas <b>vencidas</b> ou <b>de hoje</b>, com um número mostrando quantas.<br><br>
    Toque nele para ver a lista completa. Em <b>Ajustes → 🔔 Avisos</b> você escolhe exatamente quais avisos quer receber e com quantos dias de antecedência.`},
   {emo:'💰', title:'Financeiro',
-   body:`Acompanhe receitas e despesas — inclusive as despesas de deslocamento (transporte, refeição, gasolina) lançadas direto em cada visita da agenda.`},
+   body:`Acompanhe receitas e despesas — inclusive as despesas de deslocamento (transporte, refeição, gasolina) lançadas direto em cada visita da agenda. Cada despesa pode ser <b>à vista</b> ou no <b>cartão de crédito</b>.`,
+   action:{label:'🧭 Mostrar os botões na tela', fn:"finishTutorial(true);tourStart('financeiro')"}},
+  {emo:'🧰', title:'Ferramentas',
+   body:`Na tela inicial, abaixo dos atalhos, ficam as ferramentas:<br><br>
+   • <b>🏦 Financiamento</b> — simula parcelas<br>
+   • <b>📞 Follow-up</b> — agenda retornos para clientes<br>
+   • <b>📈 Produtividade</b> — sua meta e resultados do período<br>
+   • <b>📚 Catálogo</b> — PDF vitrine de vários imóveis`,
+   action:{label:'🧭 Mostrar os botões na tela', fn:"finishTutorial(true);tourStart('ferramentas')"}},
   {emo:'💾', title:'Backup — proteja seus dados',
-   body:`Seus dados ficam <b>só neste aparelho</b>. Em <b>Ajustes → Becape</b>, exporte um backup completo de vez em quando — assim você não perde nada ao trocar de celular.`},
+   body:`Seus dados ficam <b>só neste aparelho</b>. Em <b>Ajustes → Becape</b>, exporte um backup completo de vez em quando — assim você não perde nada ao trocar de celular.`,
+   action:{label:'🧭 Mostrar os botões de Ajustes', fn:"finishTutorial(true);tourStart('ajustes')"}},
   {emo:'🔒', title:'Sobre as permissões do app',
    body:`O Cor Sync Imóveis respeita sua privacidade. Ele só usa:<br><br>
    • <b>📷 Câmera</b> — só quando VOCÊ toca para fotografar um imóvel ou documento<br>
@@ -1565,9 +1596,307 @@ const TUT_STEPS = [
    action:{label:'Entendi, ativar avisos', fn:'ativarNotifPerms()'}},
   {emo:'🎉', title:'Tudo pronto!',
    body:`Você já conhece o essencial do Cor Sync Imóveis. 🏠<br><br>
-   Reveja este guia quando quiser em <b>Ajustes → Ver tutorial</b>.<br><br>
-   Aproveite os <b>30 dias grátis</b> do Plano Pro!`}
+   Reveja este guia quando quiser em <b>Ajustes → Ver tutorial</b> e faça o <b>tour guiado</b> sempre que precisar.<br><br>
+   Aproveite os <b>30 dias grátis</b> do Plano Pro!`,
+   action:{label:'🧭 Fazer o tour guiado completo', fn:"finishTutorial(true);tourStart('tudo')"},
+   action2:{label:'📖 Ver o app com dados de exemplo', fn:'finishTutorial(true);entrarManual()'}}
 ];
+
+// ═══ MODO MANUAL — o app com DADOS FICTÍCIOS, isolado dos dados reais ═══
+// Tudo fica só na memória: nada é gravado (nem localStorage, nem IndexedDB) enquanto o manual está aberto.
+// Recarregar a página ou tocar em "Sair do manual" devolve o app exatamente como estava.
+window.__DEMO = false;
+let _realDB = null;
+let _demoMidia = {};
+const _demoGuardadas = ['importarBackup','exportarBackup','doResetTudo','confirmarReset','activatePro','reativarPro','doRemoverSenha','doChangePass','doCriarSenhaAjustes','doEnviarSenhaWhats'];
+(function(){
+  const wo = window.open.bind(window);
+  window.open = function(url){
+    if(window.__DEMO && url){ try{ toast('📖 Manual: esta ação (abrir WhatsApp, e-mail ou mapa) fica desligada para não contatar ninguém.'); }catch(e){} return null; }
+    return wo.apply(window, arguments);
+  };
+})();
+function demoFoto(tipo, hue, variante){
+  const c=document.createElement('canvas'); c.width=640; c.height=420; const g=c.getContext('2d');
+  const sky=g.createLinearGradient(0,0,0,420); sky.addColorStop(0,'#8EC5FF'); sky.addColorStop(1,'#E8F4FF'); g.fillStyle=sky; g.fillRect(0,0,640,420);
+  g.fillStyle='#FDE68A'; g.beginPath(); g.arc(560,70,34,0,7); g.fill();
+  g.fillStyle='#7CB66A'; g.fillRect(0,300,640,120);
+  const cor=`hsl(${hue},45%,72%)`, tel=`hsl(${hue},40%,38%)`;
+  if(tipo==='apartamento'){
+    g.fillStyle=cor; g.fillRect(190,60,260,250);
+    for(let r=0;r<6;r++)for(let k=0;k<4;k++){ g.fillStyle=(r+k+variante)%3===0?'#FDE68A':'#9CC7EE'; g.fillRect(210+k*60,80+r*38,38,24); }
+    g.fillStyle=tel; g.fillRect(290,262,60,48);
+  } else if(tipo==='terreno'){
+    g.fillStyle='#A3D18F'; g.fillRect(0,260,640,160);
+    g.strokeStyle='#8B5E34'; g.lineWidth=5; for(let x=20;x<640;x+=60){ g.beginPath(); g.moveTo(x,250); g.lineTo(x,300); g.stroke(); }
+    g.beginPath(); g.moveTo(0,265); g.lineTo(640,265); g.moveTo(0,288); g.lineTo(640,288); g.stroke();
+    g.fillStyle='#E2E8F0'; g.fillRect(250,170,140,60); g.fillStyle='#DC2626'; g.font='bold 30px sans-serif'; g.textAlign='center'; g.fillText('VENDE-SE',320,212);
+  } else {
+    const x0=variante%2?150:200, w=variante%2?340:240;
+    g.fillStyle=cor; g.fillRect(x0,170,w,140);
+    g.fillStyle=tel; g.beginPath(); g.moveTo(x0-24,172); g.lineTo(x0+w/2,92); g.lineTo(x0+w+24,172); g.closePath(); g.fill();
+    g.fillStyle='#8B5E34'; g.fillRect(x0+w/2-22,236,44,74);
+    g.fillStyle='#9CC7EE'; g.fillRect(x0+22,205,56,42); g.fillRect(x0+w-78,205,56,42);
+    if(tipo==='chacara'){ g.fillStyle='#4C8F3A'; [70,560,520].forEach((x,i)=>{ g.beginPath(); g.arc(x,230,i?44:52,0,7); g.fill(); g.fillStyle='#7A5230'; g.fillRect(x-6,250,12,58); g.fillStyle='#4C8F3A'; }); }
+  }
+  g.fillStyle='rgba(15,23,42,.55)'; g.fillRect(0,386,640,34); g.fillStyle='#fff'; g.font='bold 15px sans-serif'; g.textAlign='left'; g.fillText('FOTO DE EXEMPLO · MANUAL',14,408);
+  return c.toDataURL('image/jpeg',0.7);
+}
+function demoBuild(){
+  const hoje=new Date(), dd=n=>{ const d=new Date(); d.setDate(d.getDate()+n); return isoDate(d); };
+  const mesIni=primeiroDiaMesAtual(), mesFim=ultimoDiaMesAtual();
+  const diaMes=n=>{ const d=Math.max(1,Math.min(n,hoje.getDate())); return mesIni.slice(0,8)+String(d).padStart(2,'0'); };
+  const tel=(n)=>'(15)9910'+String(n).padStart(1,'0')+'.000'+n;
+  const agora=Date.now(), dia=86400000;
+  const DB2=defaultDB();
+  const real=_realDB||{};
+  DB2.devId=real.devId; DB2.license=real.license||{pro:false}; DB2.trial=real.trial; DB2.settings=Object.assign({},real.settings||{});
+  DB2.corretor={ nome:'Carlos Exemplo', creci:'CRECI 000000-F', validadeCreci:dd(200), diaVencCartao:'10', email:'carlos.exemplo@email.com', whatsapp:'(15)99100.0000', temFoto:false, temCreci:false };
+  const P=(i,nome,t,email)=>({ id:'demo-p'+i, codigo:pad6(i), nome, tel1:t, tel2:'', tel3:'', email1:email, email2:'', temFoto:false, createdAt:agora-dia*(40-i) });
+  DB2.proprietarios=[
+    P(1,'Marta Souza Lima',tel(1),'marta.exemplo@email.com'),
+    P(2,'João Batista Ferreira',tel(2),'joao.exemplo@email.com'),
+    P(3,'Construtora Horizonte',tel(3),'contato.exemplo@email.com'),
+    P(4,'Helena Prado',tel(4),'helena.exemplo@email.com') ];
+  DB2.contadores={cs:2,ap:1,tr:1,ch:1,prop:4};
+  const base=(o)=>{
+    const loc=o.loc, pr=DB2.proprietarios.find(p=>p.id===o.prop);
+    return { id:o.id, tipo:o.tipo, codigo:o.codigo, status:o.status||'Disponível', dataInclusao:dd(-(o.dias||20)), createdAt:agora-dia*(o.dias||20), updatedAt:agora-dia*(o.upd===undefined?3:o.upd),
+      localizacao:Object.assign({tipoEndereco:'Rua',complemento:'',cep:'18000-000',cidade:'Sorocaba',estado:'SP'},loc),
+      proprietario:{ id:pr.id, nome:pr.nome, tel1:pr.tel1, tel2:'', tel3:'', email1:pr.email1, email2:'' },
+      origemCaptacao:o.origem||'Placa', origemCaptacaoDetalhe:'',
+      caracteristicas:Object.assign({ terreno:'', construcao:'', medFrente:'', medFundos:'', medEsquerdo:'', medDireito:'', condicao:'Usada', morador:'Não', sacada:false, casaGerminada:false, temCorredor:false, tipoCasa:'Térrea', outroTipo:'', quartos:'', suites:'', banheiros:'', lavanderia:'', lavanderiaInterna:false, lavanderiaExterna:false, piscina:false, piscinaAquecida:false, furo:false, sauna:false, churrasqueira:false, parquinho:false, academia:false, obsApto:'' }, o.car),
+      exclusividade:{ exclusiva:!!o.excl, dataInicial:o.excl?dd(-30):'', dataFinal:o.excl?dd(60):'' },
+      condominio:{ valor:o.cond||0 }, comissao:o.com||'5',
+      valores:{ solicitado:o.val, minimo:o.min, negociado:o.neg||0, dataProposta:o.neg?dd(-4):'' },
+      garagem:{ vagas:o.vagas||'', coberta:true, disposicao:'Lado a lado', portao:true, portariaVigia:false, segurancaInterna:false, monitoradoCamera:false },
+      loteamento:{ condominio:'', acesso:'', ruas:'', sarjeta:false, iluminacao:false },
+      agua:{ tipo:'Individual', fonte:'Sabesp', situacao:'Instalado' }, energia:{ situacao:'Instalado', info:'' }, internet:{ situacao:'Instalado' },
+      fotosPublicas:[true,true,true,false,false,false], fotosAdicionais:[null,null,null], contrato:null, video:null, certidoes:{} };
+  };
+  DB2.imoveis=[
+    base({id:'demo-i1',tipo:'casa',codigo:'cs00001',prop:'demo-p1',dias:30,loc:{endereco:'das Palmeiras',numero:'120',bairro:'Jardim Primavera'},car:{terreno:'250',construcao:'140',quartos:'3',suites:'1',banheiros:'2',churrasqueira:true,lavanderiaExterna:true,medFrente:'10',medFundos:'10',medEsquerdo:'25',medDireito:'25'},val:520000,min:480000,vagas:'2',excl:true,com:'5'}),
+    base({id:'demo-i2',tipo:'casa',codigo:'cs00002',prop:'demo-p2',dias:18,loc:{endereco:'Santos Dumont',numero:'845',bairro:'Vila Nova'},car:{terreno:'200',construcao:'95',quartos:'2',banheiros:'1',lavanderiaExterna:true,tipoCasa:'Térrea'},val:340000,min:310000,vagas:'1',status:'Reservado',com:'6'}),
+    base({id:'demo-i3',tipo:'apartamento',codigo:'ap00001',prop:'demo-p3',dias:25,loc:{tipoEndereco:'Avenida',endereco:'Independência',numero:'1500',complemento:'Apto 82 - Bloco B',bairro:'Centro'},car:{construcao:'78',quartos:'3',suites:'1',banheiros:'2',sacada:true,tipoCasa:'Padrão',piscina:true,academia:true,churrasqueira:true,lavanderiaInterna:true},val:430000,min:400000,cond:620,vagas:'2',com:'5'}),
+    base({id:'demo-i4',tipo:'terreno',codigo:'tr00001',prop:'demo-p3',dias:12,loc:{endereco:'dos Ipês',numero:'s/n',bairro:'Residencial Ipês'},car:{terreno:'360',medFrente:'12',medFundos:'12',medEsquerdo:'30',medDireito:'30',tipoCasa:'Plano'},val:185000,min:170000,com:'6',origem:'Indicação'}),
+    base({id:'demo-i5',tipo:'chacara',codigo:'ch00001',prop:'demo-p4',dias:45,loc:{tipoEndereco:'Estrada',endereco:'Municipal do Rio Verde',numero:'km 7',bairro:'Zona Rural'},car:{terreno:'5000',construcao:'180',quartos:'4',suites:'2',banheiros:'3',piscina:true,churrasqueira:true,furo:true,tipoCasa:'Lazer'},val:890000,min:820000,vagas:'4',com:'4'}),
+    base({id:'demo-i6',tipo:'casa',codigo:'cs00003',prop:'demo-p1',dias:70,upd:1,status:'Vendido',loc:{endereco:'Rio Branco',numero:'67',bairro:'Jardim Europa'},car:{terreno:'180',construcao:'110',quartos:'3',banheiros:'2'},val:380000,min:350000,neg:372000,vagas:'1',com:'6'}) ];
+  DB2.contadores.cs=3;
+  // proprietário vendido não precisa estar duplicado; o código do último imóvel já reflete o contador
+  const h=[210,35,260,100,150,0];
+  DB2.imoveis.forEach((im,i)=>{ im.fotosPublicas.forEach((on,k)=>{ if(on) _demoMidia[keyFotoPub(im.id,k)] = demoFoto(im.tipo, h[i], k); }); });
+  const vis=(id,imId,data,hora,nome,t,desp,lemb)=>({ id, tipo:'visita', imovelId:imId, data, hora, lembrete:lemb===undefined?60:lemb, compradorNome:nome, compradorTel1:t, compradorTel2:'',
+    despesas:Object.assign({transporte:'',refeicao:'',gasolina:'',outros:'',formaPagTR:'vista',outrosLista:[0,1,2,3,4].map(()=>({valor:'',desc:'',formaPag:'vista'}))},desp||{}), createdAt:agora-dia*2 });
+  DB2.agendamentos=[
+    vis('demo-v1','demo-i1',dd(0),'10:00','Fernanda e Paulo Mendes','(15)99200.0001',{transporte:'18,00',gasolina:'35,00'}),
+    vis('demo-v2','demo-i3',dd(0),'15:30','Rafael Tavares','(15)99200.0002',{refeicao:'28,00'}),
+    vis('demo-v3','demo-i5',dd(1),'09:00','Luciana Prado','(15)99200.0003',{gasolina:'60,00'}),
+    vis('demo-v4','demo-i2',dd(3),'11:00','Sérgio e Ana Beatriz','(15)99200.0004',{}),
+    vis('demo-v5','demo-i4',dd(-2),'16:00','Rafael Tavares','(15)99200.0002',{transporte:'20,00'},0) ];
+  const fin=DB2.financeiro;
+  const reg=(cod)=>cod.toUpperCase();
+  const dAg=(id,cat,valor,data,imId,cod,nome)=>({ id:'demo-ds-'+id+cat, categoria:cat, valor, data, dataRealizada:data, formaPagamento:'vista', origem:'agenda', agendamentoId:id, imovelId:imId, imovelCodigo:reg(cod), descricao:`Visita ${reg(cod)} — ${nome}`, createdAt:agora });
+  fin.despesas=[
+    dAg('demo-v1','Transporte',18,dd(0),'demo-i1','cs00001','Fernanda e Paulo Mendes'),
+    dAg('demo-v1','Gasolina',35,dd(0),'demo-i1','cs00001','Fernanda e Paulo Mendes'),
+    dAg('demo-v2','Refeição',28,dd(0),'demo-i3','ap00001','Rafael Tavares'),
+    dAg('demo-v3','Gasolina',60,dd(1),'demo-i5','ch00001','Luciana Prado'),
+    dAg('demo-v5','Transporte',20,dd(-2),'demo-i4','tr00001','Rafael Tavares'),
+    { id:'demo-d1', categoria:'Gasolina', valor:250, data:diaMes(3), dataRealizada:diaMes(3), formaPagamento:'vista', origem:'manual', descricao:'Abastecimento da semana', createdAt:agora },
+    { id:'demo-d2', categoria:'Outros', valor:85, data:diaMes(5), dataRealizada:diaMes(5), formaPagamento:'vista', origem:'manual', descricao:'Impressão de fichas e placas', createdAt:agora },
+    { id:'demo-d3', categoria:'Outros', valor:320, data:mesFim, dataRealizada:'', formaPagamento:'cartao', origem:'manual', descricao:'Anúncio em portal (fatura do cartão)', createdAt:agora } ];
+  fin.receitas=[
+    { id:'demo-r1', categoria:'Comissão de venda', fontePagadora:'Marta Souza Lima', valor:22320, data:diaMes(4), dataRealizada:diaMes(4), imovelId:'demo-i6', imovelCodigo:'CS00003', descricao:'Venda da casa do Jardim Europa (6% de R$ 372.000)', origem:'manual', createdAt:agora },
+    { id:'demo-r2', categoria:'Sinal de comissão', fontePagadora:'Helena Prado', valor:6000, data:mesFim, dataRealizada:'', imovelId:'demo-i5', imovelCodigo:'CH00001', descricao:'Combinado para fechar a chácara', origem:'manual', createdAt:agora } ];
+  const cli=(i,nome,tipo,cidade,q,vmin,vmax,est,h)=>({ id:'demo-c'+i, nome, tipo, cidade, quartos:q, valorMin:vmin?maskMoedaFromNumber(vmin):'', valorMax:vmax?maskMoedaFromNumber(vmax):'', estagio:est, createdAt:agora-dia*10, updatedAt:agora-3600000*h });
+  DB2.clientes=[
+    cli(1,'Fernanda e Paulo Mendes','casa','Sorocaba','3',450000,550000,'Visitou',5),
+    cli(2,'Rafael Tavares','apartamento','Sorocaba','3',380000,450000,'Proposta',2),
+    cli(3,'Luciana Prado','chacara','','4',700000,900000,'Qualificado',20),
+    cli(4,'Sérgio e Ana Beatriz','casa','Sorocaba','2',280000,350000,'Novo',30),
+    cli(5,'Marcos Vinícius','terreno','Sorocaba','',150000,200000,'Fechado',50) ];
+  const fu=(i,cliente,assunto,cel,imId,data,obs,feito)=>({ id:'demo-f'+i, cliente, assunto, celular:cel, imovelId:imId, nome:cliente+(assunto?' — '+assunto:''), data, obs, feito:!!feito, createdAt:agora-dia });
+  DB2.followups=[
+    fu(1,'Fernanda e Paulo Mendes','Retorno após a visita','(15)99200.0001','demo-i1',dd(0),'Perguntar se querem fazer proposta.'),
+    fu(2,'Rafael Tavares','Levar a proposta ao proprietário','(15)99200.0002','demo-i3',dd(0),'Valor ofertado: R$ 410.000.'),
+    fu(3,'Sérgio e Ana Beatriz','Enviar fotos e vídeo','(15)99200.0004','demo-i2',dd(-1),'Prometi enviar ontem — atrasado!'),
+    fu(4,'Luciana Prado','Conferir financiamento','(15)99200.0003','demo-i5',dd(5),''),
+    fu(5,'Marcos Vinícius','Pós-venda','(15)99200.0005','demo-i4',dd(-6),'Entreguei as chaves.',true) ];
+  DB2.meta={ valor:40000, dataIni:mesIni, dataFim:mesFim };
+  DB2.demo=true;
+  return DB2;
+}
+function demoBarra(){
+  let b=document.getElementById('demoBar');
+  if(!window.__DEMO){ if(b) b.remove(); document.body.classList.remove('demo-on'); return; }
+  if(!b){ b=document.createElement('div'); b.id='demoBar'; document.body.appendChild(b); }
+  b.innerHTML=`<span class="dtx">📖 <b>MANUAL</b> · dados fictícios</span><button class="dbt" onclick="tourMenu()">🧭 Tour</button><button class="dbx" onclick="sairManual()">✕ Sair do manual</button>`;
+  document.body.classList.add('demo-on');
+}
+async function entrarManual(comTour){
+  if(window.__DEMO) return;
+  if(W||V){ try{closeSheet()}catch(e){} toast('Termine ou saia do cadastro em andamento antes de abrir o manual.'); return; }
+  try{ closeSheet(); }catch(e){}
+  try{ clearTimeout(_saveTimer); await persistDB(); }catch(e){}
+  _realDB=DB; _demoMidia={};
+  DB=demoBuild(); window.__DEMO=true;
+  demoBarra();
+  document.getElementById('appHeader').classList.remove('hidden');
+  document.getElementById('mainNav').classList.remove('hidden');
+  goTab('inicio', true);
+  showSheet('📖 Manual com dados de exemplo', `
+    <div style="font-size:14px;line-height:1.7">Você está vendo o app <b>preenchido com dados fictícios</b> (imóveis, visitas, compradores, retornos, financeiro e metas) para entender cada tela.<br><br>
+    ✅ Pode tocar em tudo, cadastrar e apagar à vontade<br>
+    🔒 <b>Nada é salvo</b> e seus dados reais não são tocados<br>
+    📵 WhatsApp, e-mail, backup e apagar tudo ficam desligados aqui<br><br>
+    Para voltar ao seu app, toque em <b>✕ Sair do manual</b> (barra no topo).</div>`,
+    `<button class="btn gray" onclick="closeSheet()">Explorar sozinho</button><button class="btn" onclick="closeSheet();tourMenu()">🧭 Começar o tour</button>`);
+  if(comTour===true){ /* mantém a janela de boas-vindas */ }
+}
+function sairManual(){
+  if(!window.__DEMO) return;
+  try{ tourEnd(); }catch(e){}
+  try{ closeSheet(); }catch(e){}
+  try{ const m2=document.getElementById('modals2'); if(m2) m2.innerHTML=''; }catch(e){}
+  W=null; V=null; P=null;
+  window.__DEMO=false; _demoMidia={}; clearTimeout(_saveTimer);
+  DB=_realDB; _realDB=null;
+  demoBarra();
+  goTab('inicio', true);
+  toast('Você saiu do manual — seus dados estão como estavam.');
+}
+_demoGuardadas.forEach(n=>{ const f=window[n]; if(typeof f==='function' && !f.__g){ const w=function(){ if(window.__DEMO){ try{ closeSheet(); }catch(e){} toast('📖 Desligado no manual — nada é alterado nos seus dados.'); return; } return f.apply(this,arguments); }; w.__g=1; window[n]=w; } });
+
+// ═══ TOUR GUIADO — destaca os botões REAIS de cada rotina (spotlight + dica) ═══
+let _tour = null;
+const _tg = tab => () => { W=null; V=null; goTab(tab, true); };
+const TOURS = {
+  inicio:{ nome:'🏠 Tela inicial', steps:[
+    {go:_tg('inicio'), sel:'.hbell', emo:'🔔', title:'Sino de avisos', text:'Mostra um número quando há <b>visitas vencidas ou de hoje</b>. Toque para ver a lista completa.'},
+    {sel:'.hsearch', emo:'🔎', title:'Busca rápida', text:'Procure um imóvel pelo nome do proprietário, endereço ou cidade, direto daqui.'},
+    {sel:'.hero-btn[onclick*="abrirTipos"]', emo:'🏘️', title:'Cadastrar imóvel', text:'É por este botão que você cadastra <b>casa, apartamento, chácara ou terreno</b>.'},
+    {sel:'.hero-btn[onclick*="abrirConsultaIdeal"]', emo:'🎯', title:'Consulta ideal', text:'Informe o que o cliente procura (tipo, cidade, quartos, faixa de valor) e o app mostra os imóveis que combinam — e salva o cliente no funil.'},
+    {sel:'.qtile[onclick*="proprietarios"]', emo:'👥', title:'Proprietários', text:'Cadastro dos donos dos imóveis, com busca por nome ou celular e WhatsApp direto.'},
+    {sel:'.qtile[onclick*="abrirCompradores"]', emo:'🤝', title:'Compradores', text:'Lista dos compradores que você cadastrou nas visitas (nome e telefones), com busca por nome ou celular.'},
+    {sel:'nav', emo:'📍', title:'Barra de navegação', text:'Fica sempre embaixo: <b>Início, Imóveis, Agenda, Propriet., Financ. e Ajustes</b>. Toque para trocar de tela a qualquer momento.'}
+  ]},
+  ferramentas:{ nome:'🧰 Ferramentas', steps:[
+    {go:_tg('inicio'), sel:'.qtile[onclick*="abrirSimulador"]', emo:'🏦', title:'Financiamento', text:'Simulador de parcelas (PRICE e SAC) para conversar com o cliente. É uma estimativa, não a proposta oficial do banco.'},
+    {sel:'.qtile[onclick*="abrirFollowups"]', emo:'📞', title:'Follow-up', text:'Agende <b>retornos</b> para clientes. O número mostra quantos vencem hoje. Dentro dele: Feito, Editar e Excluir.'},
+    {sel:'.qtile[onclick*="abrirProdutividade"]', emo:'📈', title:'Produtividade', text:'Defina sua <b>meta</b> com data inicial e final e acompanhe vendas, despesas, visitas, propostas e fechamentos do período.'},
+    {sel:'.qtile[onclick*="abrirCatalogo"]', emo:'📚', title:'Catálogo', text:'Escolha vários imóveis e envie um <b>PDF</b> vitrine pelo WhatsApp ou e-mail.'},
+    {sel:'.qtile[onclick*="goTab(\'financeiro\')"]', emo:'💰', title:'Financeiro', text:'Receitas, despesas e saldo. Veremos o Financeiro em detalhe no tour dele.'}
+  ]},
+  imoveis:{ nome:'🏘️ Imóveis', steps:[
+    {go:_tg('imoveis'), sel:'.btn-novo', emo:'➕', title:'Novo imóvel', text:'Atalho para cadastrar um imóvel, direto da lista.'},
+    {sel:'button[onclick*="imoBuscaModo=\'nome\'"]', emo:'🔎', title:'Buscar por nome, CEP ou cidade', text:'Escolha o tipo de busca e digite o fragmento no campo logo abaixo.'},
+    {sel:'button[onclick*="imoTipoFiltro=\'todos\'"]', emo:'🧩', title:'Filtro por tipo', text:'Mostre só casas, apartamentos, chácaras ou terrenos.'},
+    {sel:'button[onclick*="imoStatusFiltro=\'todos\'"]', emo:'🚦', title:'Filtro por situação', text:'<b>Disponível, Reservado ou Vendido</b> — a situação é alterada dentro do imóvel.'},
+    {sel:'button[onclick*="abrirCatalogo"]', emo:'📚', title:'Catálogo em PDF', text:'Selecione imóveis e envie a vitrine para o cliente.'},
+    {sel:'.ptile[onclick*="abrirDetalhe"]', emo:'📂', title:'Abrir um imóvel', text:'Toque no imóvel para <b>consultar, editar, compartilhar, gerar proposta, ficha em PDF</b> e mudar a situação.', fallback:'Quando você tiver imóveis cadastrados, toque em um deles para consultar, editar, compartilhar, gerar proposta e ficha em PDF.'}
+  ]},
+  cadastro:{ nome:'📝 Cadastrar um imóvel', steps:[
+    {go:_tg('inicio'), sel:'.hero-btn[onclick*="abrirTipos"]', emo:'🏘️', title:'1) Comece aqui', text:'Toque em <b>Cadastrar imóvel</b>.'},
+    {go:()=>{ W=null; V=null; abrirTipos(); }, sel:'.cat-row', emo:'🏠', title:'2) Escolha o tipo', text:'Casa, apartamento, chácara ou terreno. Cada tipo mostra os campos certos.'},
+    {go:()=>{ W=null; V=null; iniciarCadastro('casa'); }, sel:'.wizbtns', emo:'⏭️', title:'3) Botões do cadastro', text:'<b>Voltar</b> e <b>Avançar</b> trocam de etapa, <b>Gravar</b> salva sem sair e <b>Sair</b> fecha. Se você alterou algo, o app pergunta antes de perder.', fallback:'No cadastro você terá os botões <b>Voltar, Gravar, Avançar e Sair</b> no rodapé.'},
+    {sel:'#mainContent', emo:'📷', title:'Etapas e fotos', text:'São poucas etapas: localização, proprietário, características, fotos, vídeo, certidões e revisão. A <b>foto principal</b> é obrigatória antes das demais.'}
+  ]},
+  proprietarios:{ nome:'👥 Proprietários', steps:[
+    {go:_tg('proprietarios'), sel:'button[onclick*="novoProprietario"]', emo:'➕', title:'Novo proprietário', text:'Cadastre o dono do imóvel com nome, telefones e documentos.'},
+    {sel:'button[onclick*="propBuscaModo=\'nome\'"]', emo:'🔎', title:'Busca por nome ou celular', text:'No campo de busca, digite um pedaço do nome <b>ou</b> do celular.'},
+    {sel:'button[onclick*="telaAntesDeProprietarios"]', emo:'‹', title:'Voltar', text:'Volta para a tela de onde você veio.'}
+  ]},
+  agenda:{ nome:'📅 Agenda e visitas', steps:[
+    {go:_tg('agenda'), sel:'.pill[onclick*="novaVisita"]', emo:'＋', title:'Nova visita', text:'Marque uma visita: imóvel, comprador, data e hora, e as despesas da visita (transporte, refeição, gasolina e outros).'},
+    {sel:'.lbl[onclick*="abrirSeletorMes"]', emo:'🗓️', title:'Escolher o mês', text:'Toque no nome do mês para digitar direto qualquer mês, passado ou futuro. As setas ‹ › passam mês a mês.'},
+    {sel:'.cal-day.today', emo:'📍', title:'Calendário', text:'O dia de hoje fica destacado. Toque em um dia para ver ou marcar visitas.'},
+    {sel:'.q[onclick*="agVerSemana=true"]', emo:'📆', title:'Hoje · Semana · Imóveis', text:'Alterne entre as visitas de hoje, da semana ou a lista por imóvel.', fallback:'Abaixo do calendário ficam os atalhos <b>Hoje</b>, <b>Semana</b> e <b>Imóveis</b>.'},
+    {sel:'.act.wa', emo:'💬', title:'WhatsApp', text:'Abre a conversa com o comprador já com a sua mensagem padrão (editável em Ajustes › Mensagens).', fallback:'Em cada visita marcada aparece o botão <b>WhatsApp</b>, que abre a conversa com a sua mensagem padrão.'},
+    {sel:'.act.gps', emo:'🧭', title:'Rota', text:'Abre o Waze ou Google Maps até o imóvel.', fallback:'Em cada visita aparece o botão <b>Rota</b> (Waze / Google Maps).'},
+    {sel:'.act[onclick*="agendarRetornoDaVisita"]', emo:'📞', title:'Retorno', text:'Agenda um follow-up já preenchido com nome, celular e imóvel desta visita.', fallback:'Em cada visita aparece o botão <b>📞 Retorno</b>, que agenda um follow-up já preenchido.'},
+    {sel:'.act[onclick*="editarAgendamento"]', emo:'✏️', title:'Editar', text:'Altera data, comprador e despesas da visita.', fallback:'Em cada visita aparece <b>Editar</b> e <b>Cancelar</b>.'},
+    {sel:'.act[onclick*="abrirAvaliacao"]', emo:'⭐', title:'Avaliação do interesse', text:'Dê uma nota de 0 a 10 para o interesse do comprador depois da visita.', fallback:'Depois da visita, dê uma nota de 0 a 10 para o interesse do comprador.'}
+  ]},
+  financeiro:{ nome:'💰 Financeiro', steps:[
+    {go:_tg('financeiro'), sel:'button[onclick*="novaReceitaManual"]', emo:'💚', title:'Receitas +', text:'Lance comissões e outras receitas. Pode informar a fonte pagadora e a data realizada.'},
+    {sel:'button[onclick*="novaDespesaManual"]', emo:'🔴', title:'Despesa +', text:'Lance despesas escolhendo <b>À vista</b> ou <b>Cartão de crédito</b> — no cartão, a data é calculada pelo dia de vencimento cadastrado em Dados do corretor.'},
+    {sel:'button[onclick*="finExpView=\'mes\'"]', emo:'🗂️', title:'Visões', text:'<b>Por mês</b>, <b>Fluxo</b>, <b>Realizado</b> e <b>Todas</b> — cada uma mostra os lançamentos de um jeito.'},
+    {sel:'#finTopoFixo', emo:'📊', title:'Resumo fixo', text:'Receitas, despesas, saldo, gráfico por categoria e total no cartão ficam <b>fixos no topo</b>; só os lançamentos rolam.'}
+  ]},
+  ajustes:{ nome:'⚙️ Ajustes', steps:[
+    {go:_tg('config'), sel:'.ptile[onclick*="renderDadosCorretor"]', emo:'🪪', title:'Dados do corretor', text:'Nome, CRECI e validade, dia do vencimento do cartão, e-mail e WhatsApp — usados nos documentos que você envia.'},
+    {sel:'button[onclick*="mudarZoom(0.1)"]', emo:'🔠', title:'Tamanho da letra', text:'Use <b>A −</b> e <b>A +</b> para ajustar o zoom do app.'},
+    {sel:'button[onclick*="openProModal"]', emo:'⭐', title:'Plano Pro', text:'Assine pelo WhatsApp e digite o código recebido.', fallback:'Aqui fica o Plano Pro e o seu código de ativação.'},
+    {sel:'button[onclick*="exportarBackup"]', emo:'💾', title:'Backup', text:'Exporte um backup completo de vez em quando — seus dados ficam só neste aparelho.'},
+    {sel:'button[onclick*="promptInstall"]', emo:'📲', title:'Instalar o app', text:'Instala o Cor Sync Imóveis na tela inicial do celular.'},
+    {sel:'button[onclick*="openTutorial"]', emo:'📖', title:'Rever o tutorial', text:'Você pode rever o tutorial e este tour guiado quando quiser.'}
+  ]}
+};
+function tourMenu(){
+  const itens = Object.keys(TOURS).map(k=>`<button class="btn gray" style="margin-bottom:8px;text-align:left" onclick="tourStart('${k}')">${TOURS[k].nome} <span style="font-weight:500;color:var(--muted)">· ${TOURS[k].steps.length} passos</span></button>`).join('');
+  showSheet('🧭 Tour guiado', `<div class="hint" style="margin-bottom:10px">Escolha uma rotina. O app destaca, na tela de verdade, os botões que levam até ela.</div>${itens}<button class="btn" style="margin-top:4px" onclick="tourStart('tudo')">▶ Fazer o tour completo</button>`,
+    `<button class="btn gray" onclick="closeSheet()">Fechar</button>`);
+}
+function tourStart(key){
+  if(W||V){ try{closeSheet()}catch(e){} toast('Termine ou saia do cadastro em andamento antes de iniciar o tour.'); return; }
+  try{ closeSheet(); }catch(e){}
+  const steps = key==='tudo' ? Object.keys(TOURS).reduce((a,k)=>a.concat(TOURS[k].steps),[]) : (TOURS[key]||{}).steps;
+  if(!steps||!steps.length) return;
+  _tour = { key, steps, i:0 };
+  tourShow();
+}
+function tourShow(){
+  const t=_tour; if(!t) return;
+  const st=t.steps[t.i];
+  tourClear();
+  try{ if(st.go) st.go(); }catch(e){}
+  setTimeout(()=>{
+    if(_tour!==t) return;
+    let el=null; try{ el = st.sel ? document.querySelector(st.sel) : null; }catch(e){}
+    if(el){ try{ el.scrollIntoView({block:'center'}); }catch(e){} }
+    setTimeout(()=>{ if(_tour===t) tourDraw(el, st); }, el?160:0);
+  }, st.go?340:60);
+}
+function tourClear(){ ['tourBlock','tourSpot','tourTip'].forEach(id=>{ const e=document.getElementById(id); if(e) e.remove(); }); }
+function tourDraw(el, st){
+  tourClear();
+  const t=_tour; if(!t) return;
+  const n=t.steps.length, i=t.i, last=(i===n-1);
+  const blk=document.createElement('div'); blk.id='tourBlock';
+  blk.style.cssText='position:fixed;inset:0;z-index:2000;background:'+(el?'transparent':'rgba(8,15,35,.74)');
+  document.body.appendChild(blk);
+  let r=null;
+  if(el){
+    r=el.getBoundingClientRect(); const pad=6;
+    const sp=document.createElement('div'); sp.id='tourSpot';
+    sp.style.cssText=`position:fixed;z-index:2001;pointer-events:none;left:${r.left-pad}px;top:${r.top-pad}px;width:${r.width+pad*2}px;height:${r.height+pad*2}px;border-radius:16px;outline:3px solid #FBBF24;box-shadow:0 0 0 9999px rgba(8,15,35,.74)`;
+    document.body.appendChild(sp);
+  }
+  const tip=document.createElement('div'); tip.id='tourTip';
+  tip.style.cssText='position:fixed;z-index:2002;left:12px;right:12px;max-width:380px;margin:0 auto;background:#fff;color:#0F1F3D;border-radius:16px;padding:14px 16px;box-shadow:0 14px 40px rgba(0,0,0,.45);font-size:13.5px;line-height:1.55';
+  tip.innerHTML=`<div style="font-weight:900;font-size:15px;margin-bottom:6px">${st.emo||'👉'} ${st.title}</div>
+    <div>${(!el && st.fallback)?st.fallback:st.text}</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:12px">
+      <button class="btn gray sm" style="width:auto;margin:0" onclick="tourEnd()">Fechar tour</button>
+      <span style="flex:1;text-align:center;font-size:11px;color:#64748B">${i+1} de ${n}</span>
+      ${i>0?`<button class="btn gray sm" style="width:auto;margin:0" onclick="tourGo(-1)">‹</button>`:''}
+      <button class="btn sm" style="width:auto;margin:0" onclick="${last?'tourEnd(true)':'tourGo(1)'}">${last?'✓ Concluir':'Próximo ›'}</button>
+    </div>`;
+  document.body.appendChild(tip);
+  const th=tip.offsetHeight, vh=window.innerHeight;
+  let top;
+  if(r){ const below=vh-r.bottom, above=r.top;
+    if(below>=th+24) top=r.bottom+14; else if(above>=th+24) top=r.top-th-14; else top=Math.max(8,(vh-th)/2); }
+  else top=Math.max(8,(vh-th)/2);
+  tip.style.top=top+'px';
+}
+function tourGo(d){ if(!_tour) return; _tour.i=Math.max(0,Math.min(_tour.steps.length-1,_tour.i+d)); tourShow(); }
+function tourEnd(done){
+  tourClear(); _tour=null;
+  // se o tour abriu um cadastro em branco, descarta sem salvar nada
+  if(W && !DB.imoveis.some(x=>x.id===W.id)){ W=null; goTab('inicio',true); }
+  if(done) toast('Tour concluído! 🎉');
+}
 function openTutorial(step){
   step = Math.min(step||0, TUT_STEPS.length - 1);
   localStorage.setItem('cor_tut_step', step);
@@ -1578,6 +1907,7 @@ function openTutorial(step){
   showSheet(`${s.emo} ${s.title}`, `
     <div style="font-size:14px;line-height:1.7;color:var(--text)">${s.body}</div>
     ${s.action?`<button class="btn" style="margin-top:14px" onclick="${s.action.fn}">${s.action.label}</button>`:''}
+    ${s.action2?`<button class="btn gray" style="margin-top:8px" onclick="${s.action2.fn}">${s.action2.label}</button>`:''}
     <div style="text-align:center;margin-top:16px">${dots}</div>
     <div style="text-align:center;color:var(--muted);font-size:11px;margin-top:6px">${step+1} de ${TUT_STEPS.length}</div>`,
     `${step>0?`<button class="btn gray" onclick="openTutorial(${step-1})">‹ Anterior</button>`:`<button class="btn gray" onclick="finishTutorial()">Pular</button>`}
@@ -2041,6 +2371,7 @@ function notify(title, body){
 }
 // Roda no máximo 1x por dia: notifica os compromissos vencidos/hoje/próximos (conforme Ajustes)
 function checarLembretesVisita(){
+  if(window.__DEMO) return;
   try{
     if(!('Notification' in window) || Notification.permission!=='granted') return;
     let fired=[]; try{ fired=JSON.parse(localStorage.getItem('cor_lembretes_fired')||'[]'); }catch(e){}
@@ -3460,7 +3791,7 @@ async function gravarImovel(semSair){
 let resIni = '', resFim = '', resModo = 'registro';   // 'registro' | 'proposta'
 function abrirResumoCaptacao(){
   document.getElementById('mainNav').classList.remove('hidden');
-  document.getElementById('appHeader').innerHTML = `<h2>Onde captou este imóvel</h2>`;
+  document.getElementById('appHeader').classList.remove('home'); document.getElementById('appHeader').innerHTML = `<h2>Onde captou este imóvel</h2>`;
   const cats=['Placa','Indicação','Imobiliária','Instagram','Outros','Não informado'];
   const cores={'Placa':'#2563EB','Indicação':'#0D9488','Imobiliária':'#7C3AED','Instagram':'#DB2777','Outros':'#F97316','Não informado':'#94A3B8'};
   const grupos={}; cats.forEach(c=>grupos[c]={n:0,sol:0});
@@ -3504,7 +3835,7 @@ function dataInclusaoISO(im){
 }
 function renderResumoPropostas(){
   document.getElementById('mainNav').classList.remove('hidden');
-  document.getElementById('appHeader').innerHTML = `<h2>Resumo de propostas</h2>`;
+  document.getElementById('appHeader').classList.remove('home'); document.getElementById('appHeader').innerHTML = `<h2>Resumo de propostas</h2>`;
 
   const porProposta = resModo === 'proposta';
   // "Por registro" filtra pela data de inclusão; "Por proposta", pela data da proposta.
@@ -3741,7 +4072,7 @@ function abrirDetalhe(id){
   const im = DB.imoveis.find(x=>x.id===id); if(!im) return;
   const condoVal = im.condominio?.valor||0;
   document.getElementById('mainNav').classList.remove('hidden');
-  document.getElementById('appHeader').innerHTML = `<h2>${esc(im.localizacao.endereco)}, ${esc(im.localizacao.numero)}</h2><div class="mono" style="color:var(--primary);font-weight:700;font-size:12px;margin-top:2px">${(im.codigo||'').toUpperCase()}</div>`;
+  document.getElementById('appHeader').classList.remove('home'); document.getElementById('appHeader').innerHTML = `<h2>${esc(im.localizacao.endereco)}, ${esc(im.localizacao.numero)}</h2><div class="mono" style="color:var(--primary);font-weight:700;font-size:12px;margin-top:2px">${(im.codigo||'').toUpperCase()}</div>`;
   const enderecoFull = `${im.localizacao.endereco||''}, ${im.localizacao.numero||''} ${im.localizacao.cidade||''} ${im.localizacao.estado||''} ${im.localizacao.cep||''}`.trim();
   document.getElementById('mainContent').innerHTML = `
     <div class="btnrow">
@@ -3813,7 +4144,7 @@ function abrirExtratoImovel(id){
   const im = DB.imoveis.find(x=>x.id===id); if(!im) return;
   document.getElementById('mainNav').classList.remove('hidden');
   const ini = im.dataInclusao || isoDate(new Date(im.createdAt||Date.now()));
-  document.getElementById('appHeader').innerHTML = `<h2>Extrato do imóvel</h2><div class="mono" style="color:var(--primary);font-weight:700;font-size:12px;margin-top:2px">${(im.codigo||'').toUpperCase()} · desde ${fmtDataBR(ini)}</div>`;
+  document.getElementById('appHeader').classList.remove('home'); document.getElementById('appHeader').innerHTML = `<h2>Extrato do imóvel</h2><div class="mono" style="color:var(--primary);font-weight:700;font-size:12px;margin-top:2px">${(im.codigo||'').toUpperCase()} · desde ${fmtDataBR(ini)}</div>`;
 
   // lançamentos deste imóvel a partir da data de inclusão
   const recs = DB.financeiro.receitas.filter(e=>e.imovelId===id && (e.data||'')>=ini).map(e=>({...e,_t:'rec'}));
@@ -3992,7 +4323,7 @@ let _propImovel=null, _propCond='À vista';
 let compBuscaModo = 'nome';   // 'nome' | 'celular'
 let compBuscaQ = '';
 function abrirCompradores(){
-  document.getElementById('appHeader').innerHTML = `<h2>Compradores (das visitas)</h2>`;
+  document.getElementById('appHeader').classList.remove('home'); document.getElementById('appHeader').innerHTML = `<h2>Compradores (das visitas)</h2>`;
   document.getElementById('mainContent').innerHTML = `
     <button class="btn gray" style="width:auto;padding:8px 16px;margin-bottom:12px" onclick="goTab('inicio')">‹ Voltar</button>
     <div style="display:flex;gap:8px;margin-bottom:8px">
@@ -4035,7 +4366,7 @@ function preencherListaCompradores(){
 }
 /* ===== Simulador de financiamento ===== */
 function abrirSimulador(v0){
-  document.getElementById('appHeader').innerHTML = `<h2>Simulador de financiamento</h2>`;
+  document.getElementById('appHeader').classList.remove('home'); document.getElementById('appHeader').innerHTML = `<h2>Simulador de financiamento</h2>`;
   document.getElementById('mainContent').innerHTML = `
     <button class="btn gray" style="width:auto;padding:8px 16px;margin-bottom:12px" onclick="goTab('inicio')">‹ Voltar</button>
     <div class="hint" style="margin-bottom:12px">Estimativa para conversar com o cliente — não é proposta oficial do banco.</div>
@@ -4091,7 +4422,7 @@ function novoRetornoEmBranco(){ _fuPrefill=null; _fuEditId=null; abrirFollowups(
 function cancelarNovoFollowup(){ _fuPrefill=null; _fuEditId=null; abrirFollowups(); toast('Cancelado.'); }
 function abrirFollowups(prefill){
   if(prefill!==undefined) _fuPrefill = prefill;
-  document.getElementById('appHeader').innerHTML = `<h2>Follow-up (retornos)</h2>`;
+  document.getElementById('appHeader').classList.remove('home'); document.getElementById('appHeader').innerHTML = `<h2>Follow-up (retornos)</h2>`;
   const hoje=isoDate(new Date());
   const list=(DB.followups||[]).slice().sort((a,b)=>(a.data||'').localeCompare(b.data||''));
   const pend=list.filter(f=>!f.feito), feitos=list.filter(f=>f.feito);
@@ -4166,6 +4497,7 @@ function salvarFollowup(){
 function feitoFollowup(id){ const f=(DB.followups||[]).find(x=>x.id===id); if(f){ f.feito=true; save(); abrirFollowups(); toast('Marcado como feito.'); } }
 function excluirFollowup(id){ DB.followups=(DB.followups||[]).filter(x=>x.id!==id); save(); abrirFollowups(); }
 function checarFollowups(){
+  if(window.__DEMO) return;
   try{
     if(!('Notification' in window) || Notification.permission!=='granted') return;
     let fired=[]; try{ fired=JSON.parse(localStorage.getItem('cor_fu_fired')||'[]'); }catch(e){}
@@ -4306,7 +4638,7 @@ async function gerarCatalogoPDF(){
 function primeiroDiaMesAtual(){ const d=new Date(); return isoDate(new Date(Date.UTC(d.getFullYear(), d.getMonth(), 1))); }
 function ultimoDiaMesAtual(){ const d=new Date(); return isoDate(new Date(Date.UTC(d.getFullYear(), d.getMonth()+1, 0))); }
 function abrirProdutividade(){
-  document.getElementById('appHeader').innerHTML = `<h2>Produtividade</h2>`;
+  document.getElementById('appHeader').classList.remove('home'); document.getElementById('appHeader').innerHTML = `<h2>Produtividade</h2>`;
   const ims=DB.imoveis||[], ags=DB.agendamentos||[], cls=DB.clientes||[];
   const M = DB.meta||{};
   const dataIni = M.dataIni || primeiroDiaMesAtual();
@@ -4357,7 +4689,7 @@ function salvarMeta(){
 let clienteEditId=null;
 function abrirConsultaIdeal(cli){
   clienteEditId=(cli&&cli.id)||null;
-  document.getElementById('appHeader').innerHTML = `<h2>Consulta ideal</h2>`;
+  document.getElementById('appHeader').classList.remove('home'); document.getElementById('appHeader').innerHTML = `<h2>Consulta ideal</h2>`;
   const nCli=(DB.clientes||[]).length;
   document.getElementById('mainContent').innerHTML = `
     <button class="btn gray" style="width:auto;padding:8px 16px;margin-bottom:10px" onclick="goTab('inicio')">‹ Voltar</button>
@@ -4396,7 +4728,7 @@ const FUNIL=['Novo','Qualificado','Visitou','Proposta','Fechado'];
 function estagioCor(e){ return {'Novo':'#64748B','Qualificado':'#0EA5E9','Visitou':'#F59E0B','Proposta':'#7C3AED','Fechado':'#16A34A'}[e||'Novo']||'#64748B'; }
 function setClienteEstagio(id,e){ const c=(DB.clientes||[]).find(x=>x.id===id); if(!c)return; c.estagio=e; c.updatedAt=Date.now(); save(); abrirClientes(); }
 function abrirClientes(){
-  document.getElementById('appHeader').innerHTML = `<h2>Meus clientes</h2>`;
+  document.getElementById('appHeader').classList.remove('home'); document.getElementById('appHeader').innerHTML = `<h2>Meus clientes</h2>`;
   const cls=(DB.clientes||[]).slice().sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
   const tl={todos:'Todos os tipos',casa:'Casa',apartamento:'Apartamento',chacara:'Sítio/Chácara',terreno:'Terreno'};
   const faixa=c=>{ const mn=parseMoeda(c.valorMin||'')||0, mx=parseMoeda(c.valorMax||'')||0; if(mn&&mx)return fmtBRL(mn)+' a '+fmtBRL(mx); if(mx)return 'até '+fmtBRL(mx); if(mn)return 'a partir de '+fmtBRL(mn); return 'qualquer valor'; };
@@ -4945,7 +5277,7 @@ function medLote(im, campo){
 }
 function renderVisitaForm(){
   document.getElementById('mainNav').classList.remove('hidden');
-  document.getElementById('appHeader').innerHTML = `<h2>${V._novo?'Nova visita':'Editar visita'}</h2>`;
+  document.getElementById('appHeader').classList.remove('home'); document.getElementById('appHeader').innerHTML = `<h2>${V._novo?'Nova visita':'Editar visita'}</h2>`;
   const im = DB.imoveis.find(x=>x.id===V.imovelId);
   document.getElementById('mainContent').innerHTML = `
     <div class="section-title">Imóvel da visita</div>
@@ -5695,6 +6027,8 @@ function renderConfig(){
       <button class="btn" onclick="promptInstall()">📲 Instalar o app neste celular</button>
       <div style="font-size:11px;color:var(--muted);margin:6px 0 12px">Coloca o Cor Sync Imóveis como aplicativo de verdade: ícone próprio, tela cheia, sem barra do navegador.</div>
       <button class="btn gray" onclick="openTutorial(0)">📖 Ver tutorial do app</button>
+      <button class="btn" style="margin-top:8px" onclick="tourMenu()">🧭 Tour guiado pelos botões</button>
+      <button class="btn" style="margin-top:8px;background:#7C3AED" onclick="entrarManual()">📖 Manual com dados de exemplo</button>
       <button class="btn gray" style="margin-top:8px" onclick="showPermsOnboarding()">🔒 Sobre as permissões (câmera e avisos)</button>
       <button class="btn gray" style="margin-top:8px" onclick="window.open('https://wa.me/${PRO_WHATS}?text=' + encodeURIComponent('Oi! Preciso de ajuda com o Cor Sync Imóveis.'))">💬 Suporte e dúvidas (WhatsApp)</button>
       ${_pdfDisponivel()
@@ -5741,6 +6075,11 @@ function renderConfig(){
       Dados salvos localmente neste aparelho.<br>
       Módulo ativo: <b>Vender › Casa, Apartamento, Chácara e Terreno</b>.<br>
       <span>🌐 Busca de CEP e rotas (Waze/Google Maps) precisam de internet; o restante funciona offline.</span>
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:11.5px;line-height:1.55">
+        <b style="color:var(--text)">© 2026 Cor Sync Imóveis. Todos os direitos reservados.</b><br>
+        O aplicativo, seu código, sua marca, seus textos e telas são protegidos por direitos autorais. É proibido copiar, reproduzir, redistribuir ou fazer engenharia reversa sem autorização por escrito.<br>
+        <span style="color:var(--muted)">Gerador de PDF: jsPDF (licença MIT).</span>
+      </div>
     </div>`;
   if(c.temFoto) idbGet(keyCorretorFoto()).then(d=>{ if(d){ const el=document.getElementById('cfgCorThumb'); if(el){ el.style.overflow='hidden'; el.innerHTML=`<img src="${d}" style="width:100%;height:100%;object-fit:cover">`; } } }).catch(()=>{});
   stopProCountdownTicker();
@@ -5766,7 +6105,7 @@ function stopProCountdownTicker(){ if(_proCountdownTimer){ clearInterval(_proCou
 function renderDadosCorretor(){
   const c = DB.corretor || {nome:'',creci:'',validadeCreci:''};
   document.getElementById('mainNav').classList.remove('hidden');
-  document.getElementById('appHeader').innerHTML = `<h2>Dados do corretor</h2>`;
+  document.getElementById('appHeader').classList.remove('home'); document.getElementById('appHeader').innerHTML = `<h2>Dados do corretor</h2>`;
   document.getElementById('mainContent').innerHTML = `
     <div class="card">
       <div style="display:flex;justify-content:center;margin:4px 0 12px">
