@@ -253,8 +253,10 @@ nav button.on .nic{background:var(--pblue)}
 .appt .tt{position:absolute;top:12px;right:12px;background:var(--pblue);color:var(--dark);font-size:11px;font-weight:800;padding:5px 10px;border-radius:100px;font-family:'IBM Plex Mono',monospace}
 .appt .thumb{width:64px;height:64px;border-radius:15px;flex-shrink:0;object-fit:cover;background:var(--pblue);color:var(--primary);display:flex;align-items:center;justify-content:center;overflow:hidden}
 .appt .kind{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:800;color:var(--primary);background:var(--pblue);padding:3px 8px;border-radius:100px;text-transform:uppercase}
-.appt .acts{display:flex;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
-.appt .act{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;border-radius:12px;font-size:12px;font-weight:700;border:1px solid var(--line);background:var(--surface);color:var(--text);cursor:pointer}
+.appt .acts{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+.appt .acts .act{grid-column:span 2}
+.appt .acts .act.s3{grid-column:span 3}
+.appt .act{flex:1;min-width:0;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 6px;border-radius:12px;font-size:12px;font-weight:700;border:1px solid var(--line);background:var(--surface);color:var(--text);cursor:pointer}
 .appt .act.wa{background:#E9F9F1;border-color:#CFF0E0;color:#128A56}
 .appt .act.gps{background:var(--pblue);border-color:var(--pblue);color:var(--dark)}
 svg{display:block}
@@ -772,7 +774,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.48.0';
+const APP_VERSION = '1.48.2';
 // Ajudante para inserir ícones do kit (traço) em qualquer lugar
 function ic(name, size, style){ size=size||18; return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"${style?` style="${style}"`:''}><use href="#i-${name}"/></svg>`; }
 // Logo da marca (usado na splash e nas telas de senha)
@@ -3202,8 +3204,9 @@ function stepPaneHTML(i){
     <div class="field"><label>Endereço</label><input value="${esc(W.endereco)}" placeholder="Preenchido pelo CEP — você pode complementar" oninput="W.endereco=this.value"></div>
     <div class="row2">
       <div class="field"><label>Número</label><input value="${esc(W.numero)}" oninput="W.numero=this.value"></div>
-      <div class="field"><label>Complemento</label><input value="${esc(W.complemento)}" oninput="W.complemento=this.value"></div>
+      <div class="field"><label>Complemento</label><input value="${esc(W.complemento)}" maxlength="40" placeholder="opcional" autocomplete="off" oninput="W.complemento=this.value"></div>
     </div>
+    <div class="hint" style="margin:-4px 0 10px">Complemento (apto, bloco, casa 2…) é <b>opcional</b> — pode deixar em branco.</div>
     <div class="field"><label>Bairro</label><input value="${esc(W.bairro)}" maxlength="40" oninput="W.bairro=this.value"></div>
     <div class="row2">
       <div class="field" style="flex:2"><label>Cidade</label><input value="${esc(W.cidade)}" maxlength="30" oninput="W.cidade=this.value"></div>
@@ -3757,7 +3760,7 @@ async function gravarImovel(semSair){
   }
   const imovel = {
     id: W.id, tipo: W.tipo||'casa', codigo: W.codigo, status: (DB.imoveis.find(x=>x.id===W.id)||{}).status || W.status || 'Disponível', dataInclusao: W.dataInclusao||isoDate(new Date(W.createdAt||Date.now())), createdAt: W.createdAt, updatedAt: Date.now(),
-    localizacao:{ tipoEndereco:W.tipoEndereco, endereco:W.endereco, numero:W.numero, complemento:W.complemento, bairro:W.bairro, cidade:W.cidade, estado:W.estado, cep:W.cep },
+    localizacao:{ tipoEndereco:W.tipoEndereco, endereco:W.endereco, numero:W.numero, complemento:(W.complemento||'').trim(), bairro:W.bairro, cidade:W.cidade, estado:W.estado, cep:W.cep },
     proprietario:{ id:W.proprietarioId||'', nome:W.nome, tel1:W.tel1, tel2:W.tel2, tel3:W.tel3, email1:W.email1, email2:W.email2 },
     origemCaptacao:W.origemCaptacao||'', origemCaptacaoDetalhe:W.origemCaptacaoDetalhe||'',
     caracteristicas:{ terreno:W.terreno, construcao:W.construcao, medFrente:W.medFrente||'', medFundos:W.medFundos||'', medEsquerdo:W.medEsquerdo||'', medDireito:W.medDireito||'', condicao:W.condicao, morador:W.morador, sacada:!!W.sacada, casaGerminada:!!W.casaGerminada, temCorredor:!!W.temCorredor, tipoCasa:W.tipoCasa, outroTipo:W.outroTipo,
@@ -5152,9 +5155,9 @@ function agCardHTML(a, mostrarData){
     <div class="acts">
       <div class="act wa" ${tel.length>=10?`onclick="window.open('https://wa.me/55${tel}?text='+encodeURIComponent(getMsgComprador()),'_blank')"`:`onclick="toast('Telefone do comprador não cadastrado.')" style="opacity:.5"`}>${ic('chat',15)} WhatsApp</div>
       <div class="act gps" onclick="abrirRota('${esc(enderecoFull).replace(/'/g,"\\'")}')">${ic('nav',15)} Rota</div>
-      <div class="act" style="background:#7C3AED;border-color:#7C3AED;color:#fff" onclick="agendarRetornoDaVisita('${a.id}')">📞 Retorno</div>
-      <div class="act" style="background:#F97316;border-color:#F97316;color:#fff" onclick="editarAgendamento('${a.id}')">${ic('edit',15)} Editar</div>
-      <div class="act" style="background:var(--danger);border-color:var(--danger);color:#fff" onclick="excluirAgendamento('${a.id}')">${ic('trash',15)} Cancelar</div>
+      <div class="act" style="background:#7C3AED;border-color:#7C3AED;color:#fff" onclick="agendarRetornoDaVisita('${a.id}')">${ic('phone',15)} Retorno</div>
+      <div class="act s3" style="background:#F97316;border-color:#F97316;color:#fff" onclick="editarAgendamento('${a.id}')">${ic('edit',15)} Editar</div>
+      <div class="act s3" style="background:var(--danger);border-color:var(--danger);color:#fff" onclick="excluirAgendamento('${a.id}')">${ic('trash',15)} Cancelar</div>
     </div>
     <div class="act" style="margin-top:8px;background:${avaliacaoCor(a.avaliacao||0)};color:${(a.avaliacao||0)>=6?'#fff':'var(--text)'};border-color:var(--border);font-weight:800" onclick="abrirAvaliacao('${a.id}')">${ic('thermo',15)} Avaliação do interesse: ${a.avaliacao||0}/10 — toque para ajustar</div>${a.observacoes?`<div style="font-size:12px;color:var(--text);margin-top:6px;padding:8px 10px;background:var(--pblue);border-radius:8px"><b>Parecer:</b> ${esc(a.observacoes)}</div>`:''}
   </div>`;

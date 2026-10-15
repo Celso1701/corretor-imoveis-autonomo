@@ -1,5 +1,15 @@
 # Cor Sync Imóveis — Histórico de versões
 
+## v1.48.2 — Botões do card de visita alinhados
+- **Agenda › card da visita:** os botões agora ficam em duas linhas alinhadas e do mesmo tamanho — **WhatsApp · Rota · Retorno** em cima e **Editar · Cancelar** embaixo. O botão **Cancelar** não sai mais cortado da tela.
+- O botão **Retorno** passou a usar o ícone de telefone do app (antes um emoji deixava o botão mais alto).
+- Com a letra aumentada (zoom), os botões continuam dentro do card e a barra "Avaliação do interesse" quebra em duas linhas.
+
+## v1.48.1 — Complemento do endereço opcional (deixa passar vazio)
+- **Cadastro do imóvel › Localização:** o campo **Complemento** é opcional e agora isso está explícito na tela — texto "opcional" dentro do campo e aviso abaixo ("pode deixar em branco"). Limite de 40 caracteres e sem autopreenchimento do navegador.
+- Complemento só com espaços é gravado como vazio.
+- Verificado: **Avançar**, **Gravar**, o fluxo completo do cadastro até a Revisão e a edição de imóvel já cadastrado funcionam com o Complemento em branco.
+
 ## v1.48.0 — Manual com dados de exemplo, tour guiado e direitos autorais
 - **📖 Manual com dados de exemplo (novo):** o app abre preenchido com dados **fictícios** — 6 imóveis com fotos de exemplo (casa, apartamento, terreno, chácara; disponível, reservado e vendido), 4 proprietários, 5 visitas (hoje, amanhã, semana e passada), compradores em todas as etapas do funil, retornos (hoje, atrasado, futuro e feito), despesas e receitas do mês e meta de vendas — para o prospecto entender cada tela.
   - Barra roxa fixa no topo com **✕ Sair do manual** e **🧭 Tour** sempre à mão.
