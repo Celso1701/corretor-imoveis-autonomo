@@ -1,59 +1,63 @@
-// Service Worker — Corretor de Imóveis
-// Mesmo padrão do VetFlowCare: "network-first" (sempre busca a versão mais nova
-// quando há internet; o cache só responde quando o aparelho está OFFLINE) e
-// apaga sozinho os caches antigos ao ativar. Isso evita o problema clássico de
-// PWA de ficar preso numa versão antiga (index.html, manifest.json ou ícones
-// desatualizados) mesmo depois de você atualizar os arquivos no GitHub.
+// Service Worker — Cor Sync Imóveis
+// "Rede primeiro, cache de reserva": com internet, sempre busca a versão mais nova; sem internet
+// (ou com internet muito lenta) o app abre pelo que está guardado no cache. Os caches antigos são
+// apagados sozinhos ao ativar, para o app nunca ficar preso numa versão velha.
 //
-// IMPORTANTE: sempre que publicar uma atualização (novo index.html, manifest.json
-// ou ícones), MUDE o número da versão abaixo (ex: 'v2' → 'v3'). É essa mudança de
-// texto que faz o navegador perceber que o sw.js é diferente e instalar a nova
-// versão — sem isso, ele pode continuar usando o service worker antigo.
-const CACHE_VERSION = 'v1.48.2';
+// IMPORTANTE: a cada publicação (novo index.html, manifest.json ou ícones) MUDE o número da versão abaixo.
+// É essa mudança de texto que faz o navegador instalar o novo service worker.
+const CACHE_VERSION = 'v1.48.3';
 const CACHE_NAME = 'corretor-imoveis-' + CACHE_VERSION;
+const ESPERA_REDE_MS = 4000;   // internet lenta: depois disso, abre pelo cache
 
-// Arquivos essenciais para o app abrir mesmo sem internet.
+// Arquivos essenciais para o app abrir mesmo sem internet (todos existem no repositório).
 const PRECACHE_URLS = [
   './',
   './index.html',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
-  './icon-512-maskable.png',
-  './logo.jpg'
+  './icon-512-maskable.png'
 ];
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
+  // Guarda cada arquivo separadamente: se um falhar, os outros continuam sendo guardados.
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS)).catch(() => {})
+    caches.open(CACHE_NAME).then((cache) =>
+      Promise.all(PRECACHE_URLS.map((u) => cache.add(u).catch(() => {})))
+    )
   );
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((names) =>
-      Promise.all(
-        names
-          .filter((name) => name !== CACHE_NAME)
-          .map((name) => caches.delete(name))
-      )
+      Promise.all(names.filter((n) => n !== CACHE_NAME).map((n) => caches.delete(n)))
     ).then(() => self.clients.claim())
   );
 });
 
-// Network-first: tenta buscar a versão mais nova na internet; se conseguir,
-// atualiza o cache. Se não houver internet, usa o que estiver salvo no cache.
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') return;
+  const req = event.request;
+  if (req.method !== 'GET') return;
+  const url = new URL(req.url);
+  if (url.origin !== self.location.origin) return;   // consulta de CEP etc.: o navegador cuida
 
-  event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy)).catch(() => {});
-        return response;
-      })
-      .catch(() => caches.match(event.request).then((cached) => cached || caches.match('./index.html')))
-  );
+  event.respondWith((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    const guardado = (await cache.match(req)) ||
+      (req.mode === 'navigate' ? (await cache.match('./index.html')) || (await cache.match('./')) : undefined);
+
+    const rede = fetch(req).then((resp) => {
+      // só guarda respostas boas do próprio site (nunca páginas de erro)
+      if (resp && resp.ok && resp.type === 'basic') cache.put(req, resp.clone()).catch(() => {});
+      return resp;
+    });
+
+    if (!guardado) return rede.catch(() => Response.error());
+    return Promise.race([
+      rede.catch(() => guardado),
+      new Promise((res) => setTimeout(() => res(guardado), ESPERA_REDE_MS))
+    ]);
+  })());
 });

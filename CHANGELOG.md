@@ -1,5 +1,19 @@
 # Cor Sync Imóveis — Histórico de versões
 
+## v1.48.3 — Auditoria geral: correções de segurança, datas e tutorial
+- **Início:** o número da versão aparece ao lado direito do topo.
+- **Datas locais:** o app deixou de usar data UTC; visitas, retornos e relatórios respeitam o fuso do aparelho (testado em 5 fusos).
+- **Visitas:** data e hora agora são obrigatórias e validadas ao salvar.
+- **Teste grátis:** apagar os dados do app não reinicia mais os 30 dias — a data de expiração fica guardada e é recuperada.
+- **Backup:** restaurar um backup antigo não estende mais o teste (vale o mais antigo).
+- **Apagar tudo:** agora também remove fotos e vídeos guardados no aparelho.
+- **Renovação do Pro:** códigos novos têm série e podem ser usados na renovação (exigem o app 1.48.3 ou superior; códigos antigos continuam válidos uma vez).
+- **Funcionamento offline:** o service worker guarda cada arquivo separadamente; uma falha em um arquivo não impede a instalação dos outros.
+- **Tutorial e tour guiado:** textos e passos alinhados com o comportamento real do app (53 passos conferidos), incluindo a ordem das etapas do cadastro de imóvel.
+- **Mensagem de WhatsApp:** limite de 250 caracteres no texto.
+- **Telas de 320 px:** corrigida a rolagem horizontal.
+- **Catálogo e listas:** código do imóvel, quartos e banheiros passam a ser escapados antes de aparecer na tela (proteção contra HTML nos campos).
+
 ## v1.48.2 — Botões do card de visita alinhados
 - **Agenda › card da visita:** os botões agora ficam em duas linhas alinhadas e do mesmo tamanho — **WhatsApp · Rota · Retorno** em cima e **Editar · Cancelar** embaixo. O botão **Cancelar** não sai mais cortado da tela.
 - O botão **Retorno** passou a usar o ícone de telefone do app (antes um emoji deixava o botão mais alto).

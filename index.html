@@ -188,7 +188,7 @@ legend{padding:0;margin-bottom:8px;font-size:11px;font-weight:700;color:var(--mu
 .review-item{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px}
 .review-item:last-child{border-bottom:none}
 .review-item .k{color:var(--muted);width:44%;flex-shrink:0}
-.review-item .v{font-weight:700;text-align:right}
+.review-item .v{font-weight:700;text-align:right;min-width:0;overflow-wrap:anywhere}
 .review-block{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:4px 14px;margin-bottom:12px;box-shadow:var(--shadow)}
 .review-block-title{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--primary);padding-top:11px;font-weight:700}
 .wizfooter{position:fixed;bottom:calc(62px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);width:100%;max-width:480px;padding:12px 18px calc(12px + env(safe-area-inset-bottom));background:var(--bg);border-top:1px solid var(--border);z-index:20}
@@ -264,6 +264,8 @@ svg{display:block}
 header.topbar.home{padding:0;background:transparent;box-shadow:none}
 .hhero{background:linear-gradient(135deg,var(--primary) 0%,var(--dark) 100%);color:#fff;padding:16px 18px 20px;border-radius:0 0 22px 22px}
 .hhero .eyebrow{color:#fff;opacity:.85}
+.hhero .hrow{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.hhero .hver{font-size:11px;font-weight:700;letter-spacing:.3px;color:#fff;background:rgba(255,255,255,.18);border-radius:999px;padding:3px 9px;white-space:nowrap}
 .hhero .top{display:flex;justify-content:space-between;align-items:flex-start;margin-top:4px}
 .hhero h1{font-size:24px;font-weight:800;line-height:1.12;letter-spacing:-.3px}
 .hhero .sub{font-size:13.5px;opacity:.92;margin-top:3px}
@@ -774,7 +776,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.48.2';
+const APP_VERSION = '1.48.3';
 // Ajudante para inserir ícones do kit (traço) em qualquer lugar
 function ic(name, size, style){ size=size||18; return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"${style?` style="${style}"`:''}><use href="#i-${name}"/></svg>`; }
 // Logo da marca (usado na splash e nas telas de senha)
@@ -1209,7 +1211,10 @@ async function doRestaurarBackup(){
     let atuais = {}; try{ atuais = await idbAllEntries(); }catch(e){ atuais = {}; }
     for(const k of Object.keys(atuais)){ try{ await idbDel(k); }catch(e){} }
     if(pkg.midia){ for(const k of Object.keys(pkg.midia)){ try{ await idbPut(k, pkg.midia[k]); }catch(e){} } }
+    const trialAtual = DB && DB.trial;   // teste grátis deste aparelho
     DB = pkg.dados;
+    // O teste grátis também não pode ser estendido editando o arquivo de backup: vale o MAIS ANTIGO entre o do aparelho e o do backup.
+    try{ const tb = DB.trial; if(trialAtual && trialAtual.startedAt && (!tb || !tb.startedAt || trialAtual.startedAt < tb.startedAt)) DB.trial = trialAtual; }catch(e){}
     // O backup NUNCA traz a licença Pro nem o ID de outro aparelho — evita licença "viajar" para outro celular.
     DB.license = { pro:false };
     DB.devId = /^[A-Z0-9]{4}$/.test(meuDevIdAtual) ? meuDevIdAtual : makeDevId();
@@ -1231,8 +1236,8 @@ const PLAN_BY_IDX = {1:1, 2:6, 3:12};     /* dígito do código -> meses */
 const IDX_BY_PLAN = {1:1, 6:2, 12:3};     /* meses -> dígito do código */
 /* Portão de convite (fase de testes): DESLIGADO por padrão. */
 const PORTAO_CONVITE = false;
-function todayISO(){ return new Date().toISOString().slice(0,10); }
-function addMonths(iso, m){ const d = new Date((iso||todayISO())+'T00:00:00'); d.setMonth(d.getMonth() + (m||0)); return d.toISOString().slice(0,10); }
+function todayISO(){ return isoDate(new Date()); }   // data LOCAL do aparelho (não UTC): depois das 21h no Brasil o dia ainda é o de hoje
+function addMonths(iso, m){ const d = new Date((iso||todayISO())+'T00:00:00'); const dia=d.getDate(); d.setDate(1); d.setMonth(d.getMonth() + (m||0)); d.setDate(Math.min(dia, new Date(d.getFullYear(), d.getMonth()+1, 0).getDate())); return isoDate(d); }   // 31/10 + 1 mês = 30/11 (não 01/12)
 function makeDevId(){
   const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let out = '';
@@ -1245,18 +1250,22 @@ function myDevId(){
   if(!/^[A-Z0-9]{4}$/.test(DB.devId||'')){ DB.devId = makeDevId(); try{ save(); }catch(e){} }
   return DB.devId;
 }
-function corChecksum(devId, planIdx){
-  let h = 7; const s = (devId||'') + '|' + planIdx + '|CORRETORIMOVEISPRO';
+function corChecksum(devId, planIdx, serie){
+  // serie = nº da renovação (2 dígitos). Sem série = código antigo (COR-XXXX-Ynnn), que continua valendo para a 1ª ativação.
+  let h = 7; const s = (devId||'') + '|' + planIdx + '|CORRETORIMOVEISPRO' + (serie ? '|' + serie : '');
   for(let i=0;i<s.length;i++) h = (h*31 + s.charCodeAt(i)) % 99991;
   return String(100 + (h % 900));
 }
 function corCheck(code){
-  const m = /^COR-([A-Z0-9]{4})-([123])(\d{3})$/.exec((code||'').toUpperCase().trim());
-  if(!m) return { ok:false, motivo:'formato' };
-  const dev = m[1], idx = +m[2], chk = m[3];
+  const c = (code||'').toUpperCase().trim();
+  // Formato novo (renovável): COR-XXXX-Y SS nnn  (SS = série da renovação, nnn = verificação) · formato antigo: COR-XXXX-Y nnn
+  let m = /^COR-([A-Z0-9]{4})-([123])(\d{2})(\d{3})$/.exec(c), serie = '';
+  if(m){ serie = m[3]; if(serie==='00') return { ok:false, motivo:'formato' }; }
+  else { const a = /^COR-([A-Z0-9]{4})-([123])(\d{3})$/.exec(c); if(!a) return { ok:false, motivo:'formato' }; m = [a[0], a[1], a[2], '', a[3]]; }
+  const dev = m[1], idx = +m[2], chk = m[4];
   if(dev !== myDevId()) return { ok:false, motivo:'aparelho' };
-  if(corChecksum(dev, idx) !== chk) return { ok:false, motivo:'invalido' };
-  return { ok:true, meses: PLAN_BY_IDX[idx] };
+  if(corChecksum(dev, idx, serie) !== chk) return { ok:false, motivo:'invalido' };
+  return { ok:true, meses: PLAN_BY_IDX[idx], serie: serie };
 }
 /* Convite (fase de testes) — mesmo cálculo usado na Central de Envio, se ligar o portão */
 function inviteChecksum(seed){ let h=7; const s=(seed||'')+'CONVITECORRETOR'; for(let i=0;i<s.length;i++) h=(h*31 + s.charCodeAt(i))%99991; return String(1000 + (h%9000)); }
@@ -1269,10 +1278,10 @@ function usedCodes(){ try{ return JSON.parse(localStorage.getItem('cor_used_code
 function maskProCode(el){
   let v = el.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
   if(v.indexOf('COR')===0) v = v.slice(3);
-  v = v.slice(0,8);
+  v = v.slice(0,10);
   let out = 'COR';
   if(v.length>0) out += '-' + v.slice(0,4);
-  if(v.length>4) out += '-' + v.slice(4,8);
+  if(v.length>4) out += '-' + v.slice(4,10);
   el.value = out;
 }
 function copiarDevId(){ const d='AP-'+myDevId(); if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(d).then(function(){ toast('ID copiado!'); }).catch(function(){ toast(d); }); } else { toast(d); } }
@@ -1299,7 +1308,7 @@ function renderTrialBloqueado(){
       </div>
       <button class="btn" style="background:#25D366" onclick="abrirWhatsPro()">${ic('chat',16)} Assinar pelo WhatsApp</button>
       <label style="display:block;margin-top:16px;font-size:12px;font-weight:700;color:rgba(255,255,255,.75);text-align:left">Já tem um código?</label>
-      <input id="trialProCode" placeholder="COR-XXXX-0000" autocapitalize="characters" style="text-align:center;letter-spacing:2px;font-weight:700;margin-top:6px" oninput="maskProCode(this)">
+      <input id="trialProCode" placeholder="COR-XXXX-000000" autocapitalize="characters" style="text-align:center;letter-spacing:2px;font-weight:700;margin-top:6px" oninput="maskProCode(this)">
       <button class="btn" style="margin-top:10px" onclick="ativarProDoBloqueio()">Ativar Pro</button>
       <div class="auth-err" id="trialLockErr"></div>
     </div>`;
@@ -1310,7 +1319,7 @@ function ativarProDoBloqueio(){
   const err=document.getElementById('trialLockErr'); if(err) err.textContent='';
   if(!code){ if(err) err.textContent='Digite o código.'; return; }
   const r=corCheck(code);
-  if(!r.ok){ if(err) err.textContent = r.motivo==='aparelho'?'Este código foi gerado para outro aparelho.':(r.motivo==='formato'?'Formato inválido — use COR-XXXX-0000.':'Código inválido.'); return; }
+  if(!r.ok){ if(err) err.textContent = r.motivo==='aparelho'?'Este código foi gerado para outro aparelho.':(r.motivo==='formato'?'Formato inválido — confira o código recebido (ex.: COR-AB12-110345).':'Código inválido.'); return; }
   if(usedCodes().indexOf(code)>=0){ if(err) err.textContent='Este código já foi usado neste aparelho.'; return; }
   const aplicar=function(){
     const meses=r.meses; const base=isProReal()?DB.license.expiresAt:todayISO();
@@ -1374,7 +1383,7 @@ function openProModal(reason){
     </div>
     <button class="btn" style="background:#25D366;margin-top:12px" onclick="abrirWhatsPro()">${ic('chat',16)} Assinar pelo WhatsApp</button>
     <label style="display:block;margin-top:14px;font-size:12px;font-weight:700;color:var(--muted)">Já tem um código? Digite aqui</label>
-    <input id="proCode" placeholder="COR-XXXX-0000" autocapitalize="characters" style="text-transform:uppercase;letter-spacing:2px;text-align:center;font-weight:700" oninput="maskProCode(this)">
+    <input id="proCode" placeholder="COR-XXXX-000000" autocapitalize="characters" style="text-transform:uppercase;letter-spacing:2px;text-align:center;font-weight:700" oninput="maskProCode(this)">
   `,
     `<button class="btn gray" onclick="closeSheet()">Cancelar</button>
      <button class="btn" onclick="activatePro()">Ativar Pro</button>`);
@@ -1453,13 +1462,22 @@ function trialBloqueadoTotal(){
 // ═══ TESTE GRÁTIS DE 30 DIAS (mesmo padrão do VetFlowCare) ═══
 const TRIAL_DIAS = 30;
 const TRIAL_AVISO_DIAS = 5; // avisa quando faltar 5 dias ou menos
-function addDays(iso, n){ const d = new Date((iso||todayISO())+'T00:00:00'); d.setDate(d.getDate()+(n||0)); return d.toISOString().slice(0,10); }
+function addDays(iso, n){ const d = new Date((iso||todayISO())+'T00:00:00'); d.setDate(d.getDate()+(n||0)); return isoDate(d); }
 // Marca "este aparelho já usou o trial" em várias chaves + espelho no IndexedDB (sobrevive a reinstalação)
 const TRIAL_MARKS = ['cor_trial_used', 'cor_tu2', 'cortrial'];
 const TRIAL_IDB_KEY = '__cor_trial_flag__';
-function marcarTrialUsado(){
-  try{ TRIAL_MARKS.forEach(k => localStorage.setItem(k, '1')); }catch(e){}
-  try{ idbPut(TRIAL_IDB_KEY, {used:1, at:new Date().toISOString()}); }catch(e){}
+function marcarTrialUsado(expiraEm){
+  // Cada marca guarda a DATA DE FIM do teste: se os dados forem apagados (Ajustes → Apagar tudo), o relógio do teste continua o mesmo.
+  const v = /^\d{4}-\d{2}-\d{2}$/.test(expiraEm||'') ? expiraEm : '1';
+  try{ TRIAL_MARKS.forEach(k => localStorage.setItem(k, v)); }catch(e){}
+  try{ idbPut(TRIAL_IDB_KEY, {used:1, at:new Date().toISOString(), exp:(v==='1'?'':v)}); }catch(e){}
+}
+// Aparelho que já usou o teste mas ficou sem registro dele (dados apagados): devolve o teste como ele era — ou já vencido, se só existir a marca antiga.
+function trialRecuperar(){
+  let exp='';
+  try{ for(const k of TRIAL_MARKS){ const v=localStorage.getItem(k); if(/^\d{4}-\d{2}-\d{2}$/.test(v||'')){ exp=v; break; } } }catch(e){}
+  if(!exp) exp='2000-01-31';
+  return { active:true, startedAt:addDays(exp,-TRIAL_DIAS), expiresAt:exp };
 }
 function trialJaUsado(){
   for(const k of TRIAL_MARKS){ try{ if(localStorage.getItem(k)) return true; }catch(e){} }
@@ -1477,7 +1495,7 @@ async function trialJaUsadoForte(){
 function iniciarTrial(){
   const hoje = todayISO();
   DB.trial = { active:true, startedAt:hoje, expiresAt:addDays(hoje, TRIAL_DIAS) };
-  marcarTrialUsado();
+  marcarTrialUsado(DB.trial.expiresAt);
   try{ save(); }catch(e){}
 }
 function trialAtivo(){ const T=DB.trial; if(!T||!T.active||!T.expiresAt) return false; return todayISO() <= T.expiresAt; }
@@ -1554,16 +1572,18 @@ const TUT_STEPS = [
   {emo:'🏘️', title:'Cadastrar um imóvel',
    body:`Toque em <b>➕ Cadastrar imóvel</b> na tela inicial:<br><br>
    • Escolha o tipo: casa, apartamento, chácara ou terreno<br>
-   • Preencha localização, valores e características em poucos passos<br>
-   • Envie fotos pela <b>📷 câmera</b> ou pela galeria<br>
+   • São 8 etapas: localização, características, garagem e infraestrutura, fotos, vídeo, certidões, proprietário e revisão (valores)<br>
+   • Só o <b>endereço</b> e o <b>nome do proprietário</b> são obrigatórios — o resto pode ser completado depois<br>
+   • Envie fotos pela <b>📷 câmera</b> ou pela galeria (a foto principal primeiro)<br>
    • Um código único é gerado automaticamente para cada imóvel`,
    action:{label:'🏘️ Cadastrar meu primeiro imóvel', fn:'finishTutorial(true);abrirTipos()'},
    action2:{label:'🧭 Mostrar o passo a passo na tela', fn:"finishTutorial(true);tourStart('cadastro')"}},
   {emo:'👤', title:'Proprietários',
    body:`Em <b>Proprietários</b>, cadastre quem é dono de cada imóvel:<br><br>
-   • Nome, telefone e documentos<br>
-   • Vincule um ou mais imóveis a cada proprietário<br>
-   • O telefone vira botão de <b>WhatsApp</b> direto no perfil`,
+   • Nome, RG, CPF, até 3 telefones e 2 e-mails<br>
+   • Busque por <b>nome</b> ou por <b>celular</b><br>
+   • No cadastro do imóvel, na etapa <b>Proprietário</b>, escolha um dono já cadastrado — ou cadastre um novo na hora<br>
+   • O <b>WhatsApp do proprietário</b> aparece quando você envia uma proposta (imóvel › <b>Gerar proposta</b>)`,
    action:{label:'👤 Ir para Proprietários', fn:'finishTutorial(true);goTab(\'proprietarios\')'},
    action2:{label:'🧭 Mostrar os botões na tela', fn:"finishTutorial(true);tourStart('proprietarios')"}},
   {emo:'📅', title:'Agenda — visitas de qualquer mês',
@@ -1588,13 +1608,14 @@ const TUT_STEPS = [
    • <b>📚 Catálogo</b> — PDF vitrine de vários imóveis`,
    action:{label:'🧭 Mostrar os botões na tela', fn:"finishTutorial(true);tourStart('ferramentas')"}},
   {emo:'💾', title:'Backup — proteja seus dados',
-   body:`Seus dados ficam <b>só neste aparelho</b>. Em <b>Ajustes → Becape</b>, exporte um backup completo de vez em quando — assim você não perde nada ao trocar de celular.`,
+   body:`Seus dados ficam <b>só neste aparelho</b>. Em <b>Ajustes → Becape e proteção de dados</b>, toque em <b>Exportar backup</b> de vez em quando — assim você não perde nada ao trocar de celular. Para voltar os dados, use <b>Importar backup</b>.<br><br>
+   🔐 Em <b>Ajustes → Segurança e login</b> você pode criar uma <b>senha</b> que criptografa os dados e é pedida ao abrir o app.`,
    action:{label:'🧭 Mostrar os botões de Ajustes', fn:"finishTutorial(true);tourStart('ajustes')"}},
   {emo:'🔒', title:'Sobre as permissões do app',
    body:`O Cor Sync Imóveis respeita sua privacidade. Ele só usa:<br><br>
    • <b>📷 Câmera</b> — só quando VOCÊ toca para fotografar um imóvel ou documento<br>
    • <b>🔔 Notificações</b> — para lembrar de visitas vencendo, se você permitir<br><br>
-   Nada é enviado para fora do aparelho — os dados ficam <b>salvos localmente</b>. Você pode desligar quando quiser em <b>Ajustes</b>.`,
+   Seus imóveis, clientes e fotos ficam <b>salvos só neste aparelho</b> — o app não tem servidor. Só saem do aparelho a <b>consulta de CEP</b> (internet) e o que <b>você</b> envia por WhatsApp, e-mail ou PDF. Você pode desligar as permissões quando quiser em <b>Ajustes</b>.`,
    action:{label:'Entendi, ativar avisos', fn:'ativarNotifPerms()'}},
   {emo:'🎉', title:'Tudo pronto!',
    body:`Você já conhece o essencial do Cor Sync Imóveis. 🏠<br><br>
@@ -1776,10 +1797,14 @@ const TOURS = {
   inicio:{ nome:'🏠 Tela inicial', steps:[
     {go:_tg('inicio'), sel:'.hbell', emo:'🔔', title:'Sino de avisos', text:'Mostra um número quando há <b>visitas vencidas ou de hoje</b>. Toque para ver a lista completa.'},
     {sel:'.hsearch', emo:'🔎', title:'Busca rápida', text:'Procure um imóvel pelo nome do proprietário, endereço ou cidade, direto daqui.'},
+    {sel:'.creci-ok', emo:'🪪', title:'Carteira CRECI', text:'Mostra se o seu CRECI está em dia e avisa quando a validade estiver chegando. Toque para preencher ou corrigir em <b>Ajustes › Dados do corretor</b>.'},
     {sel:'.hero-btn[onclick*="abrirTipos"]', emo:'🏘️', title:'Cadastrar imóvel', text:'É por este botão que você cadastra <b>casa, apartamento, chácara ou terreno</b>.'},
     {sel:'.hero-btn[onclick*="abrirConsultaIdeal"]', emo:'🎯', title:'Consulta ideal', text:'Informe o que o cliente procura (tipo, cidade, quartos, faixa de valor) e o app mostra os imóveis que combinam — e salva o cliente no funil.'},
-    {sel:'.qtile[onclick*="proprietarios"]', emo:'👥', title:'Proprietários', text:'Cadastro dos donos dos imóveis, com busca por nome ou celular e WhatsApp direto.'},
+    {sel:'.qtile[onclick*="goTab(\'imoveis\')"]', emo:'🏠', title:'Imóveis', text:'Atalho para a lista dos imóveis cadastrados. O número mostra quantos você já tem.'},
+    {sel:'.qtile[onclick*="proprietarios"]', emo:'👥', title:'Proprietários', text:'Cadastro dos donos dos imóveis (nome, telefones e documentos), com busca por nome ou celular.'},
+    {sel:'.qtile[onclick*="goTab(\'agenda\')"]', emo:'📅', title:'Agenda', text:'Abre o calendário de visitas. O cartão mostra quantas visitas você tem <b>hoje</b>.'},
     {sel:'.qtile[onclick*="abrirCompradores"]', emo:'🤝', title:'Compradores', text:'Lista dos compradores que você cadastrou nas visitas (nome e telefones), com busca por nome ou celular.'},
+    {sel:'.vtoph', emo:'🗓️', title:'Próximas visitas', text:'Abaixo dos atalhos ficam as próximas visitas, com <b>WhatsApp</b> e <b>Rota</b> direto no cartão. Toque no nome para editar a visita.', fallback:'Quando você marcar visitas, as próximas aparecem aqui embaixo, com os botões <b>WhatsApp</b> e <b>Rota</b>.'},
     {sel:'nav', emo:'📍', title:'Barra de navegação', text:'Fica sempre embaixo: <b>Início, Imóveis, Agenda, Propriet., Financ. e Ajustes</b>. Toque para trocar de tela a qualquer momento.'}
   ]},
   ferramentas:{ nome:'🧰 Ferramentas', steps:[
@@ -1795,13 +1820,14 @@ const TOURS = {
     {sel:'button[onclick*="imoTipoFiltro=\'todos\'"]', emo:'🧩', title:'Filtro por tipo', text:'Mostre só casas, apartamentos, chácaras ou terrenos.'},
     {sel:'button[onclick*="imoStatusFiltro=\'todos\'"]', emo:'🚦', title:'Filtro por situação', text:'<b>Disponível, Reservado ou Vendido</b> — a situação é alterada dentro do imóvel.'},
     {sel:'button[onclick*="abrirCatalogo"]', emo:'📚', title:'Catálogo em PDF', text:'Selecione imóveis e envie a vitrine para o cliente.'},
-    {sel:'.ptile[onclick*="abrirDetalhe"]', emo:'📂', title:'Abrir um imóvel', text:'Toque no imóvel para <b>consultar, editar, compartilhar, gerar proposta, ficha em PDF</b> e mudar a situação.', fallback:'Quando você tiver imóveis cadastrados, toque em um deles para consultar, editar, compartilhar, gerar proposta e ficha em PDF.'}
+    {sel:'button[onclick*="abrirResumoCaptacao"]', emo:'📊', title:'Resumos', text:'<b>Tipo de captação</b> mostra de onde vieram seus imóveis (placa, indicação, Instagram…). <b>Por registro</b> lista os imóveis incluídos no período e <b>Por proposta</b>, as propostas feitas no período.'},
+    {sel:'.ptile[onclick*="abrirDetalhe"]', emo:'📂', title:'Abrir um imóvel', text:'Toque no imóvel para <b>consultar, editar, compartilhar, gerar proposta, ficha em PDF</b>, ver o <b>extrato</b> de lançamentos e mudar a situação.', fallback:'Quando você tiver imóveis cadastrados, toque em um deles para consultar, editar, compartilhar, gerar proposta e ficha em PDF.'}
   ]},
   cadastro:{ nome:'📝 Cadastrar um imóvel', steps:[
     {go:_tg('inicio'), sel:'.hero-btn[onclick*="abrirTipos"]', emo:'🏘️', title:'1) Comece aqui', text:'Toque em <b>Cadastrar imóvel</b>.'},
     {go:()=>{ W=null; V=null; abrirTipos(); }, sel:'.cat-row', emo:'🏠', title:'2) Escolha o tipo', text:'Casa, apartamento, chácara ou terreno. Cada tipo mostra os campos certos.'},
     {go:()=>{ W=null; V=null; iniciarCadastro('casa'); }, sel:'.wizbtns', emo:'⏭️', title:'3) Botões do cadastro', text:'<b>Voltar</b> e <b>Avançar</b> trocam de etapa, <b>Gravar</b> salva sem sair e <b>Sair</b> fecha. Se você alterou algo, o app pergunta antes de perder.', fallback:'No cadastro você terá os botões <b>Voltar, Gravar, Avançar e Sair</b> no rodapé.'},
-    {sel:'#mainContent', emo:'📷', title:'Etapas e fotos', text:'São poucas etapas: localização, proprietário, características, fotos, vídeo, certidões e revisão. A <b>foto principal</b> é obrigatória antes das demais.'}
+    {sel:'#mainContent', emo:'📷', title:'Etapas e fotos', text:'São 8 etapas, nesta ordem: <b>Localização, Características, Garagem e infraestrutura, Fotos, Vídeo, Certidões</b> (também venda exclusiva, comissão e onde captou), <b>Proprietário</b> e <b>Revisão</b> (valores). Só o <b>endereço</b> e o <b>nome do proprietário</b> são obrigatórios. Nas fotos, envie primeiro a <b>principal</b>; as outras seguem em ordem.'}
   ]},
   proprietarios:{ nome:'👥 Proprietários', steps:[
     {go:_tg('proprietarios'), sel:'button[onclick*="novoProprietario"]', emo:'➕', title:'Novo proprietário', text:'Cadastre o dono do imóvel com nome, telefones e documentos.'},
@@ -1822,16 +1848,20 @@ const TOURS = {
   financeiro:{ nome:'💰 Financeiro', steps:[
     {go:_tg('financeiro'), sel:'button[onclick*="novaReceitaManual"]', emo:'💚', title:'Receitas +', text:'Lance comissões e outras receitas. Pode informar a fonte pagadora e a data realizada.'},
     {sel:'button[onclick*="novaDespesaManual"]', emo:'🔴', title:'Despesa +', text:'Lance despesas escolhendo <b>À vista</b> ou <b>Cartão de crédito</b> — no cartão, a data é calculada pelo dia de vencimento cadastrado em Dados do corretor.'},
-    {sel:'button[onclick*="finExpView=\'mes\'"]', emo:'🗂️', title:'Visões', text:'<b>Por mês</b>, <b>Fluxo</b>, <b>Realizado</b> e <b>Todas</b> — cada uma mostra os lançamentos de um jeito.'},
+    {sel:'button[onclick*="finExpView=\'mes\'"]', emo:'🗂️', title:'Visões', text:'<b>Por mês em aberto</b>, <b>Fluxo em aberto</b>, <b>Realizado</b> e <b>Todas</b> — cada uma mostra os lançamentos de um jeito. O que já foi pago/recebido (com data realizada) aparece em <b>Realizado</b>.'},
     {sel:'#finTopoFixo', emo:'📊', title:'Resumo fixo', text:'Receitas, despesas, saldo, gráfico por categoria e total no cartão ficam <b>fixos no topo</b>; só os lançamentos rolam.'}
   ]},
   ajustes:{ nome:'⚙️ Ajustes', steps:[
     {go:_tg('config'), sel:'.ptile[onclick*="renderDadosCorretor"]', emo:'🪪', title:'Dados do corretor', text:'Nome, CRECI e validade, dia do vencimento do cartão, e-mail e WhatsApp — usados nos documentos que você envia.'},
+    {sel:'textarea[oninput*="setMsg(\'comprador\'"]', emo:'💬', title:'Mensagens do WhatsApp', text:'Edite os textos padrão enviados ao comprador (confirmação da visita) e ao proprietário quando você toca em <b>WhatsApp</b>.'},
     {sel:'button[onclick*="mudarZoom(0.1)"]', emo:'🔠', title:'Tamanho da letra', text:'Use <b>A −</b> e <b>A +</b> para ajustar o zoom do app.'},
     {sel:'button[onclick*="openProModal"]', emo:'⭐', title:'Plano Pro', text:'Assine pelo WhatsApp e digite o código recebido.', fallback:'Aqui fica o Plano Pro e o seu código de ativação.'},
-    {sel:'button[onclick*="exportarBackup"]', emo:'💾', title:'Backup', text:'Exporte um backup completo de vez em quando — seus dados ficam só neste aparelho.'},
+    {sel:'.switch[onclick*="avisoAtrasado"]', emo:'🔔', title:'Avisos do sino', text:'Escolha quais avisos aparecem no sino: compromissos <b>vencidos</b>, <b>de hoje</b> e com <b>7, 3 ou 1 dia</b> de antecedência.'},
+    {sel:'button[onclick*="exportarBackup"]', emo:'💾', title:'Backup', text:'<b>Exportar backup</b> salva um arquivo completo (dados e fotos); <b>Importar backup</b> restaura tudo e <b>substitui</b> o que está no aparelho. Faça de vez em quando — seus dados ficam só neste aparelho.'},
+    {sel:'.switch[onclick*="abrirCriarSenhaAjustes"],button[onclick*="openChangePass"]', emo:'🔐', title:'Senha de acesso', text:'Ative a senha para <b>criptografar</b> seus dados (AES‑256) e exigir a senha ao abrir o app. Sem ela, os dados ficam salvos no aparelho sem proteção.', fallback:'Em <b>Segurança e login</b> você ativa a senha de acesso, que criptografa os dados.'},
     {sel:'button[onclick*="promptInstall"]', emo:'📲', title:'Instalar o app', text:'Instala o Cor Sync Imóveis na tela inicial do celular.'},
-    {sel:'button[onclick*="openTutorial"]', emo:'📖', title:'Rever o tutorial', text:'Você pode rever o tutorial e este tour guiado quando quiser.'}
+    {sel:'button[onclick*="openTutorial"]', emo:'📖', title:'Rever o tutorial', text:'Você pode rever o tutorial e este tour guiado quando quiser.'},
+    {sel:'button[onclick*="entrarManual"]', emo:'🧪', title:'Manual com dados de exemplo', text:'Abre o app com dados fictícios para você testar à vontade. <b>Nada é salvo</b> nem enviado — ao sair, seus dados reais continuam como estavam.'}
   ]}
 };
 function tourMenu(){
@@ -1973,9 +2003,13 @@ function boot(){
     if(DB.settings.aviso1===undefined) DB.settings.aviso1 = true;
     // ── Teste grátis de 30 dias: começa sozinho na primeira vez que o app roda neste
     // aparelho (instalação nova OU quem já usava e nunca teve trial nem Pro) ──
-    if(!isProReal() && !DB.trial && !trialJaUsado()){
-      iniciarTrial();
-      toast('🎁 Você tem 30 dias grátis com tudo liberado!');
+    if(!isProReal() && !DB.trial){
+      if(!trialJaUsado()){
+        iniciarTrial();
+        toast('🎁 Você tem 30 dias grátis com tudo liberado!');
+      } else {
+        DB.trial = trialRecuperar();   // dados apagados: o teste NÃO recomeça nem some — segue o relógio original
+      }
     }
   }catch(e){ DB = defaultDB(); }
   // Já existe senha criada → pede a senha antes de abrir (login normal).
@@ -2208,6 +2242,7 @@ function doWipe(){
   localStorage.removeItem(LS_KEY);
   localStorage.removeItem(LS_AUTH);
   sessionStorage.removeItem('unlocked');
+  try{ indexedDB.deleteDatabase('corretorimoveis_midia'); }catch(e){}   // fotos e documentos também saem do aparelho
   location.reload();
 }
 
@@ -2415,7 +2450,7 @@ function renderInicio(){
   const nAvisos = contarAvisosPendentes();
   document.getElementById('appHeader').innerHTML = `
     <div class="hhero">
-      <div class="eyebrow">Início</div>
+      <div class="hrow"><div class="eyebrow">Início</div><span class="hver" title="Versão do app">v${APP_VERSION}</span></div>
       <div class="top">
         <div><h1>Olá, ${esc(nome)} 👋</h1><div class="sub">Bom te ver por aqui!</div></div>
         <button class="hbell" style="${nAvisos>0?'background:var(--danger)':''}" onclick="abrirAvisos()" aria-label="Avisos">${ic('bell',22)}${nAvisos>0?`<span class="bellbadge">${nAvisos>99?'99+':nAvisos}</span>`:''}</button>
@@ -3998,7 +4033,7 @@ function preencherListaImoveis(){
       <button class="ptile" onclick="abrirDetalhe('${im.id}')">
         <div class="ptile-icon" id="thumb_${im.id}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 11.5L12 4l8 7.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
         <div style="min-width:0"><div class="ptile-title">${esc(im.localizacao.endereco||'Sem endereço')}, ${esc(im.localizacao.numero||'')}</div>
-        <div class="ptile-sub">${statusBadge(im.status)}<span class="mono" style="color:var(--primary);font-weight:700">${(im.codigo||'').toUpperCase()}</span> · ${esc(im.localizacao.cidade||'')}${im.localizacao.estado?' / '+esc(im.localizacao.estado):''}${im.proprietario?.nome?' · '+esc(im.proprietario.nome):''}</div></div>
+        <div class="ptile-sub">${statusBadge(im.status)}<span class="mono" style="color:var(--primary);font-weight:700">${esc((im.codigo||'').toUpperCase())}</span> · ${esc(im.localizacao.cidade||'')}${im.localizacao.estado?' / '+esc(im.localizacao.estado):''}${im.proprietario?.nome?' · '+esc(im.proprietario.nome):''}</div></div>
         <div class="ptile-chev">›</div>
       </button>`).join('');
   items.forEach(im=>{
@@ -4021,14 +4056,14 @@ async function gerarFichaPDF(id){
   const sol=(im.valores&&im.valores.solicitado)||0, cond=(im.condominio&&im.condominio.valor)||0;
   const ehTerr=im.tipo==='terreno', ehChac=im.tipo==='chacara', ehCasaApto=(im.tipo==='casa'||im.tipo==='apartamento');
   const tt=(c.tipoCasa==='Outro'&&c.outroTipo)?c.outroTipo:c.tipoCasa, med=medidasLoteTxt(c);
-  const com=[]; if(+c.quartos>0)com.push(c.quartos+' quarto(s)'); if(+c.suites>0)com.push(c.suites+' suíte(s)'); if(+c.banheiros>0)com.push(c.banheiros+' banh.'); if(+c.lavanderia>0)com.push(c.lavanderia+' lavand.');
+  const com=[]; if(+c.quartos>0)com.push(esc(String(c.quartos))+' quarto(s)'); if(+c.suites>0)com.push(c.suites+' suíte(s)'); if(+c.banheiros>0)com.push(esc(String(c.banheiros))+' banh.'); if(+c.lavanderia>0)com.push(c.lavanderia+' lavand.');
   const laz=[]; if(c.piscina)laz.push('Piscina'+(c.piscinaAquecida?' (aquecida)':'')); if(c.churrasqueira)laz.push('Churrasqueira'); if(c.academia)laz.push('Academia'); if(c.sauna)laz.push('Sauna'); if(c.furo)laz.push('Furô'); if(c.parquinho)laz.push('Parquinho');
   const gar=[]; if(g.vagas)gar.push(g.vagas+' vaga(s)'); if(g.coberta)gar.push('coberta'); if(g.disposicao)gar.push(g.disposicao);
   const seg=[]; if(g.portao)seg.push('Portão eletrônico'); if(g.portariaVigia)seg.push('Portaria c/ vigia'); if(g.segurancaInterna)seg.push('Segurança interna'); if(g.monitoradoCamera)seg.push('Câmera');
   const aguaTxt=ag.tipo?(ag.tipo+(ag.fonte?' ('+ag.fonte+')':'')+(ag.situacao?' — '+ag.situacao:'')):'';
   const enTxt=en.situacao?(en.situacao+(en.info?' ('+en.info+')':'')):'';
   const linha=(k,v)=> v? `<tr><td class="k">${k}</td><td class="v">${v}</td></tr>`:'';
-  const html=`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ficha ${(im.codigo||'').toUpperCase()}</title>
+  const html=`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ficha ${esc((im.codigo||'').toUpperCase())}</title>
   <style>*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#1a2332;margin:0;padding:22px}
   .hd{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #1D4ED8;padding-bottom:10px;margin-bottom:14px}
   .hd h1{font-size:19px;margin:0;color:#1D4ED8}.hd .cod{font-family:monospace;font-weight:bold;color:#1D4ED8}
@@ -4040,7 +4075,7 @@ async function gerarFichaPDF(id){
   .ft{border-top:2px solid #1D4ED8;padding-top:10px;margin-top:14px;display:flex;justify-content:space-between;align-items:center}
   .ft .nome{font-weight:bold;font-size:14px}.ft .creci{color:#667;font-size:12px}.cart{height:72px;border-radius:6px;border:1px solid #1D4ED8}
   @media print{body{padding:0}}</style></head><body>
-  <div class="hd"><h1>Cor Sync Imóveis</h1><span class="cod">${(im.codigo||'').toUpperCase()}</span></div>
+  <div class="hd"><h1>Cor Sync Imóveis</h1><span class="cod">${esc((im.codigo||'').toUpperCase())}</span></div>
   <p class="addr">${esc(L.endereco||'')}, ${esc(L.numero||'')} — ${esc(L.cidade||'')}/${esc(L.estado||'')}</p>
   ${sol>0?`<div class="price">${fmtBRL(sol)}</div>`:''}
   ${fotos.length?`<div class="grid">${fotos.map(f=>`<img src="${f}">`).join('')}</div>`:''}
@@ -4075,7 +4110,7 @@ function abrirDetalhe(id){
   const im = DB.imoveis.find(x=>x.id===id); if(!im) return;
   const condoVal = im.condominio?.valor||0;
   document.getElementById('mainNav').classList.remove('hidden');
-  document.getElementById('appHeader').classList.remove('home'); document.getElementById('appHeader').innerHTML = `<h2>${esc(im.localizacao.endereco)}, ${esc(im.localizacao.numero)}</h2><div class="mono" style="color:var(--primary);font-weight:700;font-size:12px;margin-top:2px">${(im.codigo||'').toUpperCase()}</div>`;
+  document.getElementById('appHeader').classList.remove('home'); document.getElementById('appHeader').innerHTML = `<h2>${esc(im.localizacao.endereco)}, ${esc(im.localizacao.numero)}</h2><div class="mono" style="color:var(--primary);font-weight:700;font-size:12px;margin-top:2px">${esc((im.codigo||'').toUpperCase())}</div>`;
   const enderecoFull = `${im.localizacao.endereco||''}, ${im.localizacao.numero||''} ${im.localizacao.cidade||''} ${im.localizacao.estado||''} ${im.localizacao.cep||''}`.trim();
   document.getElementById('mainContent').innerHTML = `
     <div class="btnrow">
@@ -4147,7 +4182,7 @@ function abrirExtratoImovel(id){
   const im = DB.imoveis.find(x=>x.id===id); if(!im) return;
   document.getElementById('mainNav').classList.remove('hidden');
   const ini = im.dataInclusao || isoDate(new Date(im.createdAt||Date.now()));
-  document.getElementById('appHeader').classList.remove('home'); document.getElementById('appHeader').innerHTML = `<h2>Extrato do imóvel</h2><div class="mono" style="color:var(--primary);font-weight:700;font-size:12px;margin-top:2px">${(im.codigo||'').toUpperCase()} · desde ${fmtDataBR(ini)}</div>`;
+  document.getElementById('appHeader').classList.remove('home'); document.getElementById('appHeader').innerHTML = `<h2>Extrato do imóvel</h2><div class="mono" style="color:var(--primary);font-weight:700;font-size:12px;margin-top:2px">${esc((im.codigo||'').toUpperCase())} · desde ${fmtDataBR(ini)}</div>`;
 
   // lançamentos deste imóvel a partir da data de inclusão
   const recs = DB.financeiro.receitas.filter(e=>e.imovelId===id && (e.data||'')>=ini).map(e=>({...e,_t:'rec'}));
@@ -4529,8 +4564,8 @@ function catShareSheet(){
 function montarTextoCatalogo(){
   const cor=DB.corretor||{}; let t='🏠 *Cor Sync Imóveis — Catálogo de imóveis*\n\n';
   _catIds.forEach((id,idx)=>{ const im=(DB.imoveis||[]).find(x=>x.id===id); if(!im) return; const L=im.localizacao||{}, c=im.caracteristicas||{}; const sol=(im.valores&&im.valores.solicitado)||0;
-    const com=[]; if(+c.quartos>0)com.push(c.quartos+' quartos'); if(+c.suites>0)com.push(c.suites+' suíte(s)'); if(+c.banheiros>0)com.push(c.banheiros+' banh.');
-    t+=`${idx+1}) ${tipoLabel(im.tipo)} — ${(im.codigo||'').toUpperCase()}\n${L.endereco||''}, ${L.numero||''} — ${L.cidade||''}/${L.estado||''}\n`;
+    const com=[]; if(+c.quartos>0)com.push(esc(String(c.quartos))+' quartos'); if(+c.suites>0)com.push(c.suites+' suíte(s)'); if(+c.banheiros>0)com.push(esc(String(c.banheiros))+' banh.');
+    t+=`${idx+1}) ${tipoLabel(im.tipo)} — ${esc((im.codigo||'').toUpperCase())}\n${L.endereco||''}, ${L.numero||''} — ${L.cidade||''}/${L.estado||''}\n`;
     if(sol>0) t+=`💰 ${fmtBRL(sol)}\n`;
     if(com.length) t+=`${com.join(' · ')}\n`;
     t+='\n';
@@ -4568,12 +4603,12 @@ async function gerarCatalogoPDFArquivo(){
       if(pidx>=0){ try{ const d=await idbGet(keyFotoPub(im.id,pidx)); if(d){ const info=await _carregarImg(d); if(info){ let w=boxW,h=boxH; const ar=info.w/info.h; if(ar>boxW/boxH){ h=boxW/ar; } else { w=boxH*ar; } const ox=bx+(boxW-w)/2, oy=by+(boxH-h)/2; const fmt=/png/i.test(info.src.slice(5,20))?'PNG':'JPEG'; doc.addImage(info.src, fmt, ox, oy, w, h); } } }catch(e){} }
       const tx=bx+boxW+6, tw=pw-mx-tx; let ty=by+5;
       doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(30,30,30);
-      doc.text(doc.splitTextToSize(`${tipoLabel(im.tipo)} — ${(im.codigo||'').toUpperCase()}`, tw), tx, ty); ty+=6;
+      doc.text(doc.splitTextToSize(`${tipoLabel(im.tipo)} — ${esc((im.codigo||'').toUpperCase())}`, tw), tx, ty); ty+=6;
       doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(90,90,90);
       const endereco=`${L.endereco||''}, ${L.numero||''}`.replace(/^,\s*|,\s*$/g,'').trim();
       const cidade=`${L.cidade||''}${L.estado?'/'+L.estado:''}`;
       const loc=[endereco,cidade].filter(Boolean).join(' — '); if(loc){ const ll=doc.splitTextToSize(loc,tw); doc.text(ll,tx,ty); ty+=ll.length*4.6; }
-      const specs=[]; if(+c.quartos>0)specs.push(c.quartos+' quartos'); if(+c.suites>0)specs.push(c.suites+' suíte(s)'); if(+c.banheiros>0)specs.push(c.banheiros+' banh.');
+      const specs=[]; if(+c.quartos>0)specs.push(esc(String(c.quartos))+' quartos'); if(+c.suites>0)specs.push(c.suites+' suíte(s)'); if(+c.banheiros>0)specs.push(esc(String(c.banheiros))+' banh.');
       if(specs.length){ doc.text(specs.join(' · '),tx,ty); ty+=5; }
       if(sol>0){ doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(16,120,60); doc.text(fmtBRL(sol),tx,ty); }
       y+=cardH+4; doc.setDrawColor(235,235,235); doc.line(mx,y-2,pw-mx,y-2);
@@ -4612,9 +4647,9 @@ async function gerarCatalogoPDF(){
     const L=im.localizacao||{}, c=im.caracteristicas||{};
     let foto=''; const pubs=im.fotosPublicas||[]; for(let i=0;i<6;i++){ if(pubs[i]){ try{ const d=await idbGet(keyFotoPub(id,i)); if(d){ foto=d; break; } }catch(e){} } }
     const sol=(im.valores&&im.valores.solicitado)||0;
-    const com=[]; if(+c.quartos>0)com.push(c.quartos+' quartos'); if(+c.banheiros>0)com.push(c.banheiros+' banh.');
+    const com=[]; if(+c.quartos>0)com.push(esc(String(c.quartos))+' quartos'); if(+c.banheiros>0)com.push(esc(String(c.banheiros))+' banh.');
     const area=(c.terreno||'-')+' m²'+(im.tipo!=='terreno'?' / '+(c.construcao||'-')+' constr.':'');
-    cards+=`<div class="cx">${foto?`<img src="${foto}">`:`<div class="noimg">sem foto</div>`}<div class="cxb"><div class="cxcod">${(im.codigo||'').toUpperCase()} · ${tipoLabel(im.tipo)}</div><div class="cxad">${esc(L.endereco||'')}, ${esc(L.numero||'')} — ${esc(L.cidade||'')}/${esc(L.estado||'')}</div>${sol>0?`<div class="cxpr">${fmtBRL(sol)}</div>`:''}<div class="cxsp">${area}${com.length?' · '+com.join(' · '):''}</div></div></div>`;
+    cards+=`<div class="cx">${foto?`<img src="${foto}">`:`<div class="noimg">sem foto</div>`}<div class="cxb"><div class="cxcod">${esc((im.codigo||'').toUpperCase())} · ${tipoLabel(im.tipo)}</div><div class="cxad">${esc(L.endereco||'')}, ${esc(L.numero||'')} — ${esc(L.cidade||'')}/${esc(L.estado||'')}</div>${sol>0?`<div class="cxpr">${fmtBRL(sol)}</div>`:''}<div class="cxsp">${area}${com.length?' · '+com.join(' · '):''}</div></div></div>`;
   }
   const html=`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Catálogo</title><style>
     *{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#1a2332;margin:0;padding:20px}
@@ -4638,8 +4673,8 @@ async function gerarCatalogoPDF(){
   setTimeout(function(){ try{ w.focus(); w.print(); }catch(e){} }, 800);
 }
 /* ===== Produtividade ===== */
-function primeiroDiaMesAtual(){ const d=new Date(); return isoDate(new Date(Date.UTC(d.getFullYear(), d.getMonth(), 1))); }
-function ultimoDiaMesAtual(){ const d=new Date(); return isoDate(new Date(Date.UTC(d.getFullYear(), d.getMonth()+1, 0))); }
+function primeiroDiaMesAtual(){ const d=new Date(); return isoDate(new Date(d.getFullYear(), d.getMonth(), 1)); }
+function ultimoDiaMesAtual(){ const d=new Date(); return isoDate(new Date(d.getFullYear(), d.getMonth()+1, 0)); }
 function abrirProdutividade(){
   document.getElementById('appHeader').classList.remove('home'); document.getElementById('appHeader').innerHTML = `<h2>Produtividade</h2>`;
   const ims=DB.imoveis||[], ags=DB.agendamentos||[], cls=DB.clientes||[];
@@ -4868,7 +4903,7 @@ function montarTextoProposta(im,p){
   const L=im.localizacao||{}, c=im.caracteristicas||{}, cor=DB.corretor||{};
   const sol=(im.valores&&im.valores.solicitado)||0;
   const cond=(im.condominio&&im.condominio.valor)||0;
-  let t=`📝 PROPOSTA DE COMPRA\n${tipoLabel(im.tipo)} — cód. ${(im.codigo||'').toUpperCase()}\n${L.endereco||''}, ${L.numero||''} — ${L.cidade||''}/${L.estado||''}\n\n`;
+  let t=`📝 PROPOSTA DE COMPRA\n${tipoLabel(im.tipo)} — cód. ${esc((im.codigo||'').toUpperCase())}\n${L.endereco||''}, ${L.numero||''} — ${L.cidade||''}/${L.estado||''}\n\n`;
   if(im.tipo==='terreno') t+=`Terreno: ${c.terreno||'-'} m²\n`;
   else t+=`Terreno: ${c.terreno||'-'} m² · Construção: ${c.construcao||'-'} m²\n`;
   const med=medidasLoteTxt(c); if(med && (im.tipo==='terreno'||im.tipo==='chacara')) t+=`Medidas: ${med}\n`;
@@ -5017,7 +5052,7 @@ let agSelDate = null; // 'YYYY-MM-DD' selecionado na tira de dias
 let agBuscaQ = '';    // busca da agenda
 let agVerSemana = false; // visão semana (hoje..+7) na agenda
 let agCalMonth = new Date(); // mês exibido na grade do calendário — navega livremente p/ passado e futuro
-function isoDate(d){ return d.toISOString().slice(0,10); }
+function isoDate(d){ const p=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); }   // data LOCAL (YYYY-MM-DD)
 function ehFimDeSemana(iso){ if(!iso) return false; const d=new Date(iso+'T00:00:00'); const g=d.getDay(); return g===0||g===6; }
 function ehHoje(iso){ return iso===isoDate(new Date()); }
 // estilo de destaque para relatórios: fim de semana (amarelo claro) e hoje (linhas grossas)
@@ -5287,10 +5322,10 @@ function renderVisitaForm(){
     <div class="field"><label>Escolher imóvel</label>
       <select onchange="selecionarImovelVisita(this.value)">
         <option value="">— selecione —</option>
-        ${DB.imoveis.map(x=>`<option value="${x.id}" ${V.imovelId===x.id?'selected':''}>${(x.codigo||'').toUpperCase()} · ${esc(x.localizacao.endereco||'')}, ${esc(x.localizacao.numero||'')}</option>`).join('')}
+        ${DB.imoveis.map(x=>`<option value="${x.id}" ${V.imovelId===x.id?'selected':''}>${esc((x.codigo||'').toUpperCase())} · ${esc(x.localizacao.endereco||'')}, ${esc(x.localizacao.numero||'')}</option>`).join('')}
       </select></div>
     ${im?`<div style="display:flex;gap:12px;align-items:center;margin-bottom:14px"><div id="visitaFotoCapa" style="width:76px;height:76px;border-radius:12px;background:var(--pblue);flex:none;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:26px">🏠</div><div style="min-width:0"><div style="font-weight:700;color:var(--text)">${tipoLabel(im.tipo)}</div><div style="font-size:13px;color:var(--muted)">${esc(im.localizacao.endereco||'')}, ${esc(im.localizacao.numero||'')} — ${esc(im.localizacao.cidade||'')}/${esc(im.localizacao.estado||'')}</div></div></div>
-    <div class="field"><label>Registro do imóvel</label><input value="${(im.codigo||'').toUpperCase()}" disabled style="font-family:'IBM Plex Mono',monospace;letter-spacing:1px;background:var(--pblue);color:var(--dark);font-weight:700"></div>
+    <div class="field"><label>Registro do imóvel</label><input value="${esc((im.codigo||'').toUpperCase())}" disabled style="font-family:'IBM Plex Mono',monospace;letter-spacing:1px;background:var(--pblue);color:var(--dark);font-weight:700"></div>
     <div class="row2">
       <div class="field"><label>Tamanho do terreno</label><input value="${esc(V.terreno||'')} m²" disabled></div>
       <div class="field"><label>Área construída</label><input value="${esc(V.construida||'')} m²" disabled></div>
@@ -5356,6 +5391,8 @@ function salvarVisita(){
   if(bloqueioTrial('salvar a visita')) return;
   if(!V.imovelId){ toast('Escolha o imóvel da visita.'); return; }
   if(!V.compradorNome.trim()){ toast('Informe o nome do comprador.'); return; }
+  if(!V.data){ toast('Informe a data da visita.'); return; }
+  if(!V.hora){ toast('Informe a hora da visita.'); return; }
   V.updatedAt = Date.now();
   const novo = V._novo;
   const dados = JSON.parse(JSON.stringify(V));
@@ -5462,7 +5499,7 @@ function renderFinanceiro(){
 
   const now = new Date();
   const md = new Date(now.getFullYear(), now.getMonth()+finExpM, 1);
-  const ym = md.toISOString().slice(0,7);
+  const ym = isoDate(md).slice(0,7);
   const todas = finExpView === 'all';
 
   // ── despesas e receitas do período ──
@@ -5756,7 +5793,7 @@ function diaFluxoHTML(iso){
 function selectImovelHTML(id, sel){
   return `<label>Imóvel (opcional)</label>
     <select id="${id}"><option value="">— nenhum —</option>
-      ${DB.imoveis.map(im=>`<option value="${im.id}" ${sel===im.id?'selected':''}>${(im.codigo||'').toUpperCase()} · ${esc(im.localizacao.endereco||'')}, ${esc(im.localizacao.numero||'')}</option>`).join('')}
+      ${DB.imoveis.map(im=>`<option value="${im.id}" ${sel===im.id?'selected':''}>${esc((im.codigo||'').toUpperCase())} · ${esc(im.localizacao.endereco||'')}, ${esc(im.localizacao.numero||'')}</option>`).join('')}
     </select>`;
 }
 function dataEDataRealizadaPorForma(modo){
@@ -5959,8 +5996,8 @@ function renderConfig(){
     <div class="stitle">Mensagens</div>
     <div class="card">
       <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Textos padrão enviados ao tocar em <b>WhatsApp</b>. Você pode editar.</div>
-      <div class="field"><label>Mensagem ao comprador (confirmar a visita)</label><textarea maxlength="50" style="min-height:60px" oninput="setMsg('comprador',this.value)">${esc(getMsgComprador())}</textarea></div>
-      <div class="field" style="margin-bottom:0"><label>Mensagem ao proprietário</label><textarea maxlength="50" style="min-height:60px" oninput="setMsg('proprietario',this.value)">${esc(getMsgProprietario())}</textarea></div>
+      <div class="field"><label>Mensagem ao comprador (confirmar a visita)</label><textarea maxlength="250" style="min-height:60px" oninput="setMsg('comprador',this.value)">${esc(getMsgComprador())}</textarea></div>
+      <div class="field" style="margin-bottom:0"><label>Mensagem ao proprietário</label><textarea maxlength="250" style="min-height:60px" oninput="setMsg('proprietario',this.value)">${esc(getMsgProprietario())}</textarea></div>
     </div>
     <div class="stitle">Acessibilidade</div>
     <div class="card">
