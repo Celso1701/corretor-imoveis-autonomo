@@ -1,21 +1,17 @@
 {
-  "id": "br.com.corretordeimoveis.app",
-  "version": "1.48.3",
-  "name": "Cor Sync Imóveis — Gestão de Imóveis",
-  "short_name": "Cor Sync Imóveis",
-  "description": "Gestão completa para corretores de imóveis: cadastro de imóveis, proprietários, agenda de visitas e financeiro. Funciona offline.",
-  "lang": "pt-BR",
-  "dir": "ltr",
+  "name": "Síndico e Zelador",
+  "short_name": "Síndico e Zelador",
+  "description": "Rotina diária do condomínio para síndico, zelador e presidente: checklist, ronda, tarefas, ocorrências, vencimentos, manutenção, estoque, reservas e financeiro.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "theme_color": "#1D4ED8",
   "background_color": "#1D4ED8",
-  "categories": ["business", "productivity", "real estate"],
+  "theme_color": "#1D4ED8",
+  "lang": "pt-BR",
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }
