@@ -1,5 +1,21 @@
 # Cor Sync Imóveis — Histórico de versões
 
+## v1.49.0 — Modo multiusuário "na nuvem" (Supabase)
+- **Ajustes › pergunta "Utiliza o app em modo multiusuário "na nuvem"?" (NÃO / SIM)**, logo depois de "Segurança e login".
+  - **NÃO** (padrão): "TODAS AS INFORMAÇÕES SERÃO GRAVADAS" neste aparelho, com ou sem internet.
+  - **SIM**: "APENAS SERÁ PERMITIDA A LEITURA DAS INFORMAÇÕES" enquanto não estiver conectado à internet; conectado, inclui, altera e exclui normalmente.
+  - Sem internet aparece em vermelho **"SEM ACESSO A INTERNET"** (atualiza ao vivo quando a conexão cai ou volta).
+  - Voltar para NÃO estando na nuvem pede confirmação e mantém uma cópia dos dados no aparelho.
+- **Trabalho em equipe na nuvem:** login por e-mail e senha; os dados de texto (imóveis, proprietários, agenda, clientes, follow-ups, despesas, receitas) ficam sincronizados por registro. Cada empresa só vê os próprios dados.
+- **Bloqueio de registro:** ao incluir, editar ou excluir, o registro fica reservado. Se outra pessoa tentar o mesmo registro, aparece **"Registro em uso por outro usuário — aguarde"**; quem está com o registro parado recebe o aviso **"Há outro usuário precisando atualizar informações"**. O bloqueio é liberado sozinho se a pessoa ficar inativa ou fechar o app.
+- **Sem internet na nuvem = somente leitura.** Conflitos de edição são detectados (revisão) e nada é sobrescrito sem aviso.
+- **Códigos** de imóvel e proprietário passam a ser numerados pelo servidor (sem repetir entre usuários).
+- **Entrada na nuvem com dados no aparelho:** o app pergunta se envia tudo para a nuvem ou usa o que já está lá; proteção contra exclusão em massa por engano.
+- **Limites desta versão:** fotos e vídeos continuam só no aparelho de quem tirou (os outros veem "só no aparelho de quem tirou"); os papéis (dono/corretor) são gravados mas ainda não restringem ações; o aviso de "outro usuário precisa" só chega com o app aberto (sem notificação push); a atualização é por consulta periódica (alguns segundos), não instantânea.
+- **Requer** projeto Supabase próprio — veja o guia GUIA-SUPABASE-MULTIUSUARIO e os SQLs fornecidos. Sem entrar na nuvem, o app funciona exatamente como antes (offline, dados no aparelho).
+- Tutorial e tour guiado ganharam o passo "☁️ Trabalho em equipe (Nuvem)"; textos de backup e "Sobre" ajustados ao modo nuvem.
+- **Service worker:** nunca guarda chamadas de `/rest/` e `/auth/` (dados e login da nuvem).
+
 ## v1.48.3 — Auditoria geral: correções de segurança, datas e tutorial
 - **Início:** o número da versão aparece ao lado direito do topo.
 - **Datas locais:** o app deixou de usar data UTC; visitas, retornos e relatórios respeitam o fuso do aparelho (testado em 5 fusos).
