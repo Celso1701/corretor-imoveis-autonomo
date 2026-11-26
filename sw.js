@@ -5,7 +5,7 @@
 //
 // IMPORTANTE: a cada publicação (novo index.html, manifest.json ou ícones) MUDE o número da versão abaixo.
 // É essa mudança de texto que faz o navegador instalar o novo service worker.
-const CACHE_VERSION = 'v1.49.0';
+const CACHE_VERSION = 'v1.49.1';
 const CACHE_NAME = 'corretor-imoveis-' + CACHE_VERSION;
 const ESPERA_REDE_MS = 4000;   // internet lenta: depois disso, abre pelo cache
 

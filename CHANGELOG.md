@@ -1,5 +1,11 @@
 # Cor Sync Imóveis — Histórico de versões
 
+## v1.49.1 — Código Pro vitalício (sem data de validade)
+- **Pro vitalício:** novo tipo de código de ativação, sem data de validade. Em Ajustes → Plano aparece "PRO VITALÍCIO · Sem data de validade · ∞".
+- Um código mensal/semestral/anual nunca rebaixa um aparelho que já é vitalício. "Desativar/Reativar Pro" funciona também no vitalício.
+- O código vitalício continua vinculado ao ID do aparelho (AP-XXXX).
+- Códigos de renovação continuam somando meses; códigos antigos (sem série) continuam valendo uma vez.
+
 ## v1.49.0 — Modo multiusuário "na nuvem" (Supabase)
 - **Ajustes › pergunta "Utiliza o app em modo multiusuário "na nuvem"?" (NÃO / SIM)**, logo depois de "Segurança e login".
   - **NÃO** (padrão): "TODAS AS INFORMAÇÕES SERÃO GRAVADAS" neste aparelho, com ou sem internet.

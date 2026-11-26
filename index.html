@@ -790,7 +790,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.49.0';
+const APP_VERSION = '1.49.1';
 // Ajudante para inserir ícones do kit (traço) em qualquer lugar
 function ic(name, size, style){ size=size||18; return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"${style?` style="${style}"`:''}><use href="#i-${name}"/></svg>`; }
 // Logo da marca (usado na splash e nas telas de senha)
@@ -1251,11 +1251,11 @@ async function doRestaurarBackup(){
 
 /* ============ VERSÃO PRO (senha-contra-senha, vinculada ao aparelho) ============ */
 const PRO_WHATS = '5515998293087';
-const PRO_PLANS = {1:'1 mês', 6:'6 meses', 12:'12 meses'};
+const PRO_PLANS = {0:'vitalício', 1:'1 mês', 6:'6 meses', 12:'12 meses'};
 /* Preço promocional por tempo limitado — só o plano de 1 mês está à venda por enquanto. */
 const PRECOS_PRO = {1:'R$ 90,00', 6:'R$ 99,90', 12:'R$ 179,90'};
-const PLAN_BY_IDX = {1:1, 2:6, 3:12};     /* dígito do código -> meses */
-const IDX_BY_PLAN = {1:1, 6:2, 12:3};     /* meses -> dígito do código */
+const PLAN_BY_IDX = {1:1, 2:6, 3:12, 4:0};     /* dígito do código -> meses (0 = vitalício, sem data de validade) */
+const IDX_BY_PLAN = {1:1, 6:2, 12:3, 0:4};     /* meses -> dígito do código */
 /* Portão de convite (fase de testes): DESLIGADO por padrão. */
 const PORTAO_CONVITE = false;
 function todayISO(){ return isoDate(new Date()); }   // data LOCAL do aparelho (não UTC): depois das 21h no Brasil o dia ainda é o de hoje
@@ -1281,13 +1281,13 @@ function corChecksum(devId, planIdx, serie){
 function corCheck(code){
   const c = (code||'').toUpperCase().trim();
   // Formato novo (renovável): COR-XXXX-Y SS nnn  (SS = série da renovação, nnn = verificação) · formato antigo: COR-XXXX-Y nnn
-  let m = /^COR-([A-Z0-9]{4})-([123])(\d{2})(\d{3})$/.exec(c), serie = '';
+  let m = /^COR-([A-Z0-9]{4})-([1234])(\d{2})(\d{3})$/.exec(c), serie = '';
   if(m){ serie = m[3]; if(serie==='00') return { ok:false, motivo:'formato' }; }
   else { const a = /^COR-([A-Z0-9]{4})-([123])(\d{3})$/.exec(c); if(!a) return { ok:false, motivo:'formato' }; m = [a[0], a[1], a[2], '', a[3]]; }
   const dev = m[1], idx = +m[2], chk = m[4];
   if(dev !== myDevId()) return { ok:false, motivo:'aparelho' };
   if(corChecksum(dev, idx, serie) !== chk) return { ok:false, motivo:'invalido' };
-  return { ok:true, meses: PLAN_BY_IDX[idx], serie: serie };
+  return { ok:true, meses: PLAN_BY_IDX[idx], serie: serie, vitalicio: idx===4 };
 }
 /* Convite (fase de testes) — mesmo cálculo usado na Central de Envio, se ligar o portão */
 function inviteChecksum(seed){ let h=7; const s=(seed||'')+'CONVITECORRETOR'; for(let i=0;i<s.length;i++) h=(h*31 + s.charCodeAt(i))%99991; return String(1000 + (h%9000)); }
@@ -1296,6 +1296,23 @@ function isProReal(){ const l = DB && DB.license; if(!l || !l.pro) return false;
 // isPro libera tudo se: Pro real ativo (código pago) OU teste grátis de 30 dias ainda ativo (mesmo padrão do VetFlowCare)
 function isPro(){ if(isProReal()) return true; if(trialAtivo()) return true; return false; }
 function diasRestantesPro(){ const l = DB && DB.license; if(!l || !l.expiresAt) return null; const a = new Date(l.expiresAt+'T00:00:00'); return Math.ceil((a.getTime()-Date.now())/86400000); }
+/* Aplica um código Pro já validado. Vitalício = licença sem data de validade (expiresAt null).
+   Um código mensal/semestral/anual NUNCA rebaixa um aparelho que já tem licença vitalícia. */
+function proAplicarCodigo(code, r){
+  const L = DB.license || {};
+  if(!r.vitalicio && L.vitalicio){
+    return { ok:false, msg: L.pro ? 'Este aparelho já tem a licença vitalícia — não precisa de código de renovação.' : 'Este aparelho tem licença vitalícia. Use "Reativar Pro" em Ajustes.' };
+  }
+  if(r.vitalicio){
+    DB.license = { pro:true, code:code, plan:'vitalicio', vitalicio:true, activatedAt:todayISO(), expiresAt:null };
+  } else {
+    const meses = r.meses; const base = isProReal() ? DB.license.expiresAt : todayISO();
+    DB.license = { pro:true, code:code, plan:meses, activatedAt:todayISO(), expiresAt:addMonths(base, meses) };
+  }
+  const u = usedCodes(); u.push(code); try{ localStorage.setItem('cor_used_codes', JSON.stringify(u)); }catch(e){}
+  save();
+  return { ok:true, msg: r.vitalicio ? 'Pro vitalício ativado! Sem data de validade.' : ('Pro ativado por ' + PRO_PLANS[r.meses] + '! Válido até ' + fmtDataBR(DB.license.expiresAt)) };
+}
 function usedCodes(){ try{ return JSON.parse(localStorage.getItem('cor_used_codes')||'[]'); }catch(e){ return []; } }
 function maskProCode(el){
   let v = el.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
@@ -1341,15 +1358,13 @@ function ativarProDoBloqueio(){
   const err=document.getElementById('trialLockErr'); if(err) err.textContent='';
   if(!code){ if(err) err.textContent='Digite o código.'; return; }
   const r=corCheck(code);
-  if(!r.ok){ if(err) err.textContent = r.motivo==='aparelho'?'Este código foi gerado para outro aparelho.':(r.motivo==='formato'?'Formato inválido — confira o código recebido (ex.: COR-AB12-110345).':'Código inválido.'); return; }
+  if(!r.ok){ if(err) err.textContent = r.motivo==='aparelho'?'Este código foi gerado para outro aparelho.':(r.motivo==='formato'?'Formato inválido — confira o código recebido (ex.: COR-AB12-101345).':'Código inválido.'); return; }
   if(usedCodes().indexOf(code)>=0){ if(err) err.textContent='Este código já foi usado neste aparelho.'; return; }
   const aplicar=function(){
-    const meses=r.meses; const base=isProReal()?DB.license.expiresAt:todayISO();
-    DB.license={ pro:true, code:code, plan:meses, activatedAt:todayISO(), expiresAt:addMonths(base,meses) };
-    const u=usedCodes(); u.push(code); try{ localStorage.setItem('cor_used_codes', JSON.stringify(u)); }catch(e){}
-    save();
+    const res=proAplicarCodigo(code, r);
+    if(!res.ok){ const e2=document.getElementById('trialLockErr'); if(e2) e2.textContent=res.msg; else toast(res.msg); return; }
     document.getElementById('trialLockScreen')?.remove();
-    toast('🎉 Pro ativado! Válido até '+fmtDataBR(DB.license.expiresAt));
+    toast('🎉 '+res.msg);
     enterApp();
   };
   const seguir=function(){ if(!getAuth()){ exigirSenhaParaPro(aplicar); } else { aplicar(); } };
@@ -1423,15 +1438,14 @@ function activatePro(){
     return;
   }
   if(usedCodes().indexOf(code) >= 0){ toast('Este código já foi usado neste aparelho. Peça um novo para renovar.'); return; }
-  const meses = r.meses;
-  const base = isProReal() ? DB.license.expiresAt : todayISO();
-  DB.license = { pro:true, code:code, plan:meses, activatedAt:todayISO(), expiresAt: addMonths(base, meses) };
-  const u = usedCodes(); u.push(code); try{ localStorage.setItem('cor_used_codes', JSON.stringify(u)); }catch(e){}
-  save(); closeSheet(); if(currentTab==='config') renderConfig();
-  toast('Pro ativado por ' + PRO_PLANS[meses] + '! Válido até ' + fmtDataBR(DB.license.expiresAt));
+  const res = proAplicarCodigo(code, r);
+  if(!res.ok){ toast(res.msg); return; }
+  closeSheet(); if(currentTab==='config') renderConfig();
+  toast(res.msg);
 }
 function reativarPro(){
   const l = DB.license;
+  if(l && l.vitalicio){ l.pro = true; save(); if(currentTab==='config') renderConfig(); toast('Pro vitalício reativado.'); return; }
   if(l && l.expiresAt && l.expiresAt >= todayISO()){ l.pro = true; save(); if(currentTab==='config') renderConfig(); toast('Pro reativado. Válido até ' + fmtDataBR(l.expiresAt)); }
   else { openProModal('Seu período Pro expirou. Renove com um novo código.'); }
 }
@@ -6147,13 +6161,20 @@ function renderConfig(){
     <div class="stitle">Plano</div>
     ${(function(){
       const proReal=isProReal(), lic=DB.license||{}, dias=diasRestantesPro();
-      const pausado = !proReal && lic.expiresAt && lic.expiresAt>=todayISO();
+      const vital = !!lic.vitalicio;
+      const pausado = !proReal && (vital || (lic.expiresAt && lic.expiresAt>=todayISO()));
       const emTrial = !proReal && !pausado && trialAtivo();
       const trialDias = emTrial ? trialDiasRestantes() : 0;
       const acabando = emTrial && trialDias<=TRIAL_AVISO_DIAS;
       const trialAcabou = !proReal && !pausado && !emTrial && trialExpirado();
       let corpo;
-      if(proReal){
+      if(proReal && vital){
+        corpo = `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="background:var(--accent);color:#fff;font-size:11px;font-weight:800;padding:3px 10px;border-radius:100px">PRO VITALÍCIO</span><span style="font-size:12.5px;color:var(--muted)">Sem data de validade</span></div>
+           <div style="text-align:center;margin-top:12px;padding:14px 10px;background:var(--pblue);border:1.5px solid var(--border);border-radius:14px">
+             <div style="font-size:36px;font-weight:900;color:var(--primary);line-height:1">∞</div>
+             <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-top:4px">licença vitalícia</div>
+           </div>`;
+      } else if(proReal){
         const acabando = dias!=null && dias<=7;
         corpo = `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="background:var(--accent);color:#fff;font-size:11px;font-weight:800;padding:3px 10px;border-radius:100px">PRO ATIVO</span><span style="font-size:12.5px;color:var(--muted)">Válido até ${fmtDataBR(lic.expiresAt)}</span></div>
            <div style="text-align:center;margin-top:12px;padding:14px 10px;background:${acabando?'#FFF6E6':'var(--pblue)'};border:1.5px solid ${acabando?'var(--warning)':'var(--border)'};border-radius:14px">
@@ -6162,9 +6183,9 @@ function renderConfig(){
            </div>
            ${acabando?`<button class="btn" style="margin-top:12px;background:var(--warning);color:#3D2A00" onclick="abrirWhatsPro()">🔔 Renove seu plano</button>`:''}`;
       } else if(pausado){
-        corpo = `<div style="font-size:13px">Pro <b>pausado</b> — válido até ${fmtDataBR(lic.expiresAt)}.</div>
+        corpo = `<div style="font-size:13px">Pro <b>pausado</b> — ${vital?'licença vitalícia (sem data de validade)':'válido até '+fmtDataBR(lic.expiresAt)}.</div>
            <button class="btn" style="margin-top:12px" onclick="reativarPro()">Reativar Pro</button>
-           <button class="btn gray" style="margin-top:8px" onclick="openProModal()">Renovar (novo código)</button>`;
+           ${vital?'':`<button class="btn gray" style="margin-top:8px" onclick="openProModal()">Renovar (novo código)</button>`}`;
       } else if(emTrial){
         corpo = `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="background:${acabando?'var(--warning)':'var(--primary)'};color:#fff;font-size:11px;font-weight:800;padding:3px 10px;border-radius:100px">${acabando?'⏳ ACABANDO':'🎁 TESTE GRÁTIS'}</span><span style="font-size:12.5px;color:var(--muted)">Faltam ${trialDias} ${trialDias===1?'dia':'dias'}</span></div>
            <div style="font-size:12px;color:var(--muted);margin-top:6px">Todas as funções do Pro liberadas durante o teste.</div>
@@ -6258,7 +6279,7 @@ function renderConfig(){
     </div>`;
   if(c.temFoto) idbGet(keyCorretorFoto()).then(d=>{ if(d){ const el=document.getElementById('cfgCorThumb'); if(el){ el.style.overflow='hidden'; el.innerHTML=`<img alt="Foto" src="${d}" style="width:100%;height:100%;object-fit:cover">`; } } }).catch(()=>{});
   stopProCountdownTicker();
-  if(isProReal()) startProCountdownTicker();
+  if(isProReal() && !(DB.license||{}).vitalicio) startProCountdownTicker();
 }
 // Mantém a contagem de dias do Pro sempre atualizada em Ajustes, sem precisar sair e voltar da tela.
 let _proCountdownTimer = null;
