@@ -56,6 +56,7 @@ h2{font-size:19px;font-weight:800;letter-spacing:-.3px}
 .auth-box .pw-rule{color:rgba(255,255,255,.55)}
 .pw-rule .rc{width:13px;height:13px;border-radius:50%;border:1.5px solid var(--border);flex-shrink:0}
 .auth-box .pw-rule .rc{border-color:rgba(255,255,255,.4)}
+.pw-rule i{font-weight:400;opacity:.75;font-style:normal;font-size:10px}
 .pw-rule.ok{color:var(--success)}
 .auth-box .pw-rule.ok{color:#8FE0B5}
 .pw-rule.ok .rc{background:#1FAE6B;border-color:#1FAE6B}
@@ -85,19 +86,6 @@ header.topbar{padding:18px 18px 6px;position:sticky;top:0;background:var(--bg);z
 #demoBar .dbx{background:#fff;color:#7C3AED}
 body.demo-on{padding-top:40px}
 body.demo-on header.topbar{top:40px}
-/*NUVEM-CSS*/
-#nuvBarra{position:fixed;top:0;left:0;right:0;height:24px;z-index:2050;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;color:#fff;padding:0 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#nuvBarra.on{background:#0F766E}#nuvBarra.off{background:#B91C1C}#nuvBarra.wait{background:#B45309}
-body.nuv-on{padding-top:24px}body.nuv-on header.topbar{top:24px}
-#nuvEspera{position:fixed;inset:0;z-index:2400;background:rgba(15,23,42,.62);display:none;align-items:center;justify-content:center;padding:16px}
-.nuv-card{background:var(--surface);color:var(--text);border-radius:18px;max-width:380px;width:100%;padding:22px 18px 16px;box-shadow:0 20px 50px rgba(0,0,0,.35)}
-.nuv-bt{display:flex;gap:8px;margin-top:16px}.nuv-bt .btn{flex:1;margin:0}
-#nuvAlerta{position:fixed;left:8px;right:8px;top:calc(env(safe-area-inset-top,0px) + 30px);z-index:2300;display:flex;flex-direction:column;gap:8px;pointer-events:none}
-.nuv-al{pointer-events:auto;background:#FEF3C7;border:2px solid #F59E0B;color:#78350F;border-radius:14px;padding:12px 14px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
-.nuv-al-t{font-weight:800;font-size:14.5px}.nuv-al-m{font-size:13px;margin-top:4px;line-height:1.5}
-.nuv-al button{margin-top:8px;border:none;background:#B45309;color:#fff;border-radius:10px;padding:8px 14px;font-weight:800;cursor:pointer;min-height:36px}
-#nuvNovo{position:fixed;left:50%;transform:translateX(-50%);bottom:150px;z-index:2200;display:none;border:none;background:#0F766E;color:#fff;border-radius:22px;padding:10px 16px;font-size:13px;font-weight:800;box-shadow:0 6px 18px rgba(0,0,0,.3);max-width:92vw;cursor:pointer}
-/*NUVEM-CSS-FIM*/
 .greet{display:flex;align-items:center;justify-content:space-between}
 .eyebrow{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--primary);font-weight:700}
 .bell{width:38px;height:38px;border-radius:12px;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow)}
@@ -783,14 +771,14 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
 </script>
 <script>
 /* ═══════════════════════════════════════════════════════════
-   CORRETOR PWA — Gestão de imóveis (módulo VENDER · CASA)
+   CORRETOR — Gestão de imóveis (módulo VENDER · CASA)
    Arquitetura de referência: SPA de arquivo único, sem framework,
    dados locais (localStorage + IndexedDB), com login criptografado.
    ═══════════════════════════════════════════════════════════ */
 
 // ═══ util básicos ═══
 function esc(s){ return String(s??'').replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c])); }
-const APP_VERSION = '1.49.1';
+const APP_VERSION = '1.50.2';
 // Ajudante para inserir ícones do kit (traço) em qualquer lugar
 function ic(name, size, style){ size=size||18; return `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"${style?` style="${style}"`:''}><use href="#i-${name}"/></svg>`; }
 // Logo da marca (usado na splash e nas telas de senha)
@@ -1110,7 +1098,7 @@ async function verifyKey(key, check){
   }catch(e){ return false; }
 }
 let _saveTimer=null;
-function save(){ clearTimeout(_saveTimer); _saveTimer=setTimeout(()=>{ persistDB(); try{ NUV.agendar(); }catch(e){} }, 150); }
+function save(){ clearTimeout(_saveTimer); _saveTimer=setTimeout(persistDB, 150); }
 async function persistDB(){
   if(window.__DEMO) return;   // manual com dados fictícios: nunca grava
   try{
@@ -1130,26 +1118,31 @@ async function persistDB(){
 // pede ao navegador para NÃO apagar os dados do app quando faltar espaço
 try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist(); }catch(e){}
 
-// ═══ Regras de senha exigidas pelo projeto original ═══
-// No mínimo 4 e até 10 caracteres, com maiúscula, minúscula, número e especial.
+// ═══ Regra de senha (v1.50.1/1.50.2) ═══
+// Obrigatório: de 5 a 50 caracteres. Maiúscula, minúscula, número e símbolo são OPCIONAIS (não bloqueiam).
+const PW_MIN = 5, PW_MAX = 50;
 function validatePassword(v){
-  return { len: v.length>=4 && v.length<=50, up:/[A-Z]/.test(v), low:/[a-z]/.test(v), num:/[0-9]/.test(v), sp:/[^A-Za-z0-9]/.test(v) };
+  return { len: v.length>=PW_MIN && v.length<=PW_MAX };
+}
+function pwDicas(v){
+  return { up:/[A-Z]/.test(v), low:/[a-z]/.test(v), num:/[0-9]/.test(v), sp:/[^A-Za-z0-9]/.test(v) };
 }
 function pwRulesHTML(){
   return `<div class="pw-rules" id="pwRules">
-    <div class="pw-rule" data-r="len"><span class="rc"></span>4 a 50 caracteres</div>
-    <div class="pw-rule" data-r="up"><span class="rc"></span>1 maiúscula</div>
-    <div class="pw-rule" data-r="low"><span class="rc"></span>1 minúscula</div>
-    <div class="pw-rule" data-r="num"><span class="rc"></span>1 número</div>
-    <div class="pw-rule" data-r="sp"><span class="rc"></span>1 especial</div>
+    <div class="pw-rule" data-r="len"><span class="rc"></span>5 a 50 caracteres</div>
+    <div class="pw-rule" data-r="up"><span class="rc"></span>1 maiúscula <i>(opcional)</i></div>
+    <div class="pw-rule" data-r="low"><span class="rc"></span>1 minúscula <i>(opcional)</i></div>
+    <div class="pw-rule" data-r="num"><span class="rc"></span>1 número <i>(opcional)</i></div>
+    <div class="pw-rule" data-r="sp"><span class="rc"></span>1 símbolo <i>(opcional)</i></div>
   </div>`;
 }
 function checkPwRules(inputId, btnId){
-  const res = validatePassword(document.getElementById(inputId).value);
-  Object.keys(res).forEach(k=>{
-    document.querySelector(`.pw-rule[data-r="${k}"]`)?.classList.toggle('ok', res[k]);
+  const v = document.getElementById(inputId).value;
+  const res = validatePassword(v), dicas = pwDicas(v);
+  Object.entries(Object.assign({}, res, dicas)).forEach(([k,ok])=>{
+    document.querySelector(`.pw-rule[data-r="${k}"]`)?.classList.toggle('ok', ok);
   });
-  const ok = Object.values(res).every(Boolean);
+  const ok = Object.values(res).every(Boolean);   // só o tamanho bloqueia
   const btn = document.getElementById(btnId);
   if(btn) btn.disabled = !ok;
   return ok;
@@ -1207,7 +1200,6 @@ async function exportarBackup(){
   if(currentTab==='config') renderConfig();
 }
 function importarBackup(input){
-  if(NUV.on){ input.value=''; NUV.aviso('Restaurar backup', 'Com a nuvem ligada não dá para substituir todos os dados por um backup (isso apagaria os registros de toda a equipe). Saia da nuvem em Ajustes, restaure o backup e depois peça ao administrador para importar com segurança.'); return; }
   const f = input.files && input.files[0]; if(!f){ return; }
   input.value = '';
   const r = new FileReader();
@@ -1478,7 +1470,6 @@ function leituraDiasRestantes(){
 // Devolve true (e explica ao corretor) quando a ação deve ser barrada.
 function bloqueioTrial(acao){
   if(window.__DEMO) return false;
-  if(typeof NUV!=='undefined' && NUV.somenteLeitura()){ NUV.msgOffline(); return true; }
   if(!modoSomenteLeitura()) return false;
   const dias = leituraDiasRestantes();
   confirmar({ icon:'🔒', title:'Teste grátis encerrado',
@@ -1543,7 +1534,7 @@ function trialDiasRestantes(){
   const dias=Math.ceil((fim-hoje)/86400000); return dias>0?dias:0;
 }
 
-// ═══ INSTALAÇÃO DO APP (PWA) — mesmo padrão do VetFlowCare ═══
+// ═══ INSTALAÇÃO DO APP — mesmo padrão do VetFlowCare ═══
 let _bipEvt = null;
 window.addEventListener('beforeinstallprompt', function(e){ e.preventDefault(); _bipEvt = e; });
 function promptInstall(){
@@ -1583,7 +1574,7 @@ function pularNotifPerms(){ localStorage.setItem('cor_perms_shown','1'); closeSh
 const TUT_STEPS = [
   {emo:'🏠', title:'Bem-vindo(a) ao Cor Sync Imóveis!',
    body:`Sua carteira de imóveis completa no bolso.<br><br>
-   ✅ Funciona <b>offline</b> — os dados ficam só neste aparelho (a não ser que você ligue a <b>Nuvem</b> de equipe em Ajustes)<br>
+   ✅ Funciona <b>offline</b> — os dados ficam só neste aparelho<br>
    🌐 Busca de CEP e rotas (Waze/Google Maps) precisam de internet<br>
    ✅ <b>Instale na tela inicial</b> para abrir como um app de verdade<br>
    ✅ Proteja tudo fazendo <b>backups</b> regulares<br><br>
@@ -1652,22 +1643,14 @@ const TUT_STEPS = [
    action:{label:'🧭 Mostrar os botões na tela', fn:"finishTutorial(true);tourStart('ferramentas')"}},
   {emo:'💾', title:'Backup — proteja seus dados',
    ex:'toda sexta-feira, exporte o backup e guarde o arquivo no Google Drive. Se o celular quebrar, você importa e recupera tudo.',
-   body:`Seus dados ficam <b>só neste aparelho</b> (com a Nuvem de equipe ligada, os textos ficam também no servidor da sua empresa — <b>fotos e vídeos continuam só aqui</b>, então o backup segue importante). Em <b>Ajustes → Becape e proteção de dados</b>, toque em <b>Exportar backup</b> de vez em quando — assim você não perde nada ao trocar de celular. Para voltar os dados, use <b>Importar backup</b>.<br><br>
+   body:`Seus dados ficam <b>só neste aparelho</b>. Em <b>Ajustes → Becape e proteção de dados</b>, toque em <b>Exportar backup</b> de vez em quando — assim você não perde nada ao trocar de celular. Para voltar os dados, use <b>Importar backup</b>.<br><br>
    🔐 Em <b>Ajustes → Segurança e login</b> você pode criar uma <b>senha</b> que criptografa os dados e é pedida ao abrir o app.`,
    action:{label:'🧭 Mostrar os botões de Ajustes', fn:"finishTutorial(true);tourStart('ajustes')"}},
-  {emo:'☁️', title:'Trabalho em equipe (Nuvem)',
-   body:`Em <b>Ajustes</b>, depois de <b>Segurança e login</b>, há a pergunta <b>“Utiliza o app em modo multiusuário na nuvem?”</b>. Se mais de uma pessoa usa o app na sua imobiliária, responda <b>SIM</b> e entre com o e-mail e a senha que o administrador criou. Respondendo <b>NÃO</b>, <b>todas as informações são gravadas</b> neste aparelho.<br><br>
-   • Todos veem os <b>mesmos</b> imóveis, clientes, visitas e financeiro<br>
-   • Quem abre um registro para editar ou excluir fica com ele. Se outra pessoa tentar, aparece <b>“Registro em uso por outro usuário — aguarde”</b> e o registro abre sozinho quando for liberado<br>
-   • Quem está com o registro parado recebe o aviso <b>“Há outro usuário precisando atualizar informações”</b> — é só salvar e fechar<br>
-   • Sem internet aparece <b>SEM ACESSO A INTERNET</b> e, no modo SIM, <b>apenas a leitura</b> é permitida<br><br>
-   <span style="font-size:12.5px;color:var(--muted)">Quem trabalha sozinho não precisa ligar nada: o app continua funcionando só neste aparelho.</span>`,
-   action:{label:'🧭 Mostrar a Nuvem em Ajustes', fn:"finishTutorial(true);tourStart('nuvem')"}},
   {emo:'🔒', title:'Sobre as permissões do app',
    body:`O Cor Sync Imóveis respeita sua privacidade. Ele só usa:<br><br>
    • <b>📷 Câmera</b> — só quando VOCÊ toca para fotografar um imóvel ou documento<br>
    • <b>🔔 Notificações</b> — para lembrar de visitas vencendo, se você permitir<br><br>
-   Seus imóveis, clientes e fotos ficam <b>salvos só neste aparelho</b> — o app não tem servidor próprio. Só saem do aparelho a <b>consulta de CEP</b> (internet), o que <b>você</b> envia por WhatsApp, e-mail ou PDF e — <b>somente se você ligar a Nuvem de equipe em Ajustes</b> — os dados de texto, que vão para o servidor da sua empresa (fotos e vídeos não vão). Você pode desligar as permissões quando quiser em <b>Ajustes</b>.`,
+   Seus imóveis, clientes e fotos ficam <b>salvos só neste aparelho</b> — o app não tem servidor. Só saem do aparelho a <b>consulta de CEP</b> (internet) e o que <b>você</b> envia por WhatsApp, e-mail ou PDF. Você pode desligar as permissões quando quiser em <b>Ajustes</b>.`,
    action:{label:'Entendi, ativar avisos', fn:'ativarNotifPerms()'}},
   {emo:'🎉', title:'Tudo pronto!',
    body:`Você já conhece o essencial do Cor Sync Imóveis. 🏠<br><br>
@@ -1803,9 +1786,8 @@ function demoBuild(){
 }
 function demoBarra(){
   let b=document.getElementById('demoBar');
-  if(!window.__DEMO){ if(b) b.remove(); document.body.classList.remove('demo-on'); try{ NUV.barra(); }catch(e){} return; }
+  if(!window.__DEMO){ if(b) b.remove(); document.body.classList.remove('demo-on'); return; }
   if(!b){ b=document.createElement('div'); b.id='demoBar'; document.body.appendChild(b); }
-  try{ NUV.barra(); }catch(e){}
   b.innerHTML=`<span class="dtx">📖 <b>MANUAL</b> · dados fictícios</span><button class="dbt" onclick="tourMenu()">🧭 Tour</button><button class="dbx" onclick="sairManual()">✕ Sair do manual</button>`;
   document.body.classList.add('demo-on');
 }
@@ -1904,20 +1886,13 @@ const TOURS = {
     {sel:'button[onclick*="finExpView=\'mes\'"]', emo:'🗂️', title:'Visões', text:'<b>Por mês em aberto</b>, <b>Fluxo em aberto</b>, <b>Realizado</b> e <b>Todas</b> — cada uma mostra os lançamentos de um jeito. O que já foi pago/recebido (com data realizada) aparece em <b>Realizado</b>.'},
     {sel:'#finTopoFixo', emo:'📊', title:'Resumo fixo', text:'Receitas, despesas, saldo, gráfico por categoria e total no cartão ficam <b>fixos no topo</b>; só os lançamentos rolam.'}
   ]},
-  nuvem:{ nome:'☁️ Nuvem (equipe)', steps:[
-    {go:_tg('config'), sel:'.nuv-cfg', emo:'☁️', title:'Entrar na nuvem', text:'Em <b>Ajustes</b>, logo depois de <b>Segurança e login</b>, está a pergunta <b>“Utiliza o app em modo multiusuário na nuvem?”</b>. Responda <b>SIM</b> e toque em <b>Entrar na nuvem</b> (e-mail e senha criados pelo administrador): todos veem os mesmos dados. Responda <b>NÃO</b> e <b>todas as informações são gravadas</b> só neste aparelho.', fallback:'Em <b>Ajustes</b>, depois de Segurança e login, responda <b>SIM</b> ou <b>NÃO</b> à pergunta do modo multiusuário (nuvem).'},
-    {sel:'.nuv-cfg', emo:'🔒', title:'Registro em uso', text:'Quem abre um registro para <b>editar ou excluir</b> fica com ele. Se outra pessoa tentar, vê <b>“Registro em uso por outro usuário — aguarde”</b> e o registro abre sozinho quando você terminar.', fallback:'Quem abre um registro para editar ou excluir fica com ele. Outra pessoa que tentar vê <b>“Registro em uso por outro usuário — aguarde”</b>.'},
-    {sel:'.nuv-cfg', emo:'🔔', title:'Aviso de outro usuário', text:'Se deixar um registro aberto e alguém precisar dele, aparece <b>“Há outro usuário precisando atualizar informações”</b>. Salve e feche para liberar; parado por muito tempo, ele se libera sozinho.', fallback:'Quem está com o registro aberto e parado recebe o aviso <b>“Há outro usuário precisando atualizar informações”</b>.'},
-    {sel:'.nuv-cfg', emo:'📴', title:'Sem internet: só consulta', text:'Sem internet aparece <b>SEM ACESSO A INTERNET</b>. No modo <b>SIM</b>, <b>apenas a leitura</b> é permitida enquanto você não estiver conectado — ninguém sobrescreve o trabalho dos outros. No modo <b>NÃO</b>, tudo continua sendo gravado no aparelho.', fallback:'Sem internet aparece SEM ACESSO A INTERNET; no modo SIM só é permitida a leitura.'},
-    {sel:'.nuv-cfg', emo:'📷', title:'Fotos e vídeos', text:'Nesta versão, <b>só os dados de texto</b> vão para a nuvem. As fotos, vídeos e documentos escaneados continuam <b>só no aparelho</b> de quem tirou — faça o backup.', fallback:'Nesta versão só os dados de texto vão para a nuvem; fotos e vídeos ficam no aparelho.'}
-  ]},
   ajustes:{ nome:'⚙️ Ajustes', steps:[
     {go:_tg('config'), sel:'.ptile[onclick*="renderDadosCorretor"]', emo:'🪪', title:'Dados do corretor', text:'Nome, CRECI e validade, dia do vencimento do cartão, e-mail e WhatsApp — usados nos documentos que você envia.'},
     {sel:'textarea[oninput*="setMsg(\'comprador\'"]', emo:'💬', title:'Mensagens do WhatsApp', text:'Edite os textos padrão enviados ao comprador (confirmação da visita) e ao proprietário quando você toca em <b>WhatsApp</b>.'},
     {sel:'button[onclick*="mudarZoom(0.1)"]', emo:'🔠', title:'Tamanho da letra', text:'Use <b>A −</b> e <b>A +</b> para ajustar o zoom do app.'},
     {sel:'button[onclick*="openProModal"]', emo:'⭐', title:'Plano Pro', text:'Assine pelo WhatsApp e digite o código recebido.', fallback:'Aqui fica o Plano Pro e o seu código de ativação.'},
     {sel:'.switch[onclick*="avisoAtrasado"]', emo:'🔔', title:'Avisos do sino', text:'Escolha quais avisos aparecem no sino: compromissos <b>vencidos</b>, <b>de hoje</b> e com <b>7, 3 ou 1 dia</b> de antecedência.'},
-    {sel:'button[onclick*="exportarBackup"]', emo:'💾', title:'Backup', text:'<b>Exportar backup</b> salva um arquivo completo (dados e fotos); <b>Importar backup</b> restaura tudo e <b>substitui</b> o que está no aparelho. Faça de vez em quando — seus dados ficam só neste aparelho (com a Nuvem ligada, as fotos continuam só aqui).'},
+    {sel:'button[onclick*="exportarBackup"]', emo:'💾', title:'Backup', text:'<b>Exportar backup</b> salva um arquivo completo (dados e fotos); <b>Importar backup</b> restaura tudo e <b>substitui</b> o que está no aparelho. Faça de vez em quando — seus dados ficam só neste aparelho.'},
     {sel:'.switch[onclick*="abrirCriarSenhaAjustes"],button[onclick*="openChangePass"]', emo:'🔐', title:'Senha de acesso', text:'Ative a senha para <b>criptografar</b> seus dados (AES‑256) e exigir a senha ao abrir o app. Sem ela, os dados ficam salvos no aparelho sem proteção.', fallback:'Em <b>Segurança e login</b> você ativa a senha de acesso, que criptografa os dados.'},
     {sel:'button[onclick*="promptInstall"]', emo:'📲', title:'Instalar o app', text:'Instala o Cor Sync Imóveis na tela inicial do celular.'},
     {sel:'button[onclick*="openTutorial"]', emo:'📖', title:'Rever o tutorial', text:'Você pode rever o tutorial e este tour guiado quando quiser.'},
@@ -1953,11 +1928,6 @@ const TOUR_EX = {
   'agenda›Avaliação do interesse':'Paulo adorou o imóvel: dê nota <b>9</b>. Se não tiver interesse, <b>2</b>.',
   'financeiro›Receitas +':'comissão de venda de <b>R$ 22.500</b> (5% de R$ 450.000), fonte pagadora <b>Imobiliária Central</b>, com a data realizada preenchida quando o dinheiro cair na conta.',
   'financeiro›Despesa +':'placa de venda de <b>R$ 150</b> no <b>Cartão de crédito</b>: a data é calculada pelo dia de vencimento cadastrado em Dados do corretor.',
-  'nuvem›Entrar na nuvem':'a Marta (dona) cria o seu acesso; você digita o e-mail e a senha dela uma vez e o app já abre com os imóveis da equipe.',
-  'nuvem›Registro em uso':'a Ana edita o imóvel CS00001; o Bruno vê “em uso — aguarde” e o imóvel abre para ele quando a Ana salvar.',
-  'nuvem›Aviso de outro usuário':'você deixou o proprietário aberto e foi atender o telefone: o aviso aparece para você salvar e liberar.',
-  'nuvem›Sem internet: só consulta':'no sítio sem sinal, no modo SIM você abre imóveis e telefones para consultar; para lançar uma despesa, espere voltar o sinal.',
-  'nuvem›Fotos e vídeos':'as fotos que o Bruno tirou ficam no celular dele; a Ana vê os dados do imóvel, mas não as fotos dele.',
   'ajustes›Backup':'toda sexta, toque em <b>Exportar backup</b> e guarde o arquivo no seu Google Drive ou envie para o seu e-mail.'
 };
 (function(){ Object.keys(TOURS).forEach(k=>TOURS[k].steps.forEach(st=>{ const e=TOUR_EX[k+'›'+st.title]; if(e) st.ex=e; })); })();
@@ -2152,7 +2122,7 @@ function renderPrimeiroAcesso(){
     <div class="auth-title">Bem-vindo(a)! Crie sua senha</div>
     <div class="auth-sub">A senha protege seus imóveis, proprietários e telefones neste aparelho. Durante o teste grátis ela é opcional — mas <b>ao assinar o Pro será obrigatória</b>.</div>
     <div class="auth-box">
-      <div style="font-size:12px;color:#fff;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.35);border-radius:10px;padding:8px 10px;margin-bottom:12px;text-align:left">A senha deve ter <b>de 4 a 50 caracteres</b>, com <b>1 maiúscula, 1 minúscula, 1 número e 1 símbolo</b>.</div>
+      <div style="font-size:12px;color:#fff;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.35);border-radius:10px;padding:8px 10px;margin-bottom:12px;text-align:left">A senha deve ter <b>de 5 a 50 caracteres</b>. <span style="opacity:.85">Maiúscula, minúscula, número e símbolo <b>não são obrigatórios</b> (mas deixam a senha mais forte).</span></div>
       <div class="pwwrap"><input id="setupPass" type="password" placeholder="Crie sua senha" maxlength="50" oninput="checkPwRules('setupPass','setupBtn');conferirSenhas()">
         <button type="button" class="eye" onclick="togglePw('setupPass',this)">Exibir</button></div>
       ${pwRulesHTML()}
@@ -2195,7 +2165,7 @@ async function doPrimeiroAcesso(){
   const p1 = val('setupPass'), p2 = val('setupPass2');
   const err = document.getElementById('setupErr');
   if(p1!==p2){ err.textContent = 'As senhas não conferem.'; return; }
-  if(!Object.values(validatePassword(p1)).every(Boolean)){ err.textContent = 'A senha não atende às regras.'; return; }
+  if(!Object.values(validatePassword(p1)).every(Boolean)){ err.textContent = 'A senha precisa ter de 5 a 50 caracteres.'; return; }
   err.textContent = 'Criando…';
   const msg = await criarSenhaParaDBAtual(p1);
   if(msg){ err.textContent = msg; return; }
@@ -2214,7 +2184,7 @@ function pularSenhaPrimeiroAcesso(){
 function exigirSenhaParaPro(depois){
   showSheet('Crie sua senha de acesso', `
     <div style="font-size:13px;color:var(--muted);margin-bottom:10px">O Plano Pro exige senha para proteger seus dados. Digite a senha duas vezes para confirmar.</div>
-    <div style="font-size:12px;color:var(--text);background:#FFF9E8;border:1px solid #FFD980;border-radius:10px;padding:8px 10px;margin-bottom:12px">A senha deve ter <b>de 4 a 50 caracteres</b>, com <b>1 maiúscula, 1 minúscula, 1 número e 1 símbolo</b>.</div>
+    <div style="font-size:12px;color:var(--text);background:#FFF9E8;border:1px solid #FFD980;border-radius:10px;padding:8px 10px;margin-bottom:12px">A senha deve ter <b>de 5 a 50 caracteres</b>. <span style="opacity:.85">Maiúscula, minúscula, número e símbolo <b>não são obrigatórios</b> (mas deixam a senha mais forte).</span></div>
     <div class="pwwrap"><input id="proPass" type="password" placeholder="Crie sua senha" maxlength="50" oninput="checkPwRules('proPass','proPassBtn');conferirSenhasPro()">
       <button type="button" class="eye" onclick="togglePw('proPass',this)">Exibir</button></div>
     ${pwRulesHTML()}
@@ -2350,7 +2320,7 @@ function lockForgotWipe(){
 }
 function doWipe(){
   localStorage.removeItem(LS_KEY);
-  localStorage.removeItem(LS_AUTH); localStorage.removeItem('cs_nuvem'); localStorage.removeItem('cs_nuvem_estado'); localStorage.removeItem('cs_backup_antes_nuvem');
+  localStorage.removeItem(LS_AUTH);
   sessionStorage.removeItem('unlocked');
   try{ indexedDB.deleteDatabase('corretorimoveis_midia'); }catch(e){}   // fotos e documentos também saem do aparelho
   location.reload();
@@ -2364,7 +2334,6 @@ function enterApp(){
   document.getElementById('mainNav').classList.remove('hidden');
   goTab('inicio');
   try{ scheduleLocalCheck(); }catch(e){}
-  try{ NUV.aoEntrar(); }catch(e){ console.warn(e); }
   try{ checarRecursoPDF(); }catch(e){}
   try{ checarLembretesVisita(); }catch(e){}
   try{ checarFollowups(); }catch(e){}
@@ -3043,7 +3012,7 @@ function cancelarPropForm(){
   if(_voltarAoImovel && W){ _voltarAoImovel=false; P=null; pFotoCache=null; wStep=stepOrder.indexOf(1); document.getElementById('mainNav').classList.remove('hidden'); renderWizard(); return; }
   goTab('proprietarios');
 }
-async function salvarProprietario(){
+function salvarProprietario(){
   if(bloqueioTrial('salvar o proprietário')) return;
   P.nome = val('pNome') || P.nome;
   if(!P.nome.trim()){ toast('Informe o nome do proprietário.'); return; }
@@ -3051,11 +3020,7 @@ async function salvarProprietario(){
   const idx = DB.proprietarios.findIndex(x=>x.id===P.id);
   // novo proprietário: grava o sequencial (maior existente + 1)
   if(idx<0){
-    let prox = maiorSeqProp()+1;
-    if(NUV.on && !window.__DEMO){
-      try{ prox = await NUV.proximo('prop', maiorSeqProp()); }catch(e){ toast('📴 Não foi possível reservar o número na nuvem. Verifique a internet e tente salvar de novo.', 6000); return; }
-    }
-    DB.contadores.prop = prox; P.codigo = pad6(prox);
+    const prox = maiorSeqProp()+1; DB.contadores.prop = prox; P.codigo = pad6(prox);
   }
   else if(!P.codigo){ P.codigo = DB.proprietarios[idx].codigo || pad6(maiorSeqProp()+1); }
   P.updatedAt = Date.now();
@@ -3711,7 +3676,7 @@ async function hydratarFotos(){
     if(wCache[key]) continue;
     const data = await idbGet(key).catch(()=>null);
     if(data){ wCache[key]=data; changed=true; }
-    else { el.removeAttribute('data-needload'); el.textContent='📷 só no aparelho de quem tirou'; el.style.fontSize='10px'; }   // a foto não está neste aparelho (ex.: foi tirada por outro usuário da nuvem)
+    else { el.removeAttribute('data-needload'); el.textContent='📷 foto não encontrada'; el.style.fontSize='10px'; }   // a foto não está neste aparelho (ex.: backup sem as fotos)
   }
   if(changed) renderWizard();
 }
@@ -3907,11 +3872,7 @@ async function gravarImovel(semSair){
   // Em imóvel novo, confirma o código sequencial e incrementa o contador do tipo.
   if(!jaExiste){
     const pref = prefixoTipo(W.tipo||'casa');
-    let prox = maiorSeq(W.tipo||'casa') + 1;
-    if(NUV.on && !window.__DEMO){      // nuvem: o número vem do servidor (nunca repete entre usuários)
-      try{ prox = await NUV.proximo(pref, maiorSeq(W.tipo||'casa')); }catch(e){ toast('📴 Não foi possível reservar o código na nuvem. Verifique a internet e tente gravar de novo.', 6000); return; }
-      if(pad5(prox)!==(W.codigo||'').slice(2)) toast('ℹ️ O código foi ajustado para '+(pref+pad5(prox)).toUpperCase()+' porque outro usuário cadastrou antes.', 6000);
-    }
+    const prox = maiorSeq(W.tipo||'casa') + 1;
     DB.contadores[pref] = prox;
     W.codigo = pref + pad5(prox);
   }
@@ -4303,7 +4264,7 @@ function abrirDetalhe(id){
     if(!has) return;
     idbGet(keyFotoPub(im.id,i)).then(data=>{
       const el = document.getElementById('dfoto_'+i);
-      if(el) el.innerHTML = data ? `<img alt="Foto" src="${data}">` : '<span style="font-size:10px">📷 só no aparelho de quem tirou</span>';
+      if(el) el.innerHTML = data ? `<img alt="Foto" src="${data}">` : '<span style="font-size:10px">📷 foto não encontrada</span>';
     }).catch(()=>{});
   });
 }
@@ -6233,7 +6194,7 @@ function renderConfig(){
     <div class="stitle">Becape e proteção de dados</div>
     <div class="card">
       <div style="font-size:12.5px;color:var(--muted);line-height:1.6;margin-bottom:10px">
-        ${(typeof NUV!=='undefined'&&NUV.on)?'Com a nuvem ligada, os textos ficam também no servidor da empresa — mas <b>fotos e vídeos ficam só neste aparelho</b>. Faça o becape do mesmo jeito.':'Seus dados ficam só neste aparelho. Faça o becape para não perder nada ao trocar de celular ou limpar o app.'}
+        Seus dados ficam só neste aparelho. Faça o becape para não perder nada ao trocar de celular ou limpar o app.
         ${(function(){ const d=diasDesdeBackup(); if(d==null) return '<br><b style="color:var(--danger)">Você ainda não fez nenhum becape.</b>'; return d>=7?`<br><b style="color:var(--danger)">Último becape há ${d} dia(s) — recomendo exportar de novo.</b>`:`<br>Último becape há ${d} dia(s).`; })()}
       </div>
       <button class="btn" onclick="exportarBackup()">${ic('save',16)} Exportar backup</button>
@@ -6257,9 +6218,8 @@ function renderConfig(){
         <div class="lbl">Exigir senha ao abrir<span class="d">Ative para proteger seus dados com senha</span></div>
         <div class="switch" onclick="abrirCriarSenhaAjustes()"></div>
       </div>
-      ${(!window.crypto||!crypto.subtle) ? `<div style="margin-top:10px;font-size:11.5px;color:var(--danger);font-weight:700;line-height:1.5">⚠️ A criptografia NÃO está disponível neste contexto. A senha só funciona abrindo o app por <b>https</b> (com cadeado) ou instalado pelo link https.</div>` : `<div style="margin-top:10px;font-size:11px;color:var(--success)">✓ Criptografia disponível neste aparelho.</div><div style="margin-top:6px;font-size:11px;color:var(--muted);line-height:1.5">🔑 Senha: mínimo <b>4 caracteres</b>, sendo 1 maiúscula, 1 minúscula, 1 número e 1 caractere especial.</div>`}
+      ${(!window.crypto||!crypto.subtle) ? `<div style="margin-top:10px;font-size:11.5px;color:var(--danger);font-weight:700;line-height:1.5">⚠️ A criptografia NÃO está disponível neste contexto. A senha só funciona abrindo o app por <b>https</b> (com cadeado) ou instalado pelo link https.</div>` : `<div style="margin-top:10px;font-size:11px;color:var(--success)">✓ Criptografia disponível neste aparelho.</div><div style="margin-top:6px;font-size:11px;color:var(--muted);line-height:1.5">🔑 Senha: de <b>5 a 50 caracteres</b>. Maiúscula, minúscula, número e símbolo não são obrigatórios (mas deixam a senha mais forte).</div>`}
     </div>`}
-    ${nuvConfigHTML()}
     <div class="stitle">Dados</div>
     <button class="ptile" onclick="confirmarReset()"><div class="ptile-icon">🗑️</div><div><div class="ptile-title">Apagar todos os dados</div><div class="ptile-sub">Remove imóveis e fotos deste aparelho</div></div></button>
     <div class="stitle">Sobre</div>
@@ -6268,7 +6228,7 @@ function renderConfig(){
         <b style="color:var(--text)">Cor Sync Imóveis</b>
         <span class="mono" style="color:var(--primary);font-weight:700;background:var(--pblue);padding:3px 10px;border-radius:100px">v${APP_VERSION}</span>
       </div>
-      ${(typeof NUV!=='undefined'&&NUV.on)?'Dados de texto sincronizados com a nuvem da empresa; fotos e vídeos salvos neste aparelho.':'Dados salvos localmente neste aparelho.'}<br>
+      Dados salvos localmente neste aparelho.<br>
       Módulo ativo: <b>Vender › Casa, Apartamento, Chácara e Terreno</b>.<br>
       <span>🌐 Busca de CEP e rotas (Waze/Google Maps) precisam de internet; o restante funciona offline.</span>
       <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:11.5px;line-height:1.55">
@@ -6422,7 +6382,7 @@ function salvarCorretor(){
 function abrirCriarSenhaAjustes(){
   showSheet('🔐 Criar senha de acesso', `
     <div style="font-size:13px;color:var(--muted);margin-bottom:10px">Sua senha <b>criptografa</b> os dados (AES‑256). Guarde bem — sem ela os dados não podem ser recuperados. Digite duas vezes.</div>
-    <div style="font-size:12px;color:var(--text);background:#FFF9E8;border:1px solid #FFD980;border-radius:10px;padding:8px 10px;margin-bottom:12px">A senha deve ter <b>de 4 a 50 caracteres</b>, com <b>1 maiúscula, 1 minúscula, 1 número e 1 símbolo</b>.</div>
+    <div style="font-size:12px;color:var(--text);background:#FFF9E8;border:1px solid #FFD980;border-radius:10px;padding:8px 10px;margin-bottom:12px">A senha deve ter <b>de 5 a 50 caracteres</b>. <span style="opacity:.85">Maiúscula, minúscula, número e símbolo <b>não são obrigatórios</b> (mas deixam a senha mais forte).</span></div>
     <div class="pwwrap"><input id="ajPass" type="password" placeholder="Crie sua senha" maxlength="50" oninput="checkPwRules('ajPass','ajPassBtn');conferirSenhasAj()"><button type="button" class="eye" onclick="togglePw('ajPass',this)">Exibir</button></div>
     ${pwRulesHTML()}
     <div class="pwwrap" style="margin-top:10px"><input id="ajPass2" type="password" placeholder="Digite a senha de novo" maxlength="50" oninput="conferirSenhasAj()"><button type="button" class="eye" onclick="togglePw('ajPass2',this)">Exibir</button></div>
@@ -6471,7 +6431,7 @@ async function doRemoverSenha(){
 function openChangePass(){
   showSheet('Alterar senha', `
     <label>Senha atual</label><div class="pwwrap"><input id="cpOld" type="password"><button type="button" class="eye" onclick="togglePw('cpOld',this)">Exibir</button></div>
-    <div style="font-size:12px;color:var(--text);background:#FFF9E8;border:1px solid #FFD980;border-radius:10px;padding:8px 10px;margin:10px 0">A nova senha deve ter <b>de 4 a 50 caracteres</b>, com <b>1 maiúscula, 1 minúscula, 1 número e 1 símbolo</b>.</div>
+    <div style="font-size:12px;color:var(--text);background:#FFF9E8;border:1px solid #FFD980;border-radius:10px;padding:8px 10px;margin:10px 0">A nova senha deve ter <b>de 5 a 50 caracteres</b>. <span style="opacity:.85">Maiúscula, minúscula, número e símbolo <b>não são obrigatórios</b> (mas deixam a senha mais forte).</span></div>
     <label>Nova senha</label><div class="pwwrap"><input id="cpNew" type="password" maxlength="50" oninput="checkPwRules('cpNew','__nobtn')"><button type="button" class="eye" onclick="togglePw('cpNew',this)">Exibir</button></div>
     ${pwRulesHTML()}`,
     `<button class="btn gray" onclick="closeSheet()">Cancelar</button><button class="btn" onclick="doChangePass()">Salvar</button>`);
@@ -6503,7 +6463,7 @@ async function doChangePass(){
     const oldKey = await deriveKey(val('cpOld'), b64d(auth.salt));
     if(!(await verifyKey(oldKey, auth.check))){ toast('Senha atual incorreta.'); return; }
     const novo = val('cpNew');
-    if(!Object.values(validatePassword(novo)).every(Boolean)){ toast('A nova senha precisa ter 4 a 50 caracteres, com maiúscula, minúscula, número e símbolo.'); return; }
+    if(!Object.values(validatePassword(novo)).every(Boolean)){ toast('A nova senha precisa ter de 5 a 50 caracteres.'); return; }
     const salt = crypto.getRandomValues(new Uint8Array(16));
     const key = await deriveKey(novo, salt);
     const check = await makeCheck(key);
@@ -6524,810 +6484,12 @@ function confirmarReset(){
     noLabel:'Cancelar', yesLabel:'Apagar tudo', yes:'doResetTudo()'});
 }
 async function doResetTudo(){
-  localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_AUTH); localStorage.removeItem('cs_nuvem'); localStorage.removeItem('cs_nuvem_estado'); localStorage.removeItem('cs_backup_antes_nuvem');
+  localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_AUTH);
   sessionStorage.removeItem('unlocked');
   try{ indexedDB.deleteDatabase('corretorimoveis_midia'); }catch(e){}
   location.reload();
 }
 
-/*NUVEM-INI*/
-// ═══════════════════════════════════════════════════════════════════════════
-// ☁️ NUVEM — modo multiusuário (Supabase)
-// • Cada registro (imóvel, proprietário, visita, cliente, retorno, despesa, receita) é uma linha no banco.
-// • Quem abre um registro para incluir/editar/excluir "pega" o bloqueio dele. Outro usuário que tentar
-//   abrir o mesmo registro vê "Registro em uso por outro usuário — aguarde" e o 1º usuário recebe o alerta
-//   "Há outro usuário precisando atualizar informações".
-// • Sem internet o app fica SÓ PARA CONSULTA. Sem a nuvem configurada, tudo funciona como sempre (local).
-// • Nunca use aqui a chave secreta (service_role): só a chave pública (anon/publishable).
-// ═══════════════════════════════════════════════════════════════════════════
-const NUVEM_PADRAO = { url:'', anon:'' };   // opcional: preencha para o app já vir apontado para o seu projeto Supabase
-const NUV_KEY = 'cs_nuvem';                 // sessão + endereço do projeto (neste aparelho)
-const NUV_EST = 'cs_nuvem_estado';          // versões já conhecidas de cada registro
-const NUV_BKP = 'cs_backup_antes_nuvem';    // cópia dos dados locais de antes de entrar na nuvem
-
-function nuvStable(v){
-  if(v===undefined) return 'null';
-  if(v===null || typeof v!=='object') return JSON.stringify(v);
-  if(Array.isArray(v)) return '['+v.map(nuvStable).join(',')+']';
-  return '{'+Object.keys(v).filter(k=>v[k]!==undefined).sort().map(k=>JSON.stringify(k)+':'+nuvStable(v[k])).join(',')+'}';
-}
-function nuvHash(s){            // impressão digital curta (não é segurança, só comparação de mudança)
-  let h1=0x811c9dc5, h2=0x1b873593;
-  for(let i=0;i<s.length;i++){ const c=s.charCodeAt(i); h1^=c; h1=Math.imul(h1,16777619); h2=Math.imul(h2^c,2246822519); h2^=h2>>>13; }
-  return (h1>>>0).toString(36)+(h2>>>0).toString(36)+s.length.toString(36);
-}
-const NUV_COLS = {
-  imoveis:{get:()=>DB.imoveis}, proprietarios:{get:()=>DB.proprietarios}, agendamentos:{get:()=>DB.agendamentos},
-  clientes:{get:()=>DB.clientes}, followups:{get:()=>DB.followups},
-  despesas:{get:()=>DB.financeiro.despesas}, receitas:{get:()=>DB.financeiro.receitas}
-};
-function nuvTodos(){
-  const m = new Map();
-  for(const t in NUV_COLS){ (NUV_COLS[t].get()||[]).forEach(it=>{ if(it && it.id!=null) m.set(t+'/'+it.id, {tipo:t, id:String(it.id), item:it}); }); }
-  const mt = DB.meta;
-  if(mt && (NUV.rev['config/meta']!=null || (mt.valor>0) || mt.dataIni || mt.dataFim)) m.set('config/meta', {tipo:'config', id:'meta', item:mt});
-  return m;
-}
-
-const NUV = {
-  on:false, pronto:false, online:true, cfg:null, tok:null, eu:null,
-  rev:{}, snap:{}, seq:0, locks:{}, aSoltar:new Set(), bloqueios:[], vistos:{}, alertas:{},
-  ativoEm:Date.now(), epoch:0, epoch2:0, espera:null, novidade:null,
-  _busy:false, _again:false, _boot:false, _tp:null, _ta:null, _te:null, _dog:null,
-  T:Object.assign({ ping:8000, espera:4000, idle:120000, realerta:60000, dog:1000 }, window.__NUV_T||{}),
-
-  // ───────── estado / configuração ─────────
-  lerCfg(){ try{ return JSON.parse(localStorage.getItem(NUV_KEY)||'null'); }catch(e){ return null; } },
-  salvarCfg(){ try{ localStorage.setItem(NUV_KEY, JSON.stringify(this.cfg)); }catch(e){} },
-  salvarEstado(){
-    clearTimeout(this._tse);
-    this._tse = setTimeout(()=>{ try{ localStorage.setItem(NUV_EST, JSON.stringify({seq:this.seq, rev:this.rev, snap:this.snap})); }catch(e){} }, 300);
-  },
-  somenteLeitura(){ return !!(this.on && !window.__DEMO && (!this.online || !this.pronto)); },
-  msgOffline(){
-    toast(this.pronto || !this.cfg ? '📴 Sem internet — o app fica só para consulta. Conecte-se para incluir ou alterar.' : '☁️ Conectando à nuvem… aguarde alguns segundos para alterar.', 5500);
-    return false;
-  },
-  definirOnline(v){
-    if(this.online===v) return;
-    this.online = v;
-    this.barra();
-    try{ nuvAtualizarAjustes(); }catch(e){}
-    if(v){ clearTimeout(this._tp); this._tp = setTimeout(()=>this.tick(), 200); }
-  },
-
-  // ───────── rede ─────────
-  async http(method, path, body, opt){
-    opt = opt||{};
-    const c = this.cfg; if(!c) throw new Error('sem_cfg');
-    if(!opt.semAuth) await this.garantirToken();
-    const ctl = new AbortController(); const to = setTimeout(()=>ctl.abort(), opt.timeout||15000);
-    const h = {apikey:c.anon, 'Content-Type':'application/json'};
-    if(!opt.semAuth) h.Authorization = 'Bearer '+this.tok.access;
-    let resp;
-    try{
-      resp = await fetch(c.url+path, {method, headers:h, body: body!==undefined?JSON.stringify(body):undefined, signal:ctl.signal, keepalive:!!opt.keepalive});
-    }catch(e){ clearTimeout(to); this.definirOnline(false); const er=new Error('rede'); er.rede=true; throw er; }
-    clearTimeout(to);
-    if(resp.status===401 && !opt._retry && !opt.semAuth){ await this.renovar(true); return this.http(method, path, body, Object.assign({}, opt, {_retry:1})); }
-    const tx = await resp.text(); let j=null; try{ j = tx?JSON.parse(tx):null; }catch(e){}
-    if(resp.status>=500){ this.definirOnline(false); const er=new Error('rede'); er.rede=true; throw er; }
-    if(!resp.ok){ const er=new Error((j&&(j.message||j.error_description||j.msg||j.error))||('http '+resp.status)); er.status=resp.status; er.corpo=j; throw er; }
-    this.definirOnline(true);
-    return j;
-  },
-  rpc(nome, args, opt){ return this.http('POST', '/rest/v1/rpc/'+nome, args||{}, opt); },
-  async garantirToken(){
-    if(!this.tok) throw new Error('sem_sessao');
-    if(!this.tok.access || this.tok.exp-60000 < Date.now()) await this.renovar();
-  },
-  renovar(){
-    if(this._renov) return this._renov;
-    this._renov = (async()=>{
-      try{
-        const r = await this.http('POST', '/auth/v1/token?grant_type=refresh_token', {refresh_token:this.tok.refresh}, {semAuth:true});
-        this.guardarSessao(r);
-      }catch(e){
-        if(e.status===400 || e.status===401 || e.status===403) this.sessaoExpirada();
-        throw e;
-      }finally{ this._renov = null; }
-    })();
-    return this._renov;
-  },
-  guardarSessao(r){
-    this.tok = {access:r.access_token, refresh:r.refresh_token, exp:Date.now()+(r.expires_in||3600)*1000};
-    this.cfg.refresh = r.refresh_token; if(this.on) this.salvarCfg();
-  },
-  sessaoExpirada(){
-    this.pronto = false; this.tok = null; this.cfg.refresh = ''; this.salvarCfg(); this.barra();
-    if(!this._avisouSessao){ this._avisouSessao = true; toast('🔑 Sua sessão na nuvem expirou. Entre de novo em Ajustes → Nuvem. Enquanto isso o app fica só para consulta.', 8000); }
-  },
-
-  // ───────── rótulos ─────────
-  rotulo(tipo, id){
-    const f = (arr)=> (arr||[]).find(x=>String(x.id)===String(id));
-    try{
-      if(tipo==='imoveis'){ const im=f(DB.imoveis); if(im) return (im.codigo||'').toUpperCase()+' · '+((im.localizacao&&im.localizacao.endereco)||'imóvel')+((im.localizacao&&im.localizacao.numero)?', '+im.localizacao.numero:''); }
-      if(tipo==='proprietarios'){ const p=f(DB.proprietarios); if(p) return 'Proprietário '+(p.nome||'')+(p.codigo?' (Nº '+p.codigo+')':''); }
-      if(tipo==='agendamentos'){ const a=f(DB.agendamentos); if(a) return 'Visita '+(a.data||'')+' '+(a.hora||'')+(a.compradorNome?' — '+a.compradorNome:''); }
-      if(tipo==='clientes'){ const c=f(DB.clientes); if(c) return 'Cliente '+(c.nome||''); }
-      if(tipo==='followups'){ const r=f(DB.followups); if(r) return 'Retorno '+(r.cliente||'')+(r.assunto?' — '+r.assunto:''); }
-      if(tipo==='despesas'){ const d=f(DB.financeiro.despesas); if(d) return 'Despesa '+(d.categoria||'')+' '+fmtBRL(d.valor); }
-      if(tipo==='receitas'){ const d=f(DB.financeiro.receitas); if(d) return 'Receita '+(d.categoria||'')+' '+fmtBRL(d.valor); }
-      if(tipo==='config') return 'Meta de vendas';
-    }catch(e){}
-    return 'este registro';
-  },
-
-  // ───────── sincronização: baixar ─────────
-  aplicarLinha(r){
-    const key = r.tipo+'/'+r.id;
-    if(this.rev[key]!=null && this.rev[key] >= r.revisao) return false;
-    this.rev[key] = r.revisao;
-    if(r.tipo==='config'){ if(r.id==='meta' && r.dados){ DB.meta = r.dados; this.snap[key] = nuvHash(nuvStable(DB.meta)); } return true; }
-    const col = NUV_COLS[r.tipo]; if(!col) return false;
-    const arr = col.get(); const i = arr.findIndex(x=>String(x.id)===String(r.id));
-    if(r.apagado){ if(i>=0) arr.splice(i,1); delete this.snap[key]; return true; }
-    if(i>=0) arr[i] = r.dados; else arr.push(r.dados);
-    this.snap[key] = nuvHash(nuvStable(r.dados));
-    return true;
-  },
-  async baixarLinhas(desde){
-    const todas = [];
-    for(;;){
-      const rows = await this.http('GET', `/rest/v1/registros?select=tipo,id,dados,revisao,apagado,seq,atualizado_nome&seq=gt.${desde}&order=seq.asc&limit=500`);
-      todas.push(...rows);
-      if(rows.length<500) break;
-      desde = rows[rows.length-1].seq;
-    }
-    return todas;
-  },
-  async pull(completo){
-    if(window.__DEMO) return false;
-    const desde = completo ? 0 : Math.max(0, this.seq-20);
-    const rows = await this.baixarLinhas(desde);
-    let mudou = false, maxSeq = this.seq, quem = '';
-    rows.forEach(r=>{
-      const emEdicao = this.locks[r.tipo+'/'+r.id];     // não troco por baixo de quem está editando (o servidor barra o conflito)
-      if(emEdicao && !completo) { if(r.seq>maxSeq) maxSeq=r.seq; return; }
-      if(this.aplicarLinha(r)){ mudou = true; quem = r.atualizado_nome||quem; }
-      if(r.seq>maxSeq) maxSeq = r.seq;
-    });
-    this.seq = Math.max(this.seq, maxSeq);
-    if(mudou){ try{ await persistDB(); }catch(e){} this.salvarEstado(); this.sinalizarNovidade(quem); }
-    return mudou;
-  },
-  sinalizarNovidade(quem){
-    this.novidade = quem||'outro usuário';
-    let p = document.getElementById('nuvNovo');
-    if(!p){ p = document.createElement('button'); p.id='nuvNovo'; p.type='button'; p.onclick=()=>NUV.atualizarTela(); document.body.appendChild(p); }
-    p.textContent = '🔄 Dados atualizados por '+this.novidade+' — toque para ver';
-    p.style.display = 'block';
-  },
-  atualizarTela(){
-    const p = document.getElementById('nuvNovo'); if(p) p.style.display='none';
-    this.novidade = null;
-    if(W||V||P){ toast('Termine o cadastro aberto para ver as novidades.'); return; }
-    try{ closeSheet(); }catch(e){}
-    try{ goTab(currentTab, true); }catch(e){}
-  },
-
-  // ───────── sincronização: enviar ─────────
-  agendar(){ if(!this.on) return; clearTimeout(this._ta); this._ta = setTimeout(()=>this.empurrar(), 250); },
-  async empurrar(){
-    if(!this.on || !this.pronto || window.__DEMO) return;
-    if(this._busy){ this._again = true; return; }
-    this._busy = true;
-    try{ do{ this._again = false; await this.empurrarUmaVez(); }while(this._again); }
-    finally{ this._busy = false; }
-  },
-  async empurrarUmaVez(){
-    const todos = nuvTodos(), jobs = [];
-    for(const [key,o] of todos){ const h = nuvHash(nuvStable(o.item)); if(this.snap[key]!==h) jobs.push({key, tipo:o.tipo, id:o.id, item:o.item, h, apagar:false}); }
-    for(const key of Object.keys(this.snap)){ if(!todos.has(key)){ const i=key.indexOf('/'); jobs.push({key, tipo:key.slice(0,i), id:key.slice(i+1), apagar:true}); } }
-    // trava de segurança: exclusão em massa nunca é intencional (o usuário apaga um registro por vez)
-    const apagados = jobs.filter(j=>j.apagar);
-    const nSnap = Object.keys(this.snap).length;
-    if(apagados.length>=15 || (nSnap>=5 && apagados.length>=nSnap*0.8)){
-      this.rev = {}; this.snap = {}; this.seq = 0;
-      try{ for(const t in NUV_COLS){ NUV_COLS[t].get().length = 0; } await this.pull(true); }catch(e){}
-      this.aviso('🛡️ Proteção contra exclusão em massa', 'Detectei que muitos registros sumiram deste aparelho de uma vez. Para proteger os dados da equipe, <b>não apaguei nada na nuvem</b> e recarreguei tudo a partir dela.');
-      return;
-    }
-    for(const j of jobs){
-      const liberar = this.aSoltar.has(j.key);
-      let r;
-      try{
-        r = await this.rpc('registro_salvar', {p_tipo:j.tipo, p_id:j.id, p_dados:j.apagar?{}:j.item, p_revisao:this.rev[j.key]||0, p_apagar:j.apagar, p_liberar:liberar});
-      }catch(e){
-        if(e.rede){ this._retry(); return; }
-        console.warn('nuvem: erro ao gravar', j.key, e); toast('⚠️ Não foi possível gravar '+this.rotulo(j.tipo,j.id)+': '+(e.message||e), 7000);
-        continue;
-      }
-      if(r && r.ok){
-        this.rev[j.key] = r.revisao>0 ? r.revisao : (this.rev[j.key]||0);
-        if(j.apagar) delete this.snap[j.key]; else this.snap[j.key] = j.h;
-        if(liberar) this.aSoltar.delete(j.key);
-      } else { await this.rejeitado(j, r||{}); }
-    }
-    for(const key of [...this.aSoltar]){
-      const i = key.indexOf('/');
-      try{ await this.rpc('bloqueio_liberar', {p_tipo:key.slice(0,i), p_id:key.slice(i+1)}); this.aSoltar.delete(key); }
-      catch(e){ if(e.rede){ this._retry(); return; } this.aSoltar.delete(key); }
-    }
-    this.salvarEstado();
-  },
-  _retry(){ clearTimeout(this._tr); this._tr = setTimeout(()=>this.empurrar(), 5000); },
-  async rejeitado(j, r){
-    const rot = this.rotulo(j.tipo, j.id);
-    this.snap[j.key] = '#rejeitado';
-    if(r.motivo==='desatualizado'){
-      this.rev[j.key] = 0;
-      this.aplicarLinha({tipo:j.tipo, id:j.id, dados:r.dados, revisao:r.revisao, apagado:r.apagado});
-      this.aviso('⚠️ Outro usuário alterou este registro', `«${esc(rot)}» foi alterado por outra pessoa enquanto você editava. Suas alterações <b>não foram gravadas</b> e a tela passa a mostrar a versão mais nova.`);
-    } else if(r.motivo==='em_uso'){
-      await this.restaurar(j);
-      this.aviso('🔒 Registro em uso por outro usuário', `Não foi possível gravar «${esc(rot)}»: <b>${esc(r.dono_nome||'outro usuário')}</b> está com este registro aberto. Suas alterações <b>não foram gravadas</b>; aguarde e faça de novo.`);
-    } else {
-      await this.restaurar(j);
-      this.aviso('⚠️ Não foi possível gravar', `«${esc(rot)}»: ${esc(r.motivo||'erro desconhecido')}. A tela voltou à versão da nuvem.`);
-    }
-    try{ await persistDB(); }catch(e){}
-    this.salvarEstado();
-  },
-  async restaurar(j){        // traz de novo a versão da nuvem de um registro
-    try{
-      const rows = await this.http('GET', `/rest/v1/registros?select=tipo,id,dados,revisao,apagado,seq&tipo=eq.${encodeURIComponent(j.tipo)}&id=eq.${encodeURIComponent(j.id)}`);
-      this.rev[j.key] = 0;
-      if(rows.length){ this.aplicarLinha(rows[0]); }
-      else if(NUV_COLS[j.tipo]){ const a=NUV_COLS[j.tipo].get(); const i=a.findIndex(x=>String(x.id)===j.id); if(i>=0) a.splice(i,1); delete this.snap[j.key]; }
-    }catch(e){ delete this.snap[j.key]; }
-  },
-  aviso(titulo, htmlMsg){
-    try{ closeConfirm(); }catch(e){}
-    confirmar({icon:'ℹ️', title:titulo, msg:htmlMsg, single:true, yesLabel:'Entendi', yesBg:'var(--primary)'});
-  },
-
-  // ───────── códigos sequenciais (cs00001, 000001…) sem repetir entre usuários ─────────
-  async proximo(chave, minimoLocal){
-    let n = Number(await this.rpc('contador_proximo', {p_chave:chave}));
-    if(minimoLocal!=null && n<=minimoLocal){      // contador do servidor atrás do maior código já existente: corrige e pede de novo
-      await this.rpc('contador_garantir', {p_chave:chave, p_minimo:minimoLocal});
-      n = Number(await this.rpc('contador_proximo', {p_chave:chave}));
-    }
-    return n;
-  },
-
-  // ───────── bloqueio de registro ─────────
-  ativo(){ return !document.hidden && (Date.now()-this.ativoEm) < this.T.idle; },
-  async abrir(tipo, id, cont, opt){
-    opt = opt||{};
-    if(!this.on || window.__DEMO) return cont();
-    if(this.somenteLeitura()){ this.msgOffline(); return; }
-    const key = tipo+'/'+id;
-    if(this.locks[key]){ this.locks[key].fechado=0; return this.executar(key, cont, opt); }
-    let r;
-    try{ r = await this.rpc('bloqueio_adquirir', {p_tipo:tipo, p_id:id, p_avisar:true}); }
-    catch(e){ if(e.rede){ this.msgOffline(); return; } toast('⚠️ '+(e.message||e)); return; }
-    if(r.ok){ return this.assumir(key, tipo, id, cont, opt); }
-    if(r.motivo==='em_uso'){
-      if(opt.esperar===false){ this.mostrarEmUso(r, tipo, id, null); return; }
-      this.esperar(key, tipo, id, r, cont, opt); return;
-    }
-    toast('⚠️ Não foi possível abrir o registro ('+(r.motivo||'erro')+').');
-  },
-  async assumir(key, tipo, id, cont, opt){
-    this.locks[key] = {tipo, id, kind:opt.kind||'ovl', alive:opt.alive||null, epoch:null, fechado:0, desde:Date.now(), perdido:null};
-    try{ await this.pull(); }catch(e){}            // garante a versão mais nova antes de abrir
-    return this.executar(key, cont, opt);
-  },
-  async executar(key, cont, opt){
-    const lk = this.locks[key]; if(!lk) return cont();
-    if(opt.alive) lk.alive = opt.alive;
-    let ret;
-    try{ ret = cont(); if(ret && ret.then) ret = await ret; }
-    catch(e){ this.fim(key); throw e; }
-    if(opt.kind==='rapido'){ this.fim(key); }
-    else if(!opt.alive){
-      const e1 = this.epoch, e2 = this.epoch2;       // a tela que o registro abriu (folha ou confirmação)
-      lk.alive = ()=>{
-        const m1 = document.getElementById('modals').innerHTML.trim()!=='', m2 = document.getElementById('modals2').innerHTML.trim()!=='';
-        return (m1 && NUV.epoch===e1) || (m2 && NUV.epoch2===e2);
-      };
-    }
-    return ret;
-  },
-  fim(key){
-    if(!this.locks[key]) return;
-    delete this.locks[key];
-    this.aSoltar.add(key);
-    this.agendar();
-  },
-  vigia(){
-    for(const key of Object.keys(this.locks)){
-      const lk = this.locks[key]; let vivo = true;
-      try{ vivo = lk.alive ? !!lk.alive() : true; }catch(e){ vivo = false; }
-      if(vivo) lk.fechado = 0; else if(++lk.fechado >= 2) this.fim(key);
-    }
-  },
-
-  // quem tentou abrir um registro em uso
-  mostrarEmUso(r, tipo, id, aguardando){
-    const rot = this.rotulo(tipo, id);
-    const hora = r.desde ? new Date(r.desde).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '';
-    let el = document.getElementById('nuvEspera');
-    if(!el){ el = document.createElement('div'); el.id='nuvEspera'; document.body.appendChild(el); }
-    el.innerHTML = `<div class="nuv-card" role="alertdialog" aria-modal="true" aria-labelledby="nuvEsT">
-      <div style="font-size:42px;text-align:center">🔒</div>
-      <div id="nuvEsT" style="font-size:17px;font-weight:800;text-align:center;margin-top:8px">Registro em uso por outro usuário — aguarde</div>
-      <div style="font-size:13.5px;line-height:1.6;margin-top:10px;text-align:center;color:var(--muted)">
-        <b style="color:var(--text)">${esc(r.dono_nome||'Outro usuário')}</b> está com «${esc(rot)}» aberto${hora?' desde as '+hora:''}.<br>
-        ${aguardando?'<b>Já avisei</b> que você precisa atualizar este registro.':'Já avisei que você precisa atualizar este registro.'}
-      </div>
-      ${aguardando?`<div id="nuvEsEst" style="margin-top:12px;text-align:center;font-size:13px;color:var(--primary);font-weight:700">⏳ Aguardando liberar… o registro abre sozinho.</div>`:''}
-      <div class="nuv-bt">
-        ${aguardando?`<button class="btn gray" onclick="NUV.avisarDeNovo()">🔔 Avisar de novo</button>`:''}
-        <button class="btn" onclick="NUV.cancelarEspera()">${aguardando?'Cancelar':'Entendi'}</button>
-      </div></div>`;
-    el.style.display = 'flex';
-    try{ const bt = el.querySelector('.nuv-bt .btn:last-child'); if(bt) bt.focus(); }catch(e){}
-  },
-  esperar(key, tipo, id, r, cont, opt){
-    clearTimeout(this._te);
-    this.espera = {key, tipo, id, cont, opt, r};
-    this.mostrarEmUso(r, tipo, id, true);
-    clearTimeout(this._tp); this._tp = setTimeout(()=>this.tick(), this.T.espera);
-    const passo = async()=>{
-      const e = this.espera; if(!e || e.key!==key) return;
-      try{
-        const r2 = await this.rpc('bloqueio_adquirir', {p_tipo:tipo, p_id:id, p_avisar:false});
-        if(!this.espera || this.espera.key!==key){        // cancelou no meio: não deixa o registro reservado à toa
-          if(r2.ok) this.rpc('bloqueio_liberar', {p_tipo:tipo, p_id:id}).catch(()=>{});
-          return;
-        }
-        if(r2.ok){
-          const st = document.getElementById('nuvEsEst'); if(st) st.innerHTML = '✅ <b>Liberado — abrindo agora…</b>';
-          this.espera = null;
-          setTimeout(()=>{ this.fecharEspera(); this.assumir(key, tipo, id, cont, opt); }, 500);
-          return;
-        }
-        if(r2.dono_nome && r2.dono_nome!==e.r.dono_nome){ e.r = r2; this.mostrarEmUso(r2, tipo, id, true); }
-      }catch(err){ /* sem rede: tenta de novo */ }
-      this._te = setTimeout(passo, this.T.espera);
-    };
-    this._te = setTimeout(passo, this.T.espera);
-  },
-  async avisarDeNovo(){
-    const e = this.espera; if(!e) return;
-    try{ await this.rpc('bloqueio_adquirir', {p_tipo:e.tipo, p_id:e.id, p_avisar:true}); toast('🔔 Aviso enviado de novo.'); }catch(err){}
-  },
-  cancelarEspera(){ clearTimeout(this._te); this.espera = null; this.fecharEspera(); },
-  fecharEspera(){ const el=document.getElementById('nuvEspera'); if(el){ el.style.display='none'; el.innerHTML=''; } },
-
-  // ───────── alerta para quem está com o registro parado ─────────
-  verPedidos(lista){
-    const agora = Date.now(), ativos = {};
-    lista.forEach(p=>{
-      const k = p.tipo+'/'+p.id; ativos[k] = p;
-      const v = this.vistos[k];
-      const novo = !v || v.em!==p.em;
-      const repetir = v && !novo && !this.ativo() && (agora - v.quando) > this.T.realerta;
-      if(novo || repetir){ this.vistos[k] = {em:p.em, quando:agora}; this.alertar(p); }
-    });
-    Object.keys(this.alertas).forEach(k=>{ if(!ativos[k]) this.removerAlerta(k); });
-    Object.keys(this.vistos).forEach(k=>{ if(!ativos[k]) delete this.vistos[k]; });
-  },
-  alertar(p){
-    const k = p.tipo+'/'+p.id, rot = this.rotulo(p.tipo, p.id);
-    this.alertas[k] = p;
-    let box = document.getElementById('nuvAlerta');
-    if(!box){ box = document.createElement('div'); box.id='nuvAlerta'; box.setAttribute('role','alert'); document.body.appendChild(box); }
-    let it = box.querySelector('[data-k="'+CSS.escape(k)+'"]');
-    if(!it){ it = document.createElement('div'); it.className='nuv-al'; it.dataset.k = k; box.appendChild(it); }
-    it.innerHTML = `<div class="nuv-al-t">🔔 Há outro usuário precisando atualizar informações</div>
-      <div class="nuv-al-m"><b>${esc(p.por_nome||'Outro usuário')}</b> está aguardando «${esc(rot)}», que está aberto com você. Salve e feche para liberar.</div>
-      <button type="button" onclick="NUV.dispensarAlerta(this.parentNode.dataset.k)">Entendi</button>`;
-    try{ notify('Cor Sync Imóveis — registro solicitado', 'Há outro usuário precisando atualizar informações: '+(p.por_nome||'')+' aguarda «'+rot+'».'); }catch(e){}
-    try{ if(navigator.vibrate) navigator.vibrate([250,120,250]); }catch(e){}
-  },
-  dispensarAlerta(k){ const box=document.getElementById('nuvAlerta'); if(!box) return; const it=box.querySelector('[data-k="'+CSS.escape(k)+'"]'); if(it) it.remove(); },
-  removerAlerta(k){ delete this.alertas[k]; this.dispensarAlerta(k); },
-
-  // ───────── bloqueio perdido (ficou parado e outra pessoa assumiu) ─────────
-  verPerdidos(){
-    for(const key of Object.keys(this.locks)){
-      const lk = this.locks[key];
-      const b = this.bloqueios.find(x=>x.tipo+'/'+x.id===key);
-      if(b && b.user_id!==(this.eu&&this.eu.user_id)){
-        if(!lk.perdido){
-          lk.perdido = b.user_nome;
-          this.aviso('⏱️ Você ficou parado e perdeu a vez', `«${esc(this.rotulo(lk.tipo,lk.id))}» passou para <b>${esc(b.user_nome)}</b> porque ficou muito tempo sem uso. Ao salvar, o app mostra a versão mais nova (o que você digitou aqui não será gravado).`);
-        }
-      } else if(!b && this.ativo() && !lk.perdido){
-        this.rpc('bloqueio_adquirir', {p_tipo:lk.tipo, p_id:lk.id, p_avisar:false}).then(r=>{ if(!r.ok) lk.perdido = r.dono_nome||'outro usuário'; }).catch(()=>{});
-      }
-    }
-  },
-
-  // ───────── ciclo (ping) ─────────
-  async tick(){
-    clearTimeout(this._tp);
-    try{
-      if(!this.pronto) await this.reconectar();
-      if(this.pronto){
-        const r = await this.rpc('app_ping', {p_ativo:this.ativo()});
-        if(r && r.ok){
-          this.bloqueios = r.bloqueios||[];
-          this.verPedidos(r.pedidos||[]);
-          this.verPerdidos();
-          if(r.seq > this.seq) await this.pull();
-          if(this.aSoltar.size) this.agendar();
-        }
-      }
-    }catch(e){ /* sem rede: tenta no próximo ciclo */ }
-    this.barra();
-    if(this.on) this._tp = setTimeout(()=>this.tick(), this.espera ? this.T.espera : this.T.ping);
-  },
-  async reconectar(){
-    if(!this.tok || !this.tok.refresh) return;
-    const eu = await this.rpc('eu');
-    if(eu.erro){ this.pronto=false; return; }
-    this.eu = eu;
-    await this.pull();
-    this.pronto = true; this._avisouSessao = false;
-    this.barra();
-    this.empurrar();
-  },
-  iniciarCiclos(){
-    if(!this._ev){
-      this._ev = true;
-      const marca = ()=>{ this.ativoEm = Date.now(); };
-      ['pointerdown','keydown','input','touchstart','wheel','scroll'].forEach(n=>window.addEventListener(n, marca, {passive:true, capture:true}));
-      document.addEventListener('visibilitychange', ()=>{ if(!document.hidden){ this.ativoEm = Date.now(); clearTimeout(this._tp); this._tp=setTimeout(()=>this.tick(), 300); } });
-      window.addEventListener('online', ()=>{ clearTimeout(this._tp); this._tp=setTimeout(()=>this.tick(), 300); });
-      window.addEventListener('offline', ()=>this.definirOnline(false));
-      window.addEventListener('pagehide', ()=>this.soltarAoSair());
-    }
-    clearInterval(this._dog); this._dog = setInterval(()=>this.vigia(), this.T.dog);
-    clearTimeout(this._tp); this._tp = setTimeout(()=>this.tick(), 100);
-  },
-  soltarAoSair(){          // melhor esforço: libera os registros abertos ao fechar a aba
-    if(!this.on || !this.cfg || !this.tok || !this.tok.access) return;
-    const chaves = new Set([...Object.keys(this.locks), ...this.aSoltar]);
-    chaves.forEach(key=>{
-      const i = key.indexOf('/');
-      try{ fetch(this.cfg.url+'/rest/v1/rpc/bloqueio_liberar', {method:'POST', keepalive:true,
-        headers:{apikey:this.cfg.anon, Authorization:'Bearer '+this.tok.access, 'Content-Type':'application/json'},
-        body:JSON.stringify({p_tipo:key.slice(0,i), p_id:key.slice(i+1)})}); }catch(e){}
-    });
-  },
-
-  // ───────── barra de estado ─────────
-  barra(){
-    let b = document.getElementById('nuvBarra');
-    if(!this.on || window.__DEMO){ if(b) b.remove(); document.body.classList.remove('nuv-on'); return; }
-    if(!b){ b = document.createElement('div'); b.id='nuvBarra'; document.body.appendChild(b); }
-    const nome = this.eu ? this.eu.nome : '';
-    const emp = this.eu ? this.eu.empresa : '';
-    let txt, cls;
-    if(!this.cfg || !this.cfg.refresh){ txt='🔑 Sessão expirada — entre de novo em Ajustes → Nuvem · só consulta'; cls='off'; }
-    else if(!this.online){ txt='📴 Sem internet · só consulta'; cls='off'; }
-    else if(!this.pronto){ txt='☁️ Conectando…'; cls='wait'; }
-    else { txt = '☁️ Online'+(nome?' · '+nome:'')+(emp?' · '+emp:''); cls='on'; }
-    b.className = cls; b.textContent = txt;
-    document.body.classList.add('nuv-on');
-  },
-
-  // ───────── entrar / sair ─────────
-  async entrar(url, anon, email, senha){
-    url = (url||'').trim().replace(/\/+$/,'');
-    anon = (anon||'').trim(); email = (email||'').trim().toLowerCase();
-    if(!/^https:\/\/[^\s]+$/.test(url) && !/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(url)) throw new Error('O endereço do projeto deve começar com https:// (ex.: https://abcd.supabase.co).');
-    if(!anon) throw new Error('Informe a chave pública (anon / publishable) do projeto.');
-    if(/^sb_secret_/.test(anon)) throw new Error('Essa é a chave SECRETA do Supabase. Nunca use no app — informe a chave PÚBLICA (anon / publishable).');
-    try{
-      const p = anon.split('.')[1];
-      if(p){ const j = JSON.parse(atob(p.replace(/-/g,'+').replace(/_/g,'/'))); if(j && j.role==='service_role') throw new Error('Essa é a chave SECRETA (service_role). Nunca use no app — informe a chave PÚBLICA (anon).'); }
-    }catch(e){ if(/SECRETA/.test(e.message)) throw e; }
-    if(!email || !senha) throw new Error('Informe o e-mail e a senha.');
-    this.cfg = {url, anon, email, refresh:''};
-    this.tok = null;
-    let r;
-    try{ r = await this.http('POST', '/auth/v1/token?grant_type=password', {email, password:senha}, {semAuth:true}); }
-    catch(e){
-      this.cfg = null;
-      if(e.rede) throw new Error('Sem conexão com o projeto. Confira o endereço e a internet.');
-      if(e.status===400 || e.status===401) throw new Error('E-mail ou senha incorretos.');
-      throw e;
-    }
-    this.guardarSessao(r);
-    const eu = await this.rpc('eu');
-    if(eu.erro){ this.cfg=null; this.tok=null; try{ localStorage.removeItem(NUV_KEY); }catch(e){} throw new Error('Seu usuário ainda não foi vinculado a uma empresa. Peça ao administrador para concluir o cadastro (convidar.sql).'); }
-    this.eu = eu;
-    const linhas = await this.baixarLinhas(0);
-    const nuvem = linhas.filter(l=>!l.apagado).length;
-    const loc = this.contarLocal();
-    return {eu, linhas, nuvem, loc};
-  },
-  contarLocal(){ let n=0; for(const t in NUV_COLS) n += (NUV_COLS[t].get()||[]).length; return n; },
-  async guardarBackupLocal(){
-    try{ clearTimeout(_saveTimer); await persistDB(); }catch(e){}
-    try{ if(!localStorage.getItem(NUV_BKP)){ const raw = localStorage.getItem(LS_KEY); if(raw) localStorage.setItem(NUV_BKP, raw); } }catch(e){}
-  },
-  async ativarComDados(modo, info){       // modo: 'nuvem' (usa o que está na nuvem) | 'enviar' (sobe os dados deste aparelho)
-    const prog = (t)=>{ const el=document.getElementById('nuvProg'); if(el) el.textContent=t; };
-    await this.guardarBackupLocal();
-    this.rev = {}; this.snap = {}; this.seq = 0;
-    if(modo==='nuvem'){
-      for(const t in NUV_COLS){ const a = NUV_COLS[t].get(); a.length = 0; }
-      DB.meta = {valor:0};
-      info.linhas.forEach(l=>this.aplicarLinha(l));
-      this.seq = info.linhas.reduce((m,l)=>Math.max(m,l.seq),0);
-    } else {
-      const todos = [...nuvTodos().values()]; let n=0;
-      for(const o of todos){
-        prog('Enviando '+(++n)+' de '+todos.length+'…');
-        const r = await this.rpc('registro_salvar', {p_tipo:o.tipo, p_id:o.id, p_dados:o.item, p_revisao:0, p_apagar:false, p_liberar:false});
-        if(!r.ok) throw new Error('Falha ao enviar «'+this.rotulo(o.tipo,o.id)+'»: '+(r.motivo||'erro'));
-        this.rev[o.tipo+'/'+o.id] = r.revisao; this.snap[o.tipo+'/'+o.id] = nuvHash(nuvStable(o.item));
-      }
-      // contadores nunca ficam atrás dos códigos já usados
-      const mx = {cs:maiorSeq('casa'), ap:maiorSeq('apartamento'), tr:maiorSeq('terreno'), ch:maiorSeq('chacara'), prop:maiorSeqProp()};
-      for(const k in mx) if(mx[k]>0) await this.rpc('contador_garantir', {p_chave:k, p_minimo:mx[k]});
-      this.seq = 0; await this.pull(true);
-    }
-    this.on = true; this.pronto = true; this.online = true; this._avisouSessao = false; _nuvEscolhaSim = true;
-    this.salvarCfg();
-    try{ await persistDB(); }catch(e){}
-    this.salvarEstado();
-    this.barra();
-    this.iniciarCiclos();
-  },
-  async sair(manter){        // manter=true: continua com a cópia dos dados da empresa neste aparelho; false: restaura os dados de antes
-    this.soltarAoSair();
-    try{ if(this.tok && this.tok.access) await this.http('POST','/auth/v1/logout',{}, {timeout:4000}); }catch(e){}
-    clearTimeout(this._tp); clearInterval(this._dog); clearTimeout(this._te);
-    this.on=false; this.pronto=false; this.cfg=null; this.tok=null; this.eu=null; this.locks={}; this.aSoltar.clear();
-    try{ localStorage.removeItem(NUV_KEY); localStorage.removeItem(NUV_EST); }catch(e){}
-    if(!manter){ try{ const b = localStorage.getItem(NUV_BKP); if(b){ localStorage.setItem(LS_KEY, b); localStorage.removeItem(NUV_BKP); } }catch(e){} }
-    else { try{ localStorage.removeItem(NUV_BKP); }catch(e){} }
-    location.reload();
-  },
-
-  // ───────── início do app ─────────
-  aoEntrar(){
-    if(this._boot) return; this._boot = true;
-    const cfg = this.lerCfg();
-    if(!cfg) return;
-    this.cfg = cfg; this.on = true; this.pronto = false;
-    // se os dados deste aparelho sumiram (limpeza do navegador), esqueço o que "já tinha enviado" — senão pareceria que apaguei tudo
-    const temLocal = !!localStorage.getItem(LS_KEY);
-    try{ const e = JSON.parse(localStorage.getItem(NUV_EST)||'null'); if(e && temLocal){ this.seq=e.seq||0; this.rev=e.rev||{}; this.snap=e.snap||{}; } }catch(e){}
-    this.tok = {access:'', refresh:cfg.refresh||'', exp:0};
-    if(!cfg.refresh){ this.sessaoExpirada(); }
-    this.barra();
-    this.iniciarCiclos();
-  }
-};
-// marca o ponto em que as telas abrem/fecham (para saber se o registro ainda está na tela)
-(function(){
-  const _ss = window.showSheet, _cf = window.confirmar;
-  window.showSheet = function(){ NUV.epoch++; return _ss.apply(this, arguments); };
-  window.confirmar = function(){ NUV.epoch2++; return _cf.apply(this, arguments); };
-})();
-
-// ───────── envolve as rotinas do app com o bloqueio de registro ─────────
-(function(){
-  function env(nome, tipo, idDe, optDe){
-    const orig = window[nome];
-    if(typeof orig!=='function'){ console.warn('nuvem: rotina não encontrada: '+nome); return; }
-    window[nome] = function(){
-      const a = arguments;
-      if(!NUV.on || window.__DEMO) return orig.apply(this, a);
-      const id = idDe(a);
-      if(id==null || id==='') return orig.apply(this, a);
-      const self = this;
-      return NUV.abrir(tipo, String(id), ()=>orig.apply(self, a), typeof optDe==='function' ? optDe(String(id), a) : (optDe||{}));
-    };
-  }
-  const a0 = a=>a[0];
-  const elem = (id)=>!!document.getElementById(id);
-  // imóvel
-  env('setImovelStatus','imoveis',a0,{kind:'rapido'});
-  env('setDataVenda','imoveis',a0,{kind:'rapido'});
-  env('confirmarExcluir','imoveis',a0,{kind:'ovl'});
-  // proprietário
-  env('editarProprietario','proprietarios',a0,id=>({kind:'form', alive:()=>!!P && P.id===id}));
-  env('excluirProprietario','proprietarios',a0,{kind:'ovl'});
-  // retornos (follow-ups)
-  env('editarFollowup','followups',a0,id=>({kind:'form', alive:()=>_fuEditId===id && elem('fuCliente')}));
-  env('feitoFollowup','followups',a0,{kind:'rapido'});
-  env('excluirFollowup','followups',a0,{kind:'rapido'});
-  // clientes
-  env('editarCliente','clientes',a0,id=>({kind:'form', alive:()=>clienteEditId===id && elem('ciNome')}));
-  env('setClienteEstagio','clientes',a0,{kind:'rapido'});
-  env('excluirCliente','clientes',a0,{kind:'ovl'});
-  // agenda
-  env('editarAgendamento','agendamentos',a0,id=>({kind:'form', alive:()=>!!V && V.id===id}));
-  env('excluirAgendamento','agendamentos',a0,{kind:'ovl'});
-  env('abrirAvaliacao','agendamentos',a0,{kind:'ovl'});
-  // financeiro
-  env('editarDespesa','despesas',a0,{kind:'ovl'});
-  env('excluirDespesa','despesas',a0,{kind:'ovl'});
-  env('editarReceita','receitas',a0,{kind:'ovl'});
-  env('excluirReceita','receitas',a0,{kind:'ovl'});
-  // meta de vendas (grava direto do formulário da tela: não espera, só avisa)
-  env('salvarMeta','config',()=>'meta',{kind:'rapido', esperar:false});
-
-  // trocar de "consultar" para "editar" um imóvel já cadastrado = pegar o bloqueio do registro
-  const _sm = window.setModo;
-  window.setModo = function(m){
-    if(!(NUV.on && !window.__DEMO && m==='edicao' && W && W._editando && DB.imoveis.some(x=>x.id===W.id))) return _sm.apply(this, arguments);
-    const id = W.id, key = 'imoveis/'+id, self = this, args = arguments;
-    return NUV.abrir('imoveis', id, ()=>{
-      if(W && W.id===id && W._revBase!==undefined && NUV.rev[key]!==W._revBase){      // alguém salvou entre abrir e pedir para editar
-        toast('🔄 Este imóvel foi atualizado por outro usuário — carreguei a versão mais nova.', 6000);
-        window.__forcaEdicao = true; W = null;
-        return window.editarImovel(id);
-      }
-      return _sm.apply(self, args);
-    }, {kind:'form', alive:()=>!!W && W.id===id && wModo==='edicao'});
-  };
-  const _pm = window.perguntarModoEdicao;
-  window.perguntarModoEdicao = function(){
-    if(window.__forcaEdicao){ window.__forcaEdicao = false; renderWizard(); return window.setModo('edicao'); }
-    return _pm.apply(this, arguments);
-  };
-  // abrir o imóvel para consulta/edição sempre parte da versão mais nova
-  const _ei = window.editarImovel;
-  window.editarImovel = async function(id){
-    if(NUV.on && !window.__DEMO && NUV.pronto){ try{ await NUV.pull(); }catch(e){} }
-    const r = await _ei.apply(this, arguments);
-    if(W && W.id===id && NUV.on) W._revBase = NUV.rev['imoveis/'+id];
-    return r;
-  };
-
-  // gravações novas (sem bloqueio, mas só com internet)
-  ['iniciarCadastro','novaVisita','novoProprietario'].forEach(nome=>{
-    const o = window[nome]; if(typeof o!=='function') return;
-    window[nome] = function(){ if(NUV.somenteLeitura()){ NUV.msgOffline(); return; } return o.apply(this, arguments); };
-  });
-  ['gravarImovel','salvarProprietario','salvarFollowup','salvarCliente','salvarAval','salvarVisita','salvarDespesaManual','salvarReceitaManual',
-   'doExcluir','doExcluirProprietario','doExcluirCliente','doExcluirAgendamento','doExcluirDespesa','doExcluirReceita','setAvaliacao'].forEach(nome=>{
-    const o = window[nome]; if(typeof o!=='function'){ console.warn('nuvem: rotina não encontrada: '+nome); return; }
-    window[nome] = function(){ if(NUV.somenteLeitura()){ NUV.msgOffline(); return; } return o.apply(this, arguments); };
-  });
-})();
-// ───────── telas: entrar na nuvem, migração, Ajustes ─────────
-let _nuvEscolhaSim = false;      // escolha na tela de Ajustes enquanto ainda não entrou na nuvem
-function nuvInternetOk(){ return NUV.on ? NUV.online : (navigator.onLine!==false); }
-function nuvEscolher(sim){
-  if(sim){ _nuvEscolhaSim = true; renderConfig(); return; }
-  if(NUV.on){ nuvConfirmarSair(); return; }       // estava na nuvem: pede confirmação antes de sair
-  _nuvEscolhaSim = false; renderConfig();
-}
-function nuvConfigHTML(){
-  const tit = `<div class="stitle nuv-cfg">☁️ Modo multiusuário (nuvem)</div>`;
-  const sim = NUV.on || _nuvEscolhaSim;
-  const semNet = !nuvInternetOk();
-  const seg = (ativo)=>`display:flex;gap:8px;margin:10px 0`;
-  const btn = (txt,on,fn,cor)=>`<button type="button" aria-pressed="${on}" onclick="${fn}" style="flex:1;padding:12px 6px;border-radius:12px;font-weight:800;font-size:14px;cursor:pointer;min-height:44px;border:2px solid ${on?cor:'var(--border)'};background:${on?cor:'var(--surface)'};color:${on?'#fff':'var(--text)'}">${txt}</button>`;
-  const pergunta = `<div style="font-size:14px;font-weight:800;line-height:1.4">Utiliza o app em modo multiusuário “na nuvem”?</div>
-      <div style="${seg()}">${btn('NÃO',!sim,'nuvEscolher(false)','#475569')}${btn('SIM',sim,'nuvEscolher(true)','#0F766E')}</div>`;
-  const aviso = semNet ? `<div role="alert" style="background:#FEE2E2;border:2px solid #DC2626;color:#7F1D1D;border-radius:12px;padding:10px 12px;font-weight:800;font-size:14px;text-align:center;margin-bottom:10px">📴 SEM ACESSO A INTERNET</div>` : '';
-  if(window.__DEMO) return tit+`<div class="card">${pergunta}${aviso}
-      <div style="font-size:12.5px;color:var(--muted);line-height:1.6">No app de verdade, escolha <b>SIM</b> para trabalhar em equipe (todos veem os mesmos dados) ou <b>NÃO</b> para usar só neste aparelho. (Indisponível no manual.)</div></div>`;
-  if(!sim){
-    return tit+`<div class="card">${pergunta}${aviso}
-      <div style="background:#DCFCE7;border:1.5px solid #16A34A;color:#14532D;border-radius:12px;padding:10px 12px;font-weight:800;font-size:13.5px;line-height:1.5">✅ TODAS AS INFORMAÇÕES SERÃO GRAVADAS<span style="display:block;font-weight:500;font-size:12.5px;margin-top:2px">neste aparelho, com ou sem internet.</span></div>
-    </div>`;
-  }
-  const regra = `<div style="background:#FEF3C7;border:1.5px solid #F59E0B;color:#78350F;border-radius:12px;padding:10px 12px;font-weight:800;font-size:13.5px;line-height:1.5;margin-bottom:10px">🔒 APENAS SERÁ PERMITIDA A LEITURA DAS INFORMAÇÕES<span style="display:block;font-weight:500;font-size:12.5px;margin-top:2px">enquanto não estiver conectado à internet. Conectado, você inclui, altera e exclui normalmente.</span></div>`;
-  if(!NUV.on){
-    return tit+`<div class="card">${pergunta}${aviso}${regra}
-      <div style="font-size:12.5px;color:var(--muted);line-height:1.6;margin-bottom:10px">
-        Todos da equipe veem os mesmos imóveis, clientes e agenda. Quando alguém está editando um registro, os outros veem
-        <b>“Registro em uso por outro usuário — aguarde”</b> e quem está com ele recebe o aviso
-        <b>“Há outro usuário precisando atualizar informações”</b>.
-      </div>
-      <button class="btn" onclick="nuvAbrirLogin()">☁️ Entrar na nuvem</button>
-    </div>`;
-  }
-  const eu = NUV.eu||{};
-  const emUso = (NUV.bloqueios||[]).filter(b=>b.user_id!==eu.user_id);
-  const estado = !NUV.cfg||!NUV.cfg.refresh ? '<b style="color:var(--danger)">🔑 Sessão expirada — só leitura</b>' : !NUV.online ? '<b style="color:var(--danger)">📴 Sem internet — só leitura</b>' : !NUV.pronto ? '<b style="color:#B45309">Conectando…</b>' : '<b style="color:var(--success)">● Conectado</b>';
-  const papel = ({dono:'Dono',corretor:'Corretor',assistente:'Assistente'})[eu.papel]||'';
-  return tit+`<div class="card">${pergunta}${aviso}${regra}
-      <div style="font-size:13.5px;line-height:1.8">${estado}<br>
-        👤 ${esc(eu.nome||(NUV.cfg&&NUV.cfg.email)||'')}${papel?' · '+papel:''}<br>
-        🏢 ${esc(eu.empresa||'')}</div>
-      ${emUso.length?`<div style="margin-top:10px;font-size:12.5px;color:var(--muted)"><b>Em edição agora por outras pessoas:</b><br>${emUso.map(b=>'🔒 '+esc(b.user_nome)+' — '+esc(NUV.rotulo(b.tipo,b.id))).join('<br>')}</div>`:''}
-      ${(typeof Notification!=='undefined' && Notification.permission==='default')?`<button class="btn gray" style="margin-top:10px" onclick="try{Notification.requestPermission().then(renderConfig)}catch(e){}">🔔 Ativar avisos neste aparelho</button>`:''}
-    </div>`;
-}
-// a tela de Ajustes acompanha a internet em tempo real (com ou sem a nuvem ligada)
-function nuvAtualizarAjustes(){
-  try{
-    if(currentTab!=='config' || window.__DEMO) return;
-    if(document.getElementById('modals').innerHTML.trim()!=='' || document.getElementById('modals2').innerHTML.trim()!=='') return;
-    const sy = window.scrollY; renderConfig(); window.scrollTo(0, sy);
-  }catch(e){}
-}
-window.addEventListener('online', ()=>setTimeout(nuvAtualizarAjustes, 400));
-window.addEventListener('offline', ()=>setTimeout(nuvAtualizarAjustes, 100));
-function nuvAbrirLogin(msg){
-  const fixo = !!(NUVEM_PADRAO.url && NUVEM_PADRAO.anon);
-  const c = NUV.lerCfg()||{};
-  showSheet('☁️ Entrar na nuvem', `
-    ${msg?`<div class="hint" style="color:var(--danger);margin-bottom:10px">${esc(msg)}</div>`:''}
-    ${fixo?'':`<div class="field"><label>Endereço do projeto</label><input id="nvUrl" inputmode="url" autocomplete="off" placeholder="https://xxxx.supabase.co" value="${esc(c.url||'')}"></div>
-    <div class="field"><label>Chave pública (anon / publishable)</label><input id="nvAnon" autocomplete="off" placeholder="eyJ… ou sb_publishable_…" value="${esc(c.anon||'')}">
-    <div style="font-size:11.5px;color:var(--muted);margin-top:4px">Use só a chave <b>pública</b>. Nunca a chave secreta (service_role).</div></div>`}
-    <div class="field"><label>E-mail</label><input id="nvEmail" type="email" autocomplete="username" value="${esc(c.email||'')}"></div>
-    <div class="field"><label>Senha</label><input id="nvSenha" type="password" autocomplete="current-password"></div>
-    <div id="nvErro" style="color:var(--danger);font-size:13px;min-height:18px"></div>`,
-    `<button class="btn gray" onclick="closeSheet()">Cancelar</button><button class="btn" id="nvBtn" onclick="nuvLogin()">Entrar</button>`);
-}
-async function nuvLogin(){
-  const g = id=>{ const e=document.getElementById(id); return e?e.value:''; };
-  const btn = document.getElementById('nvBtn'), er = document.getElementById('nvErro');
-  const url = NUVEM_PADRAO.url||g('nvUrl'), anon = NUVEM_PADRAO.anon||g('nvAnon');
-  if(btn){ btn.disabled=true; btn.textContent='Entrando…'; } if(er) er.textContent='';
-  try{
-    const info = await NUV.entrar(url, anon, g('nvEmail'), g('nvSenha'));
-    NUV._info = info;
-    if(info.nuvem===0 && info.loc===0){ await nuvAtivar('nuvem'); return; }
-    if(info.nuvem>0 && info.loc===0){ await nuvAtivar('nuvem'); return; }
-    closeSheet();
-    if(info.nuvem===0){
-      showSheet('☁️ Enviar seus dados para a nuvem?',
-        `<div style="font-size:14px;line-height:1.65">A nuvem da empresa <b>${esc(info.eu.empresa)}</b> ainda está vazia e este aparelho tem <b>${info.loc} registro(s)</b>.<br><br>
-        Quer enviar tudo para a nuvem, para toda a equipe usar? Uma cópia dos seus dados atuais fica guardada neste aparelho.<br>
-        <span style="font-size:12.5px;color:var(--muted)">⚠️ Fotos e vídeos ainda ficam só neste aparelho (não vão para a nuvem nesta versão).</span></div>
-        <div id="nuvProg" style="margin-top:10px;font-size:13px;color:var(--primary);font-weight:700"></div>`,
-        `<button class="btn gray" onclick="nuvCancelarEntrada()">Não, cancelar</button><button class="btn green" id="nvGo" onclick="nuvAtivar('enviar')">Enviar para a nuvem</button>`);
-    } else {
-      showSheet('☁️ Usar os dados da nuvem?',
-        `<div style="font-size:14px;line-height:1.65">A nuvem da empresa <b>${esc(info.eu.empresa)}</b> já tem <b>${info.nuvem} registro(s)</b> e este aparelho tem <b>${info.loc}</b>.<br><br>
-        Para não duplicar nem misturar, o app vai usar os dados <b>da nuvem</b>. Seus dados atuais ficam guardados num backup neste aparelho e voltam se você escolher <i>Sair da nuvem → restaurar meus dados</i>.<br>
-        <span style="font-size:12.5px;color:var(--muted)">Se quiser levar os dados deste aparelho para a nuvem, cancele, exporte um backup e peça ajuda para importar com segurança.</span></div>`,
-        `<button class="btn gray" onclick="nuvCancelarEntrada()">Cancelar</button><button class="btn" onclick="nuvAtivar('nuvem')">Usar os dados da nuvem</button>`);
-    }
-  }catch(e){
-    if(btn){ btn.disabled=false; btn.textContent='Entrar'; }
-    if(er) er.textContent = '⚠️ '+(e.message||e);
-  }
-}
-async function nuvAtivar(modo){
-  const b = document.getElementById('nvGo'); if(b){ b.disabled=true; b.textContent='Enviando…'; }
-  try{
-    await NUV.ativarComDados(modo, NUV._info);
-    NUV._info = null;
-    closeSheet();
-    toast('☁️ Conectado à nuvem — '+(NUV.eu&&NUV.eu.empresa||''), 5000);
-    goTab('config', true);
-  }catch(e){
-    NUV.on=false; NUV.pronto=false;
-    closeSheet();
-    NUV.aviso('⚠️ Não foi possível concluir', esc(e.message||e)+'<br><br>Seus dados deste aparelho continuam como estavam.');
-  }
-}
-function nuvCancelarEntrada(){
-  try{ localStorage.removeItem(NUV_KEY); }catch(e){}
-  NUV.on=false; NUV.cfg=null; NUV.tok=null; NUV.eu=null; NUV._info=null;
-  closeSheet();
-}
-function nuvConfirmarSair(){
-  const temBkp = !!localStorage.getItem(NUV_BKP);
-  showSheet('Sair da nuvem', `<div style="font-size:14px;line-height:1.65">Ao sair, este aparelho deixa de sincronizar com a equipe.<br><br>
-    ${temBkp?'<b>Restaurar meus dados</b> traz de volta o que você tinha neste aparelho antes de entrar na nuvem.<br><br>':''}
-    <b>Manter cópia da empresa</b> deixa neste aparelho os dados da nuvem de agora, como um app comum (sem sincronizar).</div>`,
-    `<button class="btn gray" onclick="closeSheet()">Cancelar</button>
-     <button class="btn gray" onclick="NUV.sair(true)">Manter cópia da empresa</button>
-     ${temBkp?`<button class="btn" onclick="NUV.sair(false)">Restaurar meus dados</button>`:''}`);
-}
-
-/*NUVEM-FIM*/
 
 // ═══ Service Worker (offline básico) ═══
 if('serviceWorker' in navigator){

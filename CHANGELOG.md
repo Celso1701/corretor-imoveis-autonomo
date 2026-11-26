@@ -1,5 +1,29 @@
 # Cor Sync Imóveis — Histórico de versões
 
+## v1.50.2 — Texto da senha mais claro
+- Nas telas de criar/trocar senha, o texto agora diz: **"A senha deve ter de 5 a 50 caracteres. Maiúscula, minúscula, número e símbolo não são obrigatórios (mas deixam a senha mais forte)."** Na lista, esses itens aparecem como "(opcional)".
+- Retirada uma sigla técnica que aparecia nos textos do aplicativo.
+
+## v1.50.1 — Regra de senha mais simples
+- **Senha de acesso:** agora de **5 a 50 caracteres**. Maiúscula, minúscula, número e símbolo **não são obrigatórios** (aparecem na lista como opcionais e não bloqueiam).
+- Vale para todas as telas que criam senha: primeiro acesso, ativação do Pro e Ajustes → Segurança e login.
+- Quem já tem senha continua entrando normalmente com ela.
+
+## v1.50.0 — Modo nuvem (Supabase) retirado; o app volta a funcionar só no aparelho
+- **Retirado:** o modo multiusuário "na nuvem" (Supabase) — a pergunta SIM/NÃO em Ajustes, o login da nuvem, o bloqueio de registro em uso, o alerta "Há outro usuário…", o modo "somente leitura sem internet" e os passos do tutorial/tour sobre a nuvem. O código foi guardado à parte para uso futuro.
+- Os dados continuam salvos **só neste aparelho**, com ou sem internet (como na 1.48.x). Quem nunca ligou a nuvem não percebe diferença.
+- Mantido da 1.49.1: **código Pro vitalício** (sem data de validade).
+
+### Também consta nesta versão (já estava no app desde a 1.49.0, mas não tinha entrado neste histórico)
+- **Fontes embutidas** (Plus Jakarta Sans e IBM Plex Mono): o app não pede mais nada ao Google e tem a mesma aparência offline.
+- **Armazenamento cheio:** se o aparelho não deixar salvar, o app avisa em vez de perder dados em silêncio; também pede ao navegador para não apagar os dados quando faltar espaço.
+- **Tour guiado:** cada passo ganhou um **💡 Exemplo** prático (em telas baixas vira um botão "Exemplo" para não cobrir o botão destacado).
+- **Imóvel vendido:** ao marcar **Vendido**, aparece a **data da venda** (editável, não pode ser futura). A **Produtividade** passa a contar a venda pela data da venda e pelo valor negociado (se houver).
+- **Visitas:** ao regravar uma visita, as despesas que não mudaram são mantidas (inclusive ajustes feitos no Financeiro, como "pago em").
+- **Acessibilidade:** textos alternativos nas imagens e botões de excluir (Financeiro) maiores e com rótulo.
+- Alterar a situação do imóvel passa a respeitar o modo consulta (teste grátis encerrado).
+- Foto que não está no aparelho mostra "📷 foto não encontrada" em vez de ficar em "carregando…".
+
 ## v1.49.1 — Código Pro vitalício (sem data de validade)
 - **Pro vitalício:** novo tipo de código de ativação, sem data de validade. Em Ajustes → Plano aparece "PRO VITALÍCIO · Sem data de validade · ∞".
 - Um código mensal/semestral/anual nunca rebaixa um aparelho que já é vitalício. "Desativar/Reativar Pro" funciona também no vitalício.
@@ -401,7 +425,7 @@ Nova seção **Ferramentas** na tela inicial:
 ## v1.12.0 — Câmera, navegação e identidade visual
 - **Câmera corrigida:** o botão "Câmera" agora abre a câmera do aparelho de forma confiável (usa o mesmo método nativo da Galeria/Vídeo, sem perder o gesto do usuário). Corrigido em fotos do imóvel, foto do proprietário, certidões e foto/CRECI do corretor.
 - **Navegação mais clara:** o botão de voltar do topo virou um botão azul destacado (maior e fácil de tocar) em todas as telas de cadastro/detalhe. A tela "Tipo de imóvel" ganhou também um botão "Voltar ao Início" na parte de baixo.
-- **Novo logo (identidade visual):** aplicado no ícone do aplicativo (PWA), na tela de abertura (splash) e nas telas de senha (criar senha e login). App renomeado para "Corretor de Imóveis".
+- **Novo logo (identidade visual):** aplicado no ícone do aplicativo, na tela de abertura (splash) e nas telas de senha (criar senha e login). App renomeado para "Corretor de Imóveis".
 
 ## v1.11.0 — Fonte pagadora nas receitas
 - No lançamento de **receita**, novo campo **"Fonte pagadora"** (até 30 caracteres), logo abaixo da categoria.
